@@ -1,0 +1,12 @@
+var searchData=
+[
+  ['harmoniesareaffected_994',['harmoniesAreAffected',['../group___a_r_a___library___utility___content___update___scopes.html#a5ca3529c1d8cc06b841dbf643d5695f9',1,'ARA::ContentUpdateScopes']]],
+  ['hascontentbasedfadeathead_995',['hasContentBasedFadeAtHead',['../group___a_r_a___library___a_r_a_plug___model___objects.html#a59b325ca6d75acda02d6fa82f571ce24',1,'ARA::PlugIn::PlaybackRegion']]],
+  ['hascontentbasedfadeattail_996',['hasContentBasedFadeAtTail',['../group___a_r_a___library___a_r_a_plug___model___objects.html#ac22849ead8d9bd08d9e2fb3b10cd0a77',1,'ARA::PlugIn::PlaybackRegion']]],
+  ['hasmajorseventh_997',['hasMajorSeventh',['../group___a_r_a___library___utility___pitch___interpretation.html#aa79e0d682aea96871c2344ad3dface09',1,'ARA::KeySignatureInterpreter']]],
+  ['hasmajorthird_998',['hasMajorThird',['../group___a_r_a___library___utility___pitch___interpretation.html#a3712c2b61faa7ee053b605ad7193c4cf',1,'ARA::KeySignatureInterpreter']]],
+  ['hasminorseventh_999',['hasMinorSeventh',['../group___a_r_a___library___utility___pitch___interpretation.html#a7c2aa5094b179800b2ce896b4619476d',1,'ARA::KeySignatureInterpreter']]],
+  ['hasminorthird_1000',['hasMinorThird',['../group___a_r_a___library___utility___pitch___interpretation.html#a95782b708c157d026c2892a0f97e8e68',1,'ARA::KeySignatureInterpreter']]],
+  ['hostaudioreader_1001',['HostAudioReader',['../group___a_r_a___library___a_r_a_plug___utility___classes.html#a51e06468c0e367e1b9223755dcacd33f',1,'ARA::PlugIn::HostAudioReader::HostAudioReader(const AudioSource *audioSource, bool use64BitSamples=false) noexcept'],['../group___a_r_a___library___a_r_a_plug___utility___classes.html#a0737fca82de66047ad66c905c088475e',1,'ARA::PlugIn::HostAudioReader::HostAudioReader(HostAudioAccessController *audioAccessController, ARAAudioSourceHostRef audioSourceHostRef, bool use64BitSamples=false) noexcept']]],
+  ['hostcontentreader_1002',['HostContentReader',['../group___a_r_a___library___a_r_a_plug___utility___classes.html#a5ba730ddd8b56a891a80124d94f7d334',1,'ARA::PlugIn::HostContentReader::HostContentReader(const MusicalContext *musicalContext, const ARAContentTimeRange *range=nullptr) noexcept'],['../group___a_r_a___library___a_r_a_plug___utility___classes.html#a36fff11a38a8e0123681fd04404e0a34',1,'ARA::PlugIn::HostContentReader::HostContentReader(const AudioSource *audioSource, const ARAContentTimeRange *range=nullptr) noexcept']]]
+];

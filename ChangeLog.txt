@@ -1,0 +1,113 @@
+This is a pre-release build of the ARA Library 2.0.
+
+Changes since previous releases:
+
+ARA SDK 2.0 draft 14 (aka 1.9.14) (2021/02/26)
+- applied Apache License 2.0
+- added support for license management if using ARA plug-ins without UI as analysis or time-stretch engine
+- refactored plug-in entry to allow multiple DocumentController subclasses in one binary (e.g. WaveShell)
+  by formalizing it into new PlugInEntry class
+  Instead of providing DocumentController::doCreateDocumentController () and DocumentController::doCreateFactoryConfig (),
+  client code now creates a static PlugInEntry instance by using the template function PlugInEntry::getPlugInEntry<> ().
+  Plug-Ins vendors must update their usage of DocumentController accordingly!
+- refactored PlugInExtension so that it can be used as direct instance variable for companion API classes,
+  which avoids dynamic allocation and simplifies user code
+  Plug-Ins vendors must update their usage of PlugInExtension accordingly!
+- debug message prefix changed from a compile-time define to a runtime setup to facilitate multiple
+  targets using the same compiled library (see also ARA_SETUP_DEBUG_MESSAGE_PREFIX)
+- bugfix in ContentReader template prevents crash in plug-ins if host does not provide content reading
+- ContentReaderEventIterator now returns const reference to its cache instead of value copy
+- fixed potential rounding issue in PlaybackRegion::getDurationInAudioModification/PlaybackSamples ()
+- rounding utilities renamed
+- fixed several compiler warnings that were not enabled by default
+- added initial CMake support, still work-in-progress
+
+ARA SDK 2.0 draft 13 (aka 1.9.13) (2020/08/12)
+- fixed SizedStructPtr::implements<> () when using certain versions of clang
+- renamed macro ARA_MEMBER_PTR_ARGS to ARA_STRUCT_MEMBER
+- renamed template InterfaceWrapper to InterfaceInstance
+- consistent order of template parameters in all content reading related templates (contentType first)
+- removed ARA_PROVIDES_FUNCTION and SizedStructPtr::provides<> () since the current API does not use optional struct members
+- changed factory access in DocumentController implementation to use internal API instead of host-facing API
+- grouped document controller plug-in implementation customization methods into separate delegation base class
+- added will/didNotifyModelUpdates () hooks
+
+ARA SDK 2.0 draft 12 (aka 1.9.12) (2020/06/12)
+- re-introduced updated version of processing algorithm selection draft
+- completed implementation of pitch interpretation classes
+- fixed accidental handling in PitchInterpreter::getNoteNameForCircleOfFifthIndex()
+- when notifying changes from the plug-in, analysis progress is now sent before content updates
+- content reader now optionally validate data (used to be done in the content logger before)
+
+ARA SDK 2.0 draft 11 (aka 1.9.11) (2020/04/02)
+- improved logging functions for content reading
+
+ARA SDK 2.0 draft 10 (aka 1.9.10) (2020/03/13)
+- content reader wrappers changed to return copies instead of references to avoid stale pointers
+- fixed invalid ARAFactory pointer members by properly managing the FactoryConfig instance lifetime
+- fixed scale interval comparison in KeySignatureInterpreter
+
+ARA SDK 2.0 draft 9 (aka 1.9.9) (2019/12/06)
+- adopted current revision of partial persistency draft
+- added experimental Linux support (tested on Ubuntu 18.04 w/ GCC 8.3.0 and clang 7.0)
+- dropped support for VisualStudio 2013 due to its heavily limited C++11 support
+- added support for thread-safe analysis progress reporting
+- added support for content update notifications
+- fromRef() and fromHostRef() allow for optional immediate up-casting to derived classes
+- changed construction of interface wrapper classes to require an actual interface instance
+- improved partial persistency filters to allow for proper update notifications and error handling
+- fixed ModelUpdateControllerDispatcher to properly hook up notifyPlaybackRegionContentChanged ()
+- consistent rounding from continuous time to integer sample positions
+- improved support for noexcept
+- improved const correctness
+- cleaner implementation of std::vector utilities
+- stricter C++11 coding style
+- removed all uses of std::unique_ptr from the library, restricting its use to the example code
+- added support for deactivation for undo history to ARAPlug
+- abstracted factory configuration in ARAPlug
+- added some data validation to content logging
+- fixes for Xcode 8 namespace issues when using std::malloc()/std::free()
+- updated to be compatible with Xcode 11.2.1
+
+ARA SDK 2.0 draft 8 (aka 1.9.8) (2019/06/28)
+- replaced ARA_NOEXCEPT with regular noexcept, using different workaround for Visual Studio 2013
+- fixes for optional ARA 1 support
+- consistently renamed host-implemented classes used by plug-in so class names start with Host...
+- improved C++ details such as use of constexpr, explicit constructors, noexcept declarations, etc.
+- bugfix in ViewSelection::getEffectivePlaybackRegions () when no time range has been set
+- providing extended html version of the ARA_API docs that additionally includes the Doxygen docs
+  for the ARA_Library code
+
+ARA SDK 2.0 draft 7 (aka 1.9.7) (2019/03/04)
+- SizedStruct now imposes proper alignment restrictions
+- fixed bug in host dispatch that caused calls to isAudioSourceContentAvailable () to accidentally
+  call getAudioSourceContentGrade () and vice versa
+- fixed bug in ARAPlug in doGetAudioModificationContentGrade () which accidentally internally
+  called doGetAudioSourceContentGrade ()
+- fixed bug in ARAPlug in requestAudioSourceContentAnalysisWithAlgorithm () which accidentally
+  dropped algorithmIndex
+- host dispatch code updated to correctly reflect the fact that new ARA 2 partial persistency
+  requires kARAAPIGeneration_2_0_Final, i.e. kARAAPIGeneration_2_0_Draft is not sufficient
+- unifyed API for creating or cloning audio modifications in ARAPlug
+- cleaner state handling for begin/endEditing ()
+- updated mapping code between API refs and internal objects to be variadic so that a single
+  object can be used as multiple different refs
+- added helpers for up-casting std::vector<T*> or std::vector<unique_ptr<T>>
+- getters in the ARAPlug classes templated to allow for convenient up-casting to derived classes
+- unified ARA::Host/PlugIn::ContentReader in new ARA::ContentReader and moved the associated code
+  into a new header ARAContentReader.h
+  Note that this change means that host code using the previous implementation may need minor updates.
+- improved the unified content reader class with more convenient construction, and
+  added full stl compatible iterator support
+- added generic tool for logging content information in ARAContentLogger.h
+- added ContentUpdateScopes as convenient wrapper for ARAContentUpdateFlags
+- added optimized timeline conversion classes to map between seconds, quarters, beats etc.
+- drafted preliminary code to convert note names, ARAContentChord and ARAContentKeySignature to text
+- added convenience conversions between various selection types to ViewSelection
+- added support for C++ noexcept
+- made code compile without warnings when unused parameter warnings are enabled
+- properly supporting and using Xcode and Visual Studio static analyzers
+
+ARA SDK 2.0 draft 6 (aka 1.9.6) (2018/9/19)
+This is the public release of kARAAPIGeneration_2_0_Draft.
+For changes compared earlier versions, see Version.txt in that release of the SDK.
