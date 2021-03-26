@@ -123,6 +123,7 @@ set(ARA_Library_Common_Files
 # older CMake can't link to object targets, must build static lib instead
 # \todo when building universal binaries for macOS, the paths to the object files are broken...
 #       to work around, we need to stick with static libs for now.
+#       CMake 3.20 promises a fix for the issue...
 #if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
 #    set(ARA_LIBRARY_TARGET_TYPE OBJECT)
 #else()
