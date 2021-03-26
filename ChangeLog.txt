@@ -2,6 +2,12 @@ This is a pre-release build of the ARA Library 2.0.
 
 Changes since previous releases:
 
+ARA SDK 2.0 draft 15 (aka 1.9.15) (2021/??/??)
+- implemented reference counting for the document controller class in ARAPlug to ease dealing with
+  destruction order between document controller and plug-in instances
+  While the document is deleted immediately when the host destroys the controller, the controller
+  itself will now be kept alive until all plug-in instances bound to it have been destroyed.
+
 ARA SDK 2.0 draft 14 (aka 1.9.14) (2021/02/26)
 - applied Apache License 2.0
 - added support for license management if using ARA plug-ins without UI as analysis or time-stretch engine

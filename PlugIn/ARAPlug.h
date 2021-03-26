@@ -1154,7 +1154,9 @@ public:
 //! @name Document Access
 //! Where applicable, use the optional template parameter to cast the returned instances to your custom subclass.
 //@{
-    //! Retrieve the Document contolled by this instance.
+    //! Retrieve the Document controlled by this instance.
+    //! Note that during destruction phase, the document controller may have already
+    //! deleted its document and associated graph - this call will then return nullptr.
     template <typename Document_t = Document>
     Document_t* getDocument () const noexcept { return static_cast<Document_t*> (this->_document); }
 
@@ -1206,7 +1208,7 @@ public:
 
 #if ARA_VALIDATE_API_CALLS
     // Object Ref validation helpers.
-    static bool hasInstances (const PlugInEntry* entry) noexcept;
+    static bool hasValidInstancesForPlugInEntry (const PlugInEntry* entry) noexcept;
     static bool isValidDocumentController (const DocumentController* documentController) noexcept;
     bool isValidMusicalContext (const MusicalContext* ptr) const noexcept;
     bool isValidRegionSequence (const RegionSequence* ptr) const noexcept;
@@ -1235,6 +1237,8 @@ private:
 #endif
 
 private:
+    void _destroyIfUnreferenced () noexcept;
+
     void _willChangeMusicalContextOrder () noexcept;
     void _willChangeRegionSequenceOrder (MusicalContext* affectedMusicalContext) noexcept;
 
@@ -1242,15 +1246,15 @@ private:
 
     friend class PlaybackRenderer;
     void addPlaybackRenderer (PlaybackRenderer* playbackRenderer) noexcept { _playbackRenderers.push_back (playbackRenderer); }
-    void removePlaybackRenderer (PlaybackRenderer* playbackRenderer) noexcept { find_erase (_playbackRenderers, playbackRenderer); }
+    void removePlaybackRenderer (PlaybackRenderer* playbackRenderer) noexcept { find_erase (_playbackRenderers, playbackRenderer); if (_playbackRenderers.empty ()) _destroyIfUnreferenced (); }
 
     friend class EditorRenderer;
     void addEditorRenderer (EditorRenderer* editorRenderer) noexcept { _editorRenderers.push_back (editorRenderer); }
-    void removeEditorRenderer (EditorRenderer* editorRenderer) noexcept { find_erase (_editorRenderers, editorRenderer); }
+    void removeEditorRenderer (EditorRenderer* editorRenderer) noexcept { find_erase (_editorRenderers, editorRenderer); if (_editorRenderers.empty ()) _destroyIfUnreferenced (); }
 
     friend class EditorView;
     void addEditorView (EditorView* editorView) noexcept { _editorViews.push_back (editorView); }
-    void removeEditorView (EditorView* editorView) noexcept { find_erase (_editorViews, editorView); }
+    void removeEditorView (EditorView* editorView) noexcept { find_erase (_editorViews, editorView); if (_editorViews.empty ()) _destroyIfUnreferenced (); }
 
 private:
     DocumentControllerInstance _instance;
@@ -1261,7 +1265,8 @@ private:
     HostModelUpdateController _hostModelUpdateController;
     HostPlaybackController _hostPlaybackController;
 
-    Document* _document { nullptr };
+    Document* _document { nullptr };    // will be reset to nullptr when this controller is destroyed by the host
+                                        // (it may outlive that call if still referenced from plug-in instances)
 
     std::map<AudioSource*, ContentUpdateScopes> _audioSourceContentUpdates;
     std::map<AudioModification*, ContentUpdateScopes> _audioModificationContentUpdates;
@@ -1452,8 +1457,8 @@ public:
 //! Where applicable, use the optional template parameter to cast the returned instances to your custom subclass.
 //@{
     //! Retrieve the DocumentController instance the renderer is bound to.
-    //! May return nullptr during destruction phase, but only after the document controller has been destroyed
-    //! (which implies all playback regions have been removed and destroyed already).
+    //! Note that during destruction phase, the document controller may have already
+    //! deleted its document and associated graph - its getDocument () will then return nullptr.
     template <typename DocumentController_t = DocumentController>
     DocumentController_t* getDocumentController () const noexcept { return static_cast<DocumentController_t*> (this->_documentController); }
 
@@ -1485,11 +1490,6 @@ public:
 #endif
 
 private:
-    // to be called by DocumentController during destruction exclusively
-    friend class DocumentController;
-    void invalidateDocumentController () noexcept;
-
-private:
     DocumentController* _documentController;
     std::vector<PlaybackRegion*> _playbackRegions;
 
@@ -1509,8 +1509,8 @@ public:
 //! Where applicable, use the optional template parameter to cast the returned instances to your custom subclass.
 //@{
     //! Retrieve the DocumentController instance the renderer is bound to.
-    //! May return nullptr during destruction phase, but only after the document controller has been destroyed
-    //! (which implies all playback regions and region sequences have been removed and destroyed already).
+    //! Note that during destruction phase, the document controller may have already
+    //! deleted its document and associated graph - its getDocument () will then return nullptr.
     template <typename DocumentController_t = DocumentController>
     DocumentController_t* getDocumentController () const noexcept { return static_cast<DocumentController_t*> (this->_documentController); }
 
@@ -1559,11 +1559,6 @@ public:
 #endif
 
 private:
-    // to be called by DocumentController during destruction exclusively
-    friend class DocumentController;
-    void invalidateDocumentController () noexcept;
-
-private:
     DocumentController* _documentController;
     std::vector<PlaybackRegion*> _playbackRegions;
     std::vector<RegionSequence*> _regionSequences;
@@ -1584,8 +1579,8 @@ public:
 //! Where applicable, use the optional template parameter to cast the returned instances to your custom subclass.
 //@{
     //! Retrieve the DocumentController instance the view is bound to.
-    //! May return nullptr during destruction phase, but only after the document controller has been destroyed
-    //! (which implies the entire Document and all its subobjects have been destroyed already).
+    //! Note that during destruction phase, the document controller may have already
+    //! deleted its document and associated graph - its getDocument () will then return nullptr.
     template <typename DocumentController_t = DocumentController>
     DocumentController_t* getDocumentController () const noexcept { return static_cast<DocumentController_t*> (this->_documentController); }
 
@@ -1634,7 +1629,6 @@ public:
 private:
     // to be called by DocumentController during destruction exclusively
     friend class DocumentController;
-    void invalidateDocumentController () noexcept;
     void willDestroyRegionSequence (RegionSequence* regionSequence) noexcept;
     void willDestroyPlaybackRegion (PlaybackRegion* playbackRegion) noexcept;
 
@@ -1669,8 +1663,8 @@ public:
 
     //! Retrieve the DocumentController instance the plug-in instance is bound to.
     //! Returns nullptr if bindToDocumentController () hasn't been called yet.
-    //! Must not be called during destruction phase since the document conrtoller
-    //! may be destroyed before the Companion API plug-in is destroyed.
+    //! Note that during destruction phase, the document controller may have already
+    //! deleted its document and associated graph - its getDocument () will then return nullptr.
     template <typename DocumentController_t = DocumentController>
     DocumentController_t* getDocumentController () const noexcept { return static_cast<DocumentController_t*> (this->_documentController); }
 

@@ -810,26 +810,23 @@ bool StoreObjectsFilter::shouldStoreDocumentData () const noexcept
 
 static std::map<const DocumentController*, const PlugInEntry*> _documentControllers;
 
-bool DocumentController::hasInstances (const PlugInEntry* entry) noexcept
+bool DocumentController::hasValidInstancesForPlugInEntry (const PlugInEntry* entry) noexcept
 {
     for (const auto& x : _documentControllers)
     {
         if (x.second == entry)
-            return true;
+            return x.first->getDocument () != nullptr;
     }
     return false;
 }
 
 bool DocumentController::isValidDocumentController (const DocumentController* documentController) noexcept
 {
-    if (documentController == nullptr)
-        return false;
-
     auto plugInEntry = _documentControllers.find (documentController);
     if (plugInEntry == _documentControllers.end ())
         return false;
 
-    return (documentController->getPlugInEntry () == plugInEntry->second);
+    return (documentController->getPlugInEntry () == plugInEntry->second) && (documentController->_document != nullptr);
 }
 
 bool DocumentController::isValidMusicalContext (const MusicalContext* musicalContext) const noexcept
@@ -947,21 +944,31 @@ void DocumentController::destroyDocumentController () noexcept
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
 // \todo this is currently not required by the api - we shall discuss whether or not it should be.
 //  ARA_VALIDATE_API_STATE (!isHostEditingDocument ());
+
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
     ARA_VALIDATE_API_STATE (_document->getMusicalContexts ().empty ());
     ARA_VALIDATE_API_STATE (_document->getAudioSources ().empty ());
 
-    for (auto& playbackRenderer : _playbackRenderers)
-        playbackRenderer->invalidateDocumentController ();
-    for (auto& editorRenderer : _editorRenderers)
-        editorRenderer->invalidateDocumentController ();
-    for (auto& editorView : _editorViews)
-        editorView->invalidateDocumentController ();
-
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy document", _document);
     willDestroyDocument (_document);
     delete _document;
+    _document = nullptr;
+
+    _destroyIfUnreferenced ();
+}
+
+void DocumentController::_destroyIfUnreferenced () noexcept
+{
+    // still in use by host?
+    if (_document != nullptr)
+        return;
+
+    // still referenced from plug-in instances?
+    if (!_playbackRenderers.empty () ||
+        !_editorRenderers.empty () ||
+        !_editorViews.empty ())
+        return;
 
 #if ARA_VALIDATE_API_CALLS
     _documentControllers.erase (this);
@@ -1315,6 +1322,10 @@ void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSeque
 
     for (auto& editorView : _editorViews)
         editorView->willDestroyRegionSequence (regionSequence);
+#if ARA_VALIDATE_API_CALLS
+    for (const auto& editorRenderer : _editorRenderers)
+        ARA_VALIDATE_API_STATE (!contains (editorRenderer->getRegionSequences (), regionSequence));
+#endif
 
     _willChangeRegionSequenceOrder (regionSequence->getMusicalContext ());
 
@@ -1628,6 +1639,12 @@ void DocumentController::destroyPlaybackRegion (ARAPlaybackRegionRef playbackReg
 
     for (auto& editorView : _editorViews)
         editorView->willDestroyPlaybackRegion (playbackRegion);
+#if ARA_VALIDATE_API_CALLS
+    for (const auto& editorRenderer : _editorRenderers)
+        ARA_VALIDATE_API_STATE (!contains (editorRenderer->getPlaybackRegions (), playbackRegion));
+    for (const auto& playbackRenderer : _playbackRenderers)
+        ARA_VALIDATE_API_STATE (!contains (playbackRenderer->getPlaybackRegions (), playbackRegion));
+#endif
 
 #if ARA_SUPPORT_VERSION_1
     if (playbackRegion->getRegionSequence ())
@@ -2317,13 +2334,6 @@ PlaybackRenderer::~PlaybackRenderer () noexcept
         _documentController->removePlaybackRenderer (this);
 }
 
-void PlaybackRenderer::invalidateDocumentController () noexcept
-{
-    ARA_VALIDATE_API_STATE (_playbackRegions.empty ());
-
-    _documentController = nullptr;  // we're not removing ourself from the document controller here, since it is about to be destructed anyways
-}
-
 void PlaybackRenderer::addPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
@@ -2365,14 +2375,6 @@ EditorRenderer::~EditorRenderer () noexcept
 {
     if (_documentController)
         _documentController->removeEditorRenderer (this);
-}
-
-void EditorRenderer::invalidateDocumentController () noexcept
-{
-    ARA_VALIDATE_API_STATE (_playbackRegions.empty ());
-    ARA_VALIDATE_API_STATE (_regionSequences.empty ());
-
-    _documentController = nullptr;  // we're not removing ourself from the document controller here, since it is about to be destructed anyways
 }
 
 void EditorRenderer::addPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept
@@ -2456,11 +2458,6 @@ void EditorView::setEditorOpen (bool isOpen) noexcept
         clearViewSelection ();
         _hiddenRegionSequences.clear ();
     }
-}
-
-void EditorView::invalidateDocumentController () noexcept
-{
-    _documentController = nullptr;  // we're not removing ourself from the document controller here, since it is about to be destructed anyways
 }
 
 void EditorView::willDestroyRegionSequence (RegionSequence* regionSequence) noexcept
@@ -2645,7 +2642,7 @@ void PlugInEntry::uninitializeARA () noexcept
 {
     ARA_LOG_HOST_ENTRY (nullptr);
     ARA_VALIDATE_API_STATE (_usedApiGeneration != 0);
-    ARA_VALIDATE_API_STATE (!DocumentController::hasInstances (this));
+    ARA_VALIDATE_API_STATE (!DocumentController::hasValidInstancesForPlugInEntry (this));
 
 #if ARA_VALIDATE_API_CALLS
     // \todo this may cause problems when running multiple PlugInEntries!
