@@ -278,6 +278,122 @@ void logDocumentChange (std::string change, const T object, const DocumentContro
 
 /*******************************************************************************/
 
+float AnalysisProgressTracker::decodeProgress (float encodedProgress) noexcept
+{
+    if (encodedProgress >= 6.0f)
+        return encodedProgress - 6.0f;
+    else if (encodedProgress >= 4.0f)
+        return encodedProgress - 4.0f;
+    else if (encodedProgress >= 2.0f)
+        return encodedProgress - 2.0f;
+    else if (encodedProgress < 0.0f)
+        return encodedProgress + 2.0f;
+    else
+        return 1.0f;
+}
+
+bool AnalysisProgressTracker::decodeIsProgressing (float encodedProgress) noexcept
+{
+    return ((encodedProgress < 0.0f) || (1.0f < encodedProgress));
+}
+
+bool AnalysisProgressTracker::updateProgress (ARAAnalysisProgressState state, float progress) noexcept
+{
+#if (__cplusplus >= 201703L)
+    static_assert (decltype (_encodedProgress)::is_always_lock_free);
+#else
+    ARA_INTERNAL_ASSERT (_encodedProgress.is_lock_free ());
+#endif
+    ARA_INTERNAL_ASSERT (0.0f <= progress);
+    ARA_INTERNAL_ASSERT (progress <= 1.0f);
+
+    float encodedValue, oldEncodedValue;
+    do                                                          // retry point for compare and exchange
+    {
+        oldEncodedValue = _encodedProgress.load (std::memory_order_relaxed);
+
+        // ensure proper state transitions and ascending progress
+        if (state == kARAAnalysisProgressStarted)
+            ARA_INTERNAL_ASSERT (!decodeIsProgressing (oldEncodedValue));
+        else
+            ARA_INTERNAL_ASSERT ((progress >= decodeProgress (oldEncodedValue)) && decodeIsProgressing (oldEncodedValue));
+
+        // for an ongoing update, check if the progress has changed by a at least a delta of 0.001 since last reported
+        if ((state == kARAAnalysisProgressUpdated) && (oldEncodedValue < 0.0f) &&
+            (progress <= oldEncodedValue + 2.0f + 0.001f))
+            return false;
+
+        // encode new value
+        if (state == kARAAnalysisProgressCompleted)
+        {
+            if (oldEncodedValue >= 6.0f)
+                encodedValue = 1.0f;
+            else if (oldEncodedValue >= 4.0f)
+                encodedValue = 0.0f;
+            else if (oldEncodedValue == 0.0f)
+                encodedValue = 0.0f;
+            else
+                encodedValue = 1.0f;
+        }
+        else
+        {
+            if (oldEncodedValue >= 6.0f)
+                encodedValue = progress + 6.0f;
+            else if (oldEncodedValue >= 4.0f)
+                encodedValue = progress + 4.0f;
+            else if (oldEncodedValue == 1.0f)
+                encodedValue = progress + 6.0f;
+            else if (oldEncodedValue == 0.0f)
+                encodedValue = progress + 4.0f;
+            else
+                encodedValue = progress + ((state == kARAAnalysisProgressStarted) ? 6.0f : 2.0f);
+        }
+
+    }
+    while (!_encodedProgress.compare_exchange_strong (oldEncodedValue, encodedValue, std::memory_order_release, std::memory_order_relaxed));
+
+    return true;
+}
+
+void AnalysisProgressTracker::notifyProgress (HostModelUpdateController* controller, ARAAudioSourceHostRef audioSourceHostRef) noexcept
+{
+    float oldEncodedValue, encodedValue, progress;
+    ARAAnalysisProgressState state;
+
+    do                                                          // retry point for compare and exchange
+    {
+        oldEncodedValue = _encodedProgress.load (std::memory_order_relaxed);
+        if (oldEncodedValue <= 0.0f)                            // bail if no updates pending
+            return;
+
+        progress = decodeProgress (oldEncodedValue);
+
+        if (oldEncodedValue >= 4.0f)
+        {
+            state = kARAAnalysisProgressStarted;
+            encodedValue = progress - 2.0f;
+        }
+        else if (oldEncodedValue >= 2.0f)
+        {
+            state = kARAAnalysisProgressUpdated;
+            encodedValue = progress - 2.0f;
+        }
+        else
+        {
+            state = kARAAnalysisProgressCompleted;
+            encodedValue = 0.0f;
+        }
+    }
+    while (!_encodedProgress.compare_exchange_strong (oldEncodedValue, encodedValue, std::memory_order_release, std::memory_order_relaxed));
+
+    if (oldEncodedValue >= 6.0f)
+        controller->notifyAudioSourceAnalysisProgress (audioSourceHostRef, kARAAnalysisProgressCompleted, 1.0f);
+
+    controller->notifyAudioSourceAnalysisProgress (audioSourceHostRef, state, progress);
+}
+
+/*******************************************************************************/
+
 void Document::updateProperties (PropertiesPtr<ARADocumentProperties> properties) noexcept
 {
     _name = properties->name;
@@ -586,118 +702,106 @@ void PlaybackRegion::setRegionSequence (RegionSequence* regionSequence) noexcept
 
 /*******************************************************************************/
 
-float AnalysisProgressTracker::decodeProgress (float encodedProgress) noexcept
+RestoreObjectsFilter::RestoreObjectsFilter (const ARARestoreObjectsFilter* filter, Document* document) noexcept
+: _filter { filter }
 {
-    if (encodedProgress >= 6.0f)
-        return encodedProgress - 6.0f;
-    else if (encodedProgress >= 4.0f)
-        return encodedProgress - 4.0f;
-    else if (encodedProgress >= 2.0f)
-        return encodedProgress - 2.0f;
-    else if (encodedProgress < 0.0f)
-        return encodedProgress + 2.0f;
-    else
-        return 1.0f;
-}
-
-bool AnalysisProgressTracker::decodeIsProgressing (float encodedProgress) noexcept
-{
-    return ((encodedProgress < 0.0f) || (1.0f < encodedProgress));
-}
-
-bool AnalysisProgressTracker::updateProgress (ARAAnalysisProgressState state, float progress) noexcept
-{
-#if (__cplusplus >= 201703L)
-    static_assert (decltype (_encodedProgress)::is_always_lock_free);
-#else
-    ARA_INTERNAL_ASSERT (_encodedProgress.is_lock_free ());
-#endif
-    ARA_INTERNAL_ASSERT (0.0f <= progress);
-    ARA_INTERNAL_ASSERT (progress <= 1.0f);
-
-    float encodedValue, oldEncodedValue;
-    do                                                          // retry point for compare and exchange
+    for (const auto& audioSource : document->getAudioSources ())
     {
-        oldEncodedValue = _encodedProgress.load (std::memory_order_relaxed);
+        auto audioSourceID { audioSource->getPersistentID ().c_str () };
+        ARA_VALIDATE_API_STATE (_audioSourcesByID.count (audioSourceID) == 0);                  // make sure all current audio source persistentIDs are unique
+        _audioSourcesByID[audioSourceID] = audioSource;
 
-        // ensure proper state transitions and ascending progress
-        if (state == kARAAnalysisProgressStarted)
-            ARA_INTERNAL_ASSERT (!decodeIsProgressing (oldEncodedValue));
-        else
-            ARA_INTERNAL_ASSERT ((progress >= decodeProgress (oldEncodedValue)) && decodeIsProgressing (oldEncodedValue));
-
-        // for an ongoing update, check if the progress has changed by a at least a delta of 0.001 since last reported
-        if ((state == kARAAnalysisProgressUpdated) && (oldEncodedValue < 0.0f) &&
-            (progress <= oldEncodedValue + 2.0f + 0.001f))
-            return false;
-
-        // encode new value
-        if (state == kARAAnalysisProgressCompleted)
+        for (const auto& audioModification : audioSource->getAudioModifications ())
         {
-            if (oldEncodedValue >= 6.0f)
-                encodedValue = 1.0f;
-            else if (oldEncodedValue >= 4.0f)
-                encodedValue = 0.0f;
-            else if (oldEncodedValue == 0.0f)
-                encodedValue = 0.0f;
-            else
-                encodedValue = 1.0f;
+            auto audioModificationID { audioModification->getPersistentID ().c_str () };
+            ARA_VALIDATE_API_STATE (_audioModificationsByID.count (audioModificationID) == 0);  // make sure all current audio modification persistentIDs are unique
+            _audioModificationsByID[audioModificationID] = audioModification;
         }
-        else
-        {
-            if (oldEncodedValue >= 6.0f)
-                encodedValue = progress + 6.0f;
-            else if (oldEncodedValue >= 4.0f)
-                encodedValue = progress + 4.0f;
-            else if (oldEncodedValue == 1.0f)
-                encodedValue = progress + 6.0f;
-            else if (oldEncodedValue == 0.0f)
-                encodedValue = progress + 4.0f;
-            else
-                encodedValue = progress + ((state == kARAAnalysisProgressStarted) ? 6.0f : 2.0f);
-        }
-
     }
-    while (!_encodedProgress.compare_exchange_strong (oldEncodedValue, encodedValue, std::memory_order_release, std::memory_order_relaxed));
 
+    if (filter)
+    {
+        decltype (_audioSourcesByID) audioSourcesByMappedIDs;
+        for (ARASize i { 0 }; i < filter->audioSourceIDsCount; ++i)
+        {
+            auto audioSourceArchiveID { filter->audioSourceArchiveIDs[i] };
+            ARA_VALIDATE_API_STATE (audioSourcesByMappedIDs.count (audioSourceArchiveID) == 0); // make sure audio source persistentIDs in filter are unique
+            auto audioSourceCurrentID { (filter->audioSourceCurrentIDs != nullptr) ? filter->audioSourceCurrentIDs[i] : audioSourceArchiveID };
+
+            const auto it { _audioSourcesByID.find (audioSourceCurrentID) };
+            if (it != _audioSourcesByID.end ())
+                audioSourcesByMappedIDs[audioSourceArchiveID] = it->second;
+        }
+        _audioSourcesByID = std::move (audioSourcesByMappedIDs);
+
+        decltype (_audioModificationsByID) audioModificationsByMappedIDs;
+        for (ARASize i { 0 }; i < filter->audioModificationIDsCount; ++i)
+        {
+            auto audioModificationArchiveID { filter->audioModificationArchiveIDs[i] };
+            ARA_VALIDATE_API_STATE (audioModificationsByMappedIDs.count (audioModificationArchiveID) == 0); // make sure audio Modification persistentIDs in filter are unique
+            auto audioModificationCurrentID { (filter->audioModificationCurrentIDs != nullptr) ? filter->audioModificationCurrentIDs[i] : audioModificationArchiveID };
+
+            const auto it { _audioModificationsByID.find (audioModificationCurrentID) };
+            if (it != _audioModificationsByID.end ())
+                audioModificationsByMappedIDs[audioModificationArchiveID] = it->second;
+        }
+        _audioModificationsByID = std::move (audioModificationsByMappedIDs);
+    }
+}
+
+bool RestoreObjectsFilter::shouldRestoreDocumentData () const noexcept
+{
+    if (_filter)
+        return (_filter->documentData != kARAFalse);
     return true;
 }
 
-void AnalysisProgressTracker::notifyProgress (HostModelUpdateController* controller, ARAAudioSourceHostRef audioSourceHostRef) noexcept
+AudioSource* RestoreObjectsFilter::getAudioSourceToRestoreStateWithID (ARAPersistentID audioSourceID) const noexcept
 {
-    float oldEncodedValue, encodedValue, progress;
-    ARAAnalysisProgressState state;
+    const auto it { _audioSourcesByID.find (audioSourceID) };
+    return (it != _audioSourcesByID.end ()) ? it->second : nullptr;
+}
 
-    do                                                          // retry point for compare and exchange
+AudioModification* RestoreObjectsFilter::getAudioModificationToRestoreStateWithID (ARAPersistentID audioModificationID) const noexcept
+{
+    const auto it { _audioModificationsByID.find (audioModificationID) };
+    return (it != _audioModificationsByID.end ()) ? it->second : nullptr;
+}
+
+/*******************************************************************************/
+
+StoreObjectsFilter::StoreObjectsFilter (const DocumentController* documentController, const ARAStoreObjectsFilter* filter) noexcept
+: _filter { filter }
+{
+    if (_filter)
     {
-        oldEncodedValue = _encodedProgress.load (std::memory_order_relaxed);
-        if (oldEncodedValue <= 0.0f)                            // bail if no updates pending
-            return;
-
-        progress = decodeProgress (oldEncodedValue);
-
-        if (oldEncodedValue >= 4.0f)
+        for (ARASize i { 0 }; i < _filter->audioSourceRefsCount; ++i)
         {
-            state = kARAAnalysisProgressStarted;
-            encodedValue = progress - 2.0f;
+            const auto audioSource { fromRef (_filter->audioSourceRefs[i]) };
+            ARA_VALIDATE_API_ARGUMENT (_filter->audioSourceRefs[i], documentController->isValidAudioSource (audioSource));
+            _audioSourcesToStore.push_back (audioSource);
         }
-        else if (oldEncodedValue >= 2.0f)
+        for (ARASize i { 0 }; i < _filter->audioModificationRefsCount; ++i)
         {
-            state = kARAAnalysisProgressUpdated;
-            encodedValue = progress - 2.0f;
-        }
-        else
-        {
-            state = kARAAnalysisProgressCompleted;
-            encodedValue = 0.0f;
+            const auto audioModification { fromRef (_filter->audioModificationRefs[i]) };
+            ARA_VALIDATE_API_ARGUMENT (_filter->audioModificationRefs[i], documentController->isValidAudioModification (audioModification));
+            _audioModificationsToStore.push_back (audioModification);
         }
     }
-    while (!_encodedProgress.compare_exchange_strong (oldEncodedValue, encodedValue, std::memory_order_release, std::memory_order_relaxed));
+    else
+    {
+        _audioSourcesToStore = documentController->getDocument ()->getAudioSources<const AudioSource> ();
+        _audioModificationsToStore.reserve (_audioSourcesToStore.size ());
+        for (const auto& audioSource : _audioSourcesToStore)
+            _audioModificationsToStore.insert (_audioModificationsToStore.end (), audioSource->getAudioModifications ().begin (), audioSource->getAudioModifications ().end ());
+    }
+}
 
-    if (oldEncodedValue >= 6.0f)
-        controller->notifyAudioSourceAnalysisProgress (audioSourceHostRef, kARAAnalysisProgressCompleted, 1.0f);
-
-    controller->notifyAudioSourceAnalysisProgress (audioSourceHostRef, state, progress);
+bool StoreObjectsFilter::shouldStoreDocumentData () const noexcept
+{
+    if (_filter)
+        return (_filter->documentData != kARAFalse);
+    return true;
 }
 
 /*******************************************************************************/
@@ -2091,106 +2195,112 @@ void HostArchiveWriter::notifyDocumentArchivingProgress (float value) noexcept
 
 /*******************************************************************************/
 
-RestoreObjectsFilter::RestoreObjectsFilter (const ARARestoreObjectsFilter* filter, Document* document) noexcept
-: _filter { filter }
+std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize playbackRegionsCount, const ARAPlaybackRegionRef playbackRegionRefs[])
 {
-    for (const auto& audioSource : document->getAudioSources ())
+    std::vector<PlaybackRegion*> playbackRegions;
+    if (playbackRegionsCount > 0)
     {
-        auto audioSourceID { audioSource->getPersistentID ().c_str () };
-        ARA_VALIDATE_API_STATE (_audioSourcesByID.count (audioSourceID) == 0);                  // make sure all current audio source persistentIDs are unique
-        _audioSourcesByID[audioSourceID] = audioSource;
-
-        for (const auto& audioModification : audioSource->getAudioModifications ())
+        ARA_VALIDATE_API_ARGUMENT (playbackRegionRefs, playbackRegionRefs != nullptr);
+        playbackRegions.reserve (playbackRegionsCount);
+        for (ARASize i { 0 }; i < playbackRegionsCount; ++i)
         {
-            auto audioModificationID { audioModification->getPersistentID ().c_str () };
-            ARA_VALIDATE_API_STATE (_audioModificationsByID.count (audioModificationID) == 0);  // make sure all current audio modification persistentIDs are unique
-            _audioModificationsByID[audioModificationID] = audioModification;
+            auto playbackRegion { fromRef (playbackRegionRefs[i]) };
+            ARA_VALIDATE_API_ARGUMENT (playbackRegionRefs[i], documentController->isValidPlaybackRegion (playbackRegion));
+            playbackRegions.push_back (playbackRegion);
         }
     }
 
-    if (filter)
+    return playbackRegions;
+}
+
+std::vector<RegionSequence*> _convertRegionSequencesArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize regionSequencesCount, const ARARegionSequenceRef regionSequenceRefs[])
+{
+    std::vector<RegionSequence*> regionSequences;
+    if (regionSequencesCount > 0)
     {
-        decltype (_audioSourcesByID) audioSourcesByMappedIDs;
-        for (ARASize i { 0 }; i < filter->audioSourceIDsCount; ++i)
+        ARA_VALIDATE_API_ARGUMENT (regionSequenceRefs, regionSequenceRefs != nullptr);
+        regionSequences.reserve (regionSequencesCount);
+        for (ARASize i { 0 }; i < regionSequencesCount; ++i)
         {
-            auto audioSourceArchiveID { filter->audioSourceArchiveIDs[i] };
-            ARA_VALIDATE_API_STATE (audioSourcesByMappedIDs.count (audioSourceArchiveID) == 0); // make sure audio source persistentIDs in filter are unique
-            auto audioSourceCurrentID { (filter->audioSourceCurrentIDs != nullptr) ? filter->audioSourceCurrentIDs[i] : audioSourceArchiveID };
-
-            const auto it { _audioSourcesByID.find (audioSourceCurrentID) };
-            if (it != _audioSourcesByID.end ())
-                audioSourcesByMappedIDs[audioSourceArchiveID] = it->second;
+            auto regionSequence { fromRef (regionSequenceRefs[i]) };
+            ARA_VALIDATE_API_ARGUMENT (regionSequenceRefs[i], documentController->isValidRegionSequence (regionSequence));
+            regionSequences.push_back (regionSequence);
         }
-        _audioSourcesByID = std::move (audioSourcesByMappedIDs);
-
-        decltype (_audioModificationsByID) audioModificationsByMappedIDs;
-        for (ARASize i { 0 }; i < filter->audioModificationIDsCount; ++i)
-        {
-            auto audioModificationArchiveID { filter->audioModificationArchiveIDs[i] };
-            ARA_VALIDATE_API_STATE (audioModificationsByMappedIDs.count (audioModificationArchiveID) == 0); // make sure audio Modification persistentIDs in filter are unique
-            auto audioModificationCurrentID { (filter->audioModificationCurrentIDs != nullptr) ? filter->audioModificationCurrentIDs[i] : audioModificationArchiveID };
-
-            const auto it { _audioModificationsByID.find (audioModificationCurrentID) };
-            if (it != _audioModificationsByID.end ())
-                audioModificationsByMappedIDs[audioModificationArchiveID] = it->second;
-        }
-        _audioModificationsByID = std::move (audioModificationsByMappedIDs);
     }
-}
 
-bool RestoreObjectsFilter::shouldRestoreDocumentData () const noexcept
-{
-    if (_filter)
-        return (_filter->documentData != kARAFalse);
-    return true;
-}
-
-AudioSource* RestoreObjectsFilter::getAudioSourceToRestoreStateWithID (ARAPersistentID audioSourceID) const noexcept
-{
-    const auto it { _audioSourcesByID.find (audioSourceID) };
-    return (it != _audioSourcesByID.end ()) ? it->second : nullptr;
-}
-
-AudioModification* RestoreObjectsFilter::getAudioModificationToRestoreStateWithID (ARAPersistentID audioModificationID) const noexcept
-{
-    const auto it { _audioModificationsByID.find (audioModificationID) };
-    return (it != _audioModificationsByID.end ()) ? it->second : nullptr;
+    return regionSequences;
 }
 
 /*******************************************************************************/
 
-StoreObjectsFilter::StoreObjectsFilter (const DocumentController* documentController, const ARAStoreObjectsFilter* filter) noexcept
-: _filter { filter }
+ViewSelection::ViewSelection (const DocumentController* documentController, SizedStructPtr<ARAViewSelection> selection) noexcept
+: _playbackRegions { _convertPlaybackRegionsArray (documentController, selection->playbackRegionRefsCount, selection->playbackRegionRefs) },
+  _regionSequences { _convertRegionSequencesArray (documentController, selection->regionSequenceRefsCount, selection->regionSequenceRefs) },
+  _timeRange { selection->timeRange }
+{}
+
+std::vector<PlaybackRegion*> ViewSelection::getEffectivePlaybackRegions () const noexcept
 {
-    if (_filter)
+    std::vector<PlaybackRegion*> result { _playbackRegions };
+
+    if (result.empty ())
     {
-        for (ARASize i { 0 }; i < _filter->audioSourceRefsCount; ++i)
+        for (const auto& regionSequence : _regionSequences)
         {
-            const auto audioSource { fromRef (_filter->audioSourceRefs[i]) };
-            ARA_VALIDATE_API_ARGUMENT (_filter->audioSourceRefs[i], documentController->isValidAudioSource (audioSource));
-            _audioSourcesToStore.push_back (audioSource);
-        }
-        for (ARASize i { 0 }; i < _filter->audioModificationRefsCount; ++i)
-        {
-            const auto audioModification { fromRef (_filter->audioModificationRefs[i]) };
-            ARA_VALIDATE_API_ARGUMENT (_filter->audioModificationRefs[i], documentController->isValidAudioModification (audioModification));
-            _audioModificationsToStore.push_back (audioModification);
+            for (const auto& playbackRegion : regionSequence->getPlaybackRegions ())
+            {
+                if ((_timeRange == nullptr) || playbackRegion->intersectsWithPlaybackTimeRange (*_timeRange))
+                    result.push_back (playbackRegion);
+            }
         }
     }
-    else
-    {
-        _audioSourcesToStore = documentController->getDocument ()->getAudioSources<const AudioSource> ();
-        _audioModificationsToStore.reserve (_audioSourcesToStore.size ());
-        for (const auto& audioSource : _audioSourcesToStore)
-            _audioModificationsToStore.insert (_audioModificationsToStore.end (), audioSource->getAudioModifications ().begin (), audioSource->getAudioModifications ().end ());
-    }
+
+    return result;
 }
 
-bool StoreObjectsFilter::shouldStoreDocumentData () const noexcept
+std::vector<RegionSequence*> ViewSelection::getEffectiveRegionSequences () const noexcept
 {
-    if (_filter)
-        return (_filter->documentData != kARAFalse);
-    return true;
+    std::vector<RegionSequence*> result { _regionSequences };
+
+    if (result.empty ())
+    {
+        for (const auto& playbackRegion : _playbackRegions)
+        {
+            if (!contains (result, playbackRegion->getRegionSequence ()))
+                result.push_back (playbackRegion->getRegionSequence ());
+        }
+    }
+
+    return result;
+}
+
+ARAContentTimeRange getUnionTimeRangeOfPlaybackRegions (std::vector<PlaybackRegion*> const& playbackRegions) noexcept
+{
+    ARA_INTERNAL_ASSERT (!playbackRegions.empty ());
+
+    auto start { playbackRegions.front ()->getStartInPlaybackTime () };
+    auto end { playbackRegions.front ()->getEndInPlaybackTime () };
+    for (const auto& playbackRegion : playbackRegions)
+    {
+        start = std::min (start, playbackRegion->getStartInPlaybackTime ());
+        end = std::max (end, playbackRegion->getEndInPlaybackTime ());
+    }
+    return { start, end - start };
+}
+
+ARAContentTimeRange ViewSelection::getEffectiveTimeRange () const noexcept
+{
+    if (_timeRange != nullptr)
+        return *_timeRange;
+
+    if (!_playbackRegions.empty ())
+        return getUnionTimeRangeOfPlaybackRegions (_playbackRegions);
+
+    auto effectivePlaybackRegions { getEffectivePlaybackRegions () };
+    if (!effectivePlaybackRegions.empty ())
+        return getUnionTimeRangeOfPlaybackRegions (effectivePlaybackRegions);
+
+    return {};
 }
 
 /*******************************************************************************/
@@ -2321,116 +2431,6 @@ void EditorRenderer::removeRegionSequence (ARARegionSequenceRef regionSequenceRe
     willRemoveRegionSequence (regionSequence);
     find_erase (_regionSequences, regionSequence);
     didRemoveRegionSequence (regionSequence);
-}
-
-/*******************************************************************************/
-
-std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize playbackRegionsCount, const ARAPlaybackRegionRef playbackRegionRefs[])
-{
-    std::vector<PlaybackRegion*> playbackRegions;
-    if (playbackRegionsCount > 0)
-    {
-        ARA_VALIDATE_API_ARGUMENT (playbackRegionRefs, playbackRegionRefs != nullptr);
-        playbackRegions.reserve (playbackRegionsCount);
-        for (ARASize i { 0 }; i < playbackRegionsCount; ++i)
-        {
-            auto playbackRegion { fromRef (playbackRegionRefs[i]) };
-            ARA_VALIDATE_API_ARGUMENT (playbackRegionRefs[i], documentController->isValidPlaybackRegion (playbackRegion));
-            playbackRegions.push_back (playbackRegion);
-        }
-    }
-
-    return playbackRegions;
-}
-
-std::vector<RegionSequence*> _convertRegionSequencesArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize regionSequencesCount, const ARARegionSequenceRef regionSequenceRefs[])
-{
-    std::vector<RegionSequence*> regionSequences;
-    if (regionSequencesCount > 0)
-    {
-        ARA_VALIDATE_API_ARGUMENT (regionSequenceRefs, regionSequenceRefs != nullptr);
-        regionSequences.reserve (regionSequencesCount);
-        for (ARASize i { 0 }; i < regionSequencesCount; ++i)
-        {
-            auto regionSequence { fromRef (regionSequenceRefs[i]) };
-            ARA_VALIDATE_API_ARGUMENT (regionSequenceRefs[i], documentController->isValidRegionSequence (regionSequence));
-            regionSequences.push_back (regionSequence);
-        }
-    }
-
-    return regionSequences;
-}
-
-/*******************************************************************************/
-
-ViewSelection::ViewSelection (const DocumentController* documentController, SizedStructPtr<ARAViewSelection> selection) noexcept
-: _playbackRegions { _convertPlaybackRegionsArray (documentController, selection->playbackRegionRefsCount, selection->playbackRegionRefs) },
-  _regionSequences { _convertRegionSequencesArray (documentController, selection->regionSequenceRefsCount, selection->regionSequenceRefs) },
-  _timeRange { selection->timeRange }
-{}
-
-std::vector<PlaybackRegion*> ViewSelection::getEffectivePlaybackRegions () const noexcept
-{
-    std::vector<PlaybackRegion*> result { _playbackRegions };
-
-    if (result.empty ())
-    {
-        for (const auto& regionSequence : _regionSequences)
-        {
-            for (const auto& playbackRegion : regionSequence->getPlaybackRegions ())
-            {
-                if ((_timeRange == nullptr) || playbackRegion->intersectsWithPlaybackTimeRange (*_timeRange))
-                    result.push_back (playbackRegion);
-            }
-        }
-    }
-
-    return result;
-}
-
-std::vector<RegionSequence*> ViewSelection::getEffectiveRegionSequences () const noexcept
-{
-    std::vector<RegionSequence*> result { _regionSequences };
-
-    if (result.empty ())
-    {
-        for (const auto& playbackRegion : _playbackRegions)
-        {
-            if (!contains (result, playbackRegion->getRegionSequence ()))
-                result.push_back (playbackRegion->getRegionSequence ());
-        }
-    }
-
-    return result;
-}
-
-ARAContentTimeRange getUnionTimeRangeOfPlaybackRegions (std::vector<PlaybackRegion*> const& playbackRegions) noexcept
-{
-    ARA_INTERNAL_ASSERT (!playbackRegions.empty ());
-
-    auto start { playbackRegions.front ()->getStartInPlaybackTime () };
-    auto end { playbackRegions.front ()->getEndInPlaybackTime () };
-    for (const auto& playbackRegion : playbackRegions)
-    {
-        start = std::min (start, playbackRegion->getStartInPlaybackTime ());
-        end = std::max (end, playbackRegion->getEndInPlaybackTime ());
-    }
-    return { start, end - start };
-}
-
-ARAContentTimeRange ViewSelection::getEffectiveTimeRange () const noexcept
-{
-    if (_timeRange != nullptr)
-        return *_timeRange;
-
-    if (!_playbackRegions.empty ())
-        return getUnionTimeRangeOfPlaybackRegions (_playbackRegions);
-
-    auto effectivePlaybackRegions { getEffectivePlaybackRegions () };
-    if (!effectivePlaybackRegions.empty ())
-        return getUnionTimeRangeOfPlaybackRegions (effectivePlaybackRegions);
-
-    return {};
 }
 
 /*******************************************************************************/

@@ -76,47 +76,21 @@ class AudioSource;
 class AudioModification;
 class PlaybackRegion;
 class ContentReader;
+class RestoreObjectsFilter;
+class StoreObjectsFilter;
 class DocumentController;
+template <ARAContentType contentType> class HostContentReader;
+class HostAudioReader;
+class HostArchiveReader;
+class HostArchiveWriter;
+class ViewSelection;
 class PlaybackRenderer;
 class EditorRenderer;
-class ViewSelection;
 class EditorView;
 class PlugInExtension;
 class FactoryConfig;
 class PlugInEntry;
-class HostAudioReader;
-class HostArchiveReader;
-class HostArchiveWriter;
-class RestoreObjectsFilter;
-class StoreObjectsFilter;
-template <ARAContentType contentType>
-class HostContentReader;
 
-
-/*******************************************************************************/
-// Implementation helper for concurrent audio source analysis progress tracking - do not use directly.
-class AnalysisProgressTracker
-{
-public:
-    float getProgress () const noexcept { return decodeProgress (_encodedProgress.load (std::memory_order_relaxed)); }
-    bool isProgressing () const noexcept { return decodeIsProgressing (_encodedProgress.load (std::memory_order_relaxed)); }
-
-    bool updateProgress (ARAAnalysisProgressState state, float progress) noexcept;
-    void notifyProgress (HostModelUpdateController* controller, ARAAudioSourceHostRef audioSourceHostRef) noexcept;
-
-private:
-    static float decodeProgress (float encodedProgress) noexcept;
-    static bool decodeIsProgressing (float encodedProgress) noexcept;
-
-    std::atomic<float> _encodedProgress { 0.0f };
-    // this stores both the progress value and the update state by adding an offset to the actual value:
-    // -2..-1 -> last progress start and updates have been sent to host, but no completion
-    // 0 -> completion has been sent, idle state
-    // 1 -> completed progress must be sent to host
-    // 2..3 -> updated progress must be sent to host
-    // 4..5 -> started progress must be sent to host
-    // 6..7 -> started progress must be sent to host, and completion event for previous progress is pending too
-};
 
 //! @addtogroup ARA_Library_ARAPlug_Utility_Classes
 //! @{
@@ -215,7 +189,34 @@ private:
     const T* _data { nullptr };
 };
 
+
+/*******************************************************************************/
+// Implementation helper for concurrent audio source analysis progress tracking - do not use directly.
+class AnalysisProgressTracker
+{
+public:
+    float getProgress () const noexcept { return decodeProgress (_encodedProgress.load (std::memory_order_relaxed)); }
+    bool isProgressing () const noexcept { return decodeIsProgressing (_encodedProgress.load (std::memory_order_relaxed)); }
+
+    bool updateProgress (ARAAnalysisProgressState state, float progress) noexcept;
+    void notifyProgress (HostModelUpdateController* controller, ARAAudioSourceHostRef audioSourceHostRef) noexcept;
+
+private:
+    static float decodeProgress (float encodedProgress) noexcept;
+    static bool decodeIsProgressing (float encodedProgress) noexcept;
+
+    std::atomic<float> _encodedProgress { 0.0f };
+    // this stores both the progress value and the update state by adding an offset to the actual value:
+    // -2..-1 -> last progress start and updates have been sent to host, but no completion
+    // 0 -> completion has been sent, idle state
+    // 1 -> completed progress must be sent to host
+    // 2..3 -> updated progress must be sent to host
+    // 4..5 -> started progress must be sent to host
+    // 6..7 -> started progress must be sent to host, and completion event for previous progress is pending too
+};
+
 //! @} ARA_Library_ARAPlug_Utility_Classes
+
 
 //! @addtogroup ARA_Library_ARAPlug_Model_Objects
 //! @{
@@ -289,6 +290,7 @@ private:
     ARA_HOST_MANAGED_OBJECT (Document)
 };
 
+
 /*******************************************************************************/
 //! Extensible model object class representing an ARA \ref Model_Musical_Context.
 class MusicalContext
@@ -354,6 +356,7 @@ private:
     ARA_HOST_MANAGED_OBJECT (MusicalContext)
 };
 ARA_MAP_REF (MusicalContext, ARAMusicalContextRef)
+
 
 /*******************************************************************************/
 //! Extensible model object class representing an ARA \ref Model_Region_Sequences.
@@ -422,6 +425,7 @@ private:
     ARA_HOST_MANAGED_OBJECT (RegionSequence)
 };
 ARA_MAP_REF (RegionSequence, ARARegionSequenceRef)
+
 
 /*******************************************************************************/
 //! Extensible model object class representing an ARA \ref Model_Audio_Source.
@@ -501,6 +505,7 @@ private:
 };
 ARA_MAP_REF (AudioSource, ARAAudioSourceRef)
 
+
 /*******************************************************************************/
 //! Extensible model object class representing an ARA \ref Model_Audio_Modification.
 class AudioModification
@@ -551,11 +556,11 @@ public:
 //@}
 
 private:
-    friend DocumentController;
+    friend class DocumentController;
     void updateProperties (PropertiesPtr<ARAAudioModificationProperties> properties) noexcept;
     void setDeactivatedForUndoHistory (bool deactivate) noexcept { _deactivatedForUndoHistory = deactivate; }
 
-    friend PlaybackRegion;
+    friend class PlaybackRegion;
     void addPlaybackRegion (PlaybackRegion* region) noexcept { _playbackRegions.push_back (region); }
     void removePlaybackRegion (PlaybackRegion* region) noexcept { find_erase (_playbackRegions, region); }
 
@@ -570,6 +575,7 @@ private:
     ARA_HOST_MANAGED_OBJECT (AudioModification)
 };
 ARA_MAP_REF (AudioModification, ARAAudioModificationRef)
+
 
 /*******************************************************************************/
 //! Extensible model object class representing an ARA \ref Model_Playback_Region.
@@ -708,6 +714,68 @@ public:
     ARA_HOST_MANAGED_OBJECT (ContentReader)
 };
 ARA_MAP_REF (ContentReader, ARAContentReaderRef)
+
+
+/*******************************************************************************/
+//! Utility class that wraps an ARARestoreObjectsFilter instance.
+class RestoreObjectsFilter
+{
+private:
+    struct SortPersistentID
+    {
+        bool operator() (ARAPersistentID a, ARAPersistentID b) const noexcept
+        {
+            return std::strcmp (a, b) < 0;
+        }
+    };
+
+public:
+    RestoreObjectsFilter (const ARARestoreObjectsFilter* filter, Document* document) noexcept;
+
+//! @name Filter Queries
+//! Use these functions to filter and map the objects restored during DocumentController::doRestoreObjectsFromArchive().
+//@{
+    bool shouldRestoreDocumentData () const noexcept;
+
+    AudioSource* getAudioSourceToRestoreStateWithID (ARAPersistentID archivedAudioSourceID) const noexcept;
+    template <typename AudioSource_t = AudioSource>
+    AudioSource_t* getAudioSourceToRestoreStateWithID (ARAPersistentID archivedAudioSourceID) const noexcept { return static_cast<AudioSource_t*> (getAudioSourceToRestoreStateWithID (archivedAudioSourceID)); }
+
+    AudioModification* getAudioModificationToRestoreStateWithID (ARAPersistentID archivedAudioModificationID) const noexcept;
+    template <typename AudioModification_t = AudioModification>
+    AudioModification_t* getAudioModificationToRestoreStateWithID (ARAPersistentID archivedAudioModificationID) const noexcept { return static_cast<AudioModification_t*> (getAudioModificationToRestoreStateWithID (archivedAudioModificationID)); }
+//@}
+
+private:
+    const ARARestoreObjectsFilter* _filter;
+    std::map<ARAPersistentID, AudioSource*, SortPersistentID> _audioSourcesByID;
+    std::map<ARAPersistentID, AudioModification*, SortPersistentID> _audioModificationsByID;
+};
+
+
+/*******************************************************************************/
+//! Utility class that wraps an ARAStoreObjectsFilter instance.
+class StoreObjectsFilter
+{
+public:
+    explicit StoreObjectsFilter (const DocumentController* documentController, const ARAStoreObjectsFilter* filter) noexcept;
+
+//! @name Filter Queries
+//! Use these functions to filter the objects stored during DocumentController::doStoreObjectsToArchive().
+//@{
+    bool shouldStoreDocumentData () const noexcept;
+
+    template <typename AudioSource_t = AudioSource>
+    std::vector<const AudioSource_t*> const& getAudioSourcesToStore () const noexcept { return vector_cast<const AudioSource_t*> (_audioSourcesToStore); }
+    template <typename AudioModification_t = AudioModification>
+    std::vector<const AudioModification_t*> const& getAudioModificationsToStore () const noexcept { return vector_cast<const AudioModification_t*> (_audioModificationsToStore); }
+//@}
+
+private:
+    const ARAStoreObjectsFilter* _filter;
+    std::vector<const AudioSource*> _audioSourcesToStore;
+    std::vector<const AudioModification*> _audioModificationsToStore;
+};
 
 //! @} ARA_Library_ARAPlug_Utility_Classes
 
@@ -956,6 +1024,7 @@ private:
     PlugInEntry* _entry;
 };
 
+
 /*******************************************************************************/
 //! Customizable default implementation of DocumentControllerInterface.
 class DocumentController : public DocumentControllerInterface,
@@ -972,7 +1041,7 @@ protected:
     AudioModification* doCreateAudioModification (AudioSource* audioSource, ARAAudioModificationHostRef hostRef, const AudioModification* optionalModificationToClone) noexcept override { return new AudioModification (audioSource, hostRef, optionalModificationToClone); }
     PlaybackRegion* doCreatePlaybackRegion (AudioModification* modification, ARAPlaybackRegionHostRef hostRef) noexcept override { return new PlaybackRegion (modification, hostRef); }
 
-    friend PlugInExtension;
+    friend class PlugInExtension;
     PlaybackRenderer* doCreatePlaybackRenderer () noexcept override;
     EditorRenderer* doCreateEditorRenderer () noexcept override;
     EditorView* doCreateEditorView () noexcept override;
@@ -1152,7 +1221,7 @@ public:
 
 #if !ARA_DOXYGEN_BUILD
 private:
-    friend PlugInEntry;
+    friend class PlugInEntry;
 
     // Creation Helper
     // Only to be called by ARAFactory::createDocumentControllerWithDocument () implementations.
@@ -1193,25 +1262,25 @@ private:
     HostPlaybackController _hostPlaybackController;
 
     Document* _document { nullptr };
+
+    std::map<AudioSource*, ContentUpdateScopes> _audioSourceContentUpdates;
+    std::map<AudioModification*, ContentUpdateScopes> _audioModificationContentUpdates;
+    std::map<PlaybackRegion*, ContentUpdateScopes> _playbackRegionContentUpdates;
+    std::atomic_flag _analysisProgressIsSynced { true };
+
     bool _isHostEditingDocument { false };
 
-    std::vector<PlaybackRenderer*> _playbackRenderers;
-    std::vector<EditorRenderer*> _editorRenderers;
-    std::vector<EditorView*> _editorViews;
+    bool _musicalContextOrderChanged { false };
+    bool _regionSequenceOrderChanged { false };
+    std::vector<MusicalContext*> _musicalContextsWithChangedRegionSequenceOrder;
 
 #if ARA_VALIDATE_API_CALLS
     std::vector<ContentReader*> _contentReaders;
 #endif
 
-    std::vector<MusicalContext*> _musicalContextsWithChangedRegionSequenceOrder;
-    bool _musicalContextOrderChanged { false };
-    bool _regionSequenceOrderChanged { false };
-
-    std::atomic_flag _analysisProgressIsSynced { true };
-
-    std::map<AudioSource*, ContentUpdateScopes> _audioSourceContentUpdates;
-    std::map<AudioModification*, ContentUpdateScopes> _audioModificationContentUpdates;
-    std::map<PlaybackRegion*, ContentUpdateScopes> _playbackRegionContentUpdates;
+    std::vector<PlaybackRenderer*> _playbackRenderers;
+    std::vector<EditorRenderer*> _editorRenderers;
+    std::vector<EditorView*> _editorViews;
 
     ARA_HOST_MANAGED_OBJECT (DocumentController)
 };
@@ -1249,6 +1318,7 @@ public:
     {}
 };
 
+
 /*******************************************************************************/
 //! Utility class that wraps the host ARAAudioAccessControllerInterface.
 class HostAudioReader
@@ -1273,6 +1343,7 @@ private:
     ARAAudioReaderHostRef _hostRef;
 };
 
+
 /*******************************************************************************/
 //! Utility class that wraps the host ARAArchivingControllerInterface archive reading functions.
 class HostArchiveReader
@@ -1292,6 +1363,7 @@ private:
     ARAArchiveReaderHostRef _hostRef;
 };
 
+
 /*******************************************************************************/
 //! Utility class that wraps the host ARAArchivingControllerInterface archive writing functions.
 class HostArchiveWriter
@@ -1305,66 +1377,6 @@ public:
 private:
     HostArchivingController* const _hostArchivingController;
     ARAArchiveWriterHostRef _hostRef;
-};
-
-/*******************************************************************************/
-//! Utility class that wraps an ARARestoreObjectsFilter instance.
-class RestoreObjectsFilter
-{
-private:
-    struct SortPersistentID
-    {
-        bool operator() (ARAPersistentID a, ARAPersistentID b) const noexcept
-        {
-            return std::strcmp (a, b) < 0;
-        }
-    };
-
-public:
-    RestoreObjectsFilter (const ARARestoreObjectsFilter* filter, Document* document) noexcept;
-
-//! @name Filter Queries
-//! Use these functions to filter and map the objects restored during DocumentController::doRestoreObjectsFromArchive().
-//@{
-    bool shouldRestoreDocumentData () const noexcept;
-
-    AudioSource* getAudioSourceToRestoreStateWithID (ARAPersistentID archivedAudioSourceID) const noexcept;
-    template <typename AudioSource_t = AudioSource>
-    AudioSource_t* getAudioSourceToRestoreStateWithID (ARAPersistentID archivedAudioSourceID) const noexcept { return static_cast<AudioSource_t*> (getAudioSourceToRestoreStateWithID (archivedAudioSourceID)); }
-
-    AudioModification* getAudioModificationToRestoreStateWithID (ARAPersistentID archivedAudioModificationID) const noexcept;
-    template <typename AudioModification_t = AudioModification>
-    AudioModification_t* getAudioModificationToRestoreStateWithID (ARAPersistentID archivedAudioModificationID) const noexcept { return static_cast<AudioModification_t*> (getAudioModificationToRestoreStateWithID (archivedAudioModificationID)); }
-//@}
-
-private:
-    const ARARestoreObjectsFilter* _filter;
-    std::map<ARAPersistentID, AudioSource*, SortPersistentID> _audioSourcesByID;
-    std::map<ARAPersistentID, AudioModification*, SortPersistentID> _audioModificationsByID;
-};
-
-/*******************************************************************************/
-//! Utility class that wraps an ARAStoreObjectsFilter instance.
-class StoreObjectsFilter
-{
-public:
-    explicit StoreObjectsFilter (const DocumentController* documentController, const ARAStoreObjectsFilter* filter) noexcept;
-
-//! @name Filter Queries
-//! Use these functions to filter the objects stored during DocumentController::doStoreObjectsToArchive().
-//@{
-    bool shouldStoreDocumentData () const noexcept;
-
-    template <typename AudioSource_t = AudioSource>
-    std::vector<const AudioSource_t*> const& getAudioSourcesToStore () const noexcept { return vector_cast<const AudioSource_t*> (_audioSourcesToStore); }
-    template <typename AudioModification_t = AudioModification>
-    std::vector<const AudioModification_t*> const& getAudioModificationsToStore () const noexcept { return vector_cast<const AudioModification_t*> (_audioModificationsToStore); }
-//@}
-
-private:
-    const ARAStoreObjectsFilter* _filter;
-    std::vector<const AudioSource*> _audioSourcesToStore;
-    std::vector<const AudioModification*> _audioModificationsToStore;
 };
 
 
@@ -1484,6 +1496,7 @@ private:
     ARA_HOST_MANAGED_OBJECT (PlaybackRenderer)
 };
 
+
 /*******************************************************************************/
 //! Extensible plug-in instance role class implementing an ARA \ref Editor_Renderer_Interface.
 class EditorRenderer : public EditorRendererInterface
@@ -1558,10 +1571,6 @@ private:
     ARA_HOST_MANAGED_OBJECT (EditorRenderer)
 };
 
-//! @} ARA_Library_ARAPlug_PlugInInstanceRoles
-
-//! @addtogroup ARA_Library_ARAPlug_PlugInInstanceRoles
-//! @{
 
 /*******************************************************************************/
 //! Extensible plug-in instance role class implementing an ARA \ref Editor_View_Interface.
@@ -1640,6 +1649,7 @@ private:
 
     ARA_HOST_MANAGED_OBJECT (EditorView)
 };
+
 
 /*******************************************************************************/
 //! Utility class that wraps an ARAPlugInExtensionInstance.
@@ -1743,6 +1753,7 @@ public:
     virtual ARAPlaybackTransformationFlags getSupportedPlaybackTransformationFlags () const noexcept { return kARAPlaybackTransformationNoChanges; }
 };
 
+
 /*******************************************************************************/
 //! Singleton class to define the entry into ARA.
 //! For each document controller class in your plug-in, create a single static instance of this class
@@ -1838,6 +1849,7 @@ private:
 };
 
 //! @} ARA_Library_ARAPlug_PlugInEntry
+
 
 ARA_DISABLE_UNREFERENCED_PARAMETER_WARNING_END
 }   // namespace PlugIn
