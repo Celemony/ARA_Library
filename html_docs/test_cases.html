@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 1.9.14: ARA Use Cases and Testing</title>
+<title>ARA SDK 1.9.15: ARA Use Cases and Testing</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -94,27 +94,27 @@ $(document).ready(function(){initNavTree('test_cases.html',''); initResizable();
 </div><!--header-->
 <div class="contents">
 <div class="toc"><h3>Table of Contents</h3>
-<ul><li class="level1"><a href="#autotoc_md46">Synopsis</a></li>
-<li class="level1"><a href="#autotoc_md47">Render Timing</a></li>
-<li class="level1"><a href="#autotoc_md48">Musical Timing</a></li>
-<li class="level1"><a href="#autotoc_md49">Time Stretching</a></li>
-<li class="level1"><a href="#autotoc_md50">Signal Flow and Routing</a></li>
-<li class="level1"><a href="#autotoc_md51">Maintaining the ARA Model</a></li>
-<li class="level1"><a href="#autotoc_md52">Audio-MIDI Conversion</a></li>
-<li class="level1"><a href="#autotoc_md53">Key Signatures and Chords</a></li>
-<li class="level1"><a href="#autotoc_md54">Persistence</a></li>
-<li class="level1"><a href="#autotoc_md55">Versioning</a></li>
-<li class="level1"><a href="#autotoc_md56">UI-Related Topics</a></li>
-<li class="level1"><a href="#autotoc_md57">General</a></li>
+<ul><li class="level1"><a href="#autotoc_md47">Synopsis</a></li>
+<li class="level1"><a href="#autotoc_md48">Render Timing</a></li>
+<li class="level1"><a href="#autotoc_md49">Musical Timing</a></li>
+<li class="level1"><a href="#autotoc_md50">Time Stretching</a></li>
+<li class="level1"><a href="#autotoc_md51">Signal Flow and Routing</a></li>
+<li class="level1"><a href="#autotoc_md52">Maintaining the ARA Model</a></li>
+<li class="level1"><a href="#autotoc_md53">Audio-MIDI Conversion</a></li>
+<li class="level1"><a href="#autotoc_md54">Key Signatures and Chords</a></li>
+<li class="level1"><a href="#autotoc_md55">Persistence</a></li>
+<li class="level1"><a href="#autotoc_md56">Versioning</a></li>
+<li class="level1"><a href="#autotoc_md57">UI-Related Topics</a></li>
+<li class="level1"><a href="#autotoc_md58">General</a></li>
 </ul>
 </div>
 <div class="textblock"><p></p>
-<h1><a class="anchor" id="autotoc_md46"></a>
+<h1><a class="anchor" id="autotoc_md47"></a>
 Synopsis</h1>
 <p>A major challenge when adopting an API as flexible and complex as ARA is understanding the potential use cases that will be encountered across all the possible host/plug-in combinations, and to design and test implementations accordigly. <br>                               This chapter describes various use cases that each host and plug-in should be aware of in order to build high quality ARA integrations. Intense quality insurance is key to a stable and thriving overall ARA platform and great user experience - passing this checklist as applicable is therefore also a prerequisite for Celemony granting developers the right to use its ARA Audio Random Access trademark for marketing a ARA-enabled prodcuts as such. <br>                               As a living document, this chapter will be regularly updated whenever common issues in current implementations become apparent. <br>                              </p>
 <p>As both hosts and plug-ins have very different features and capabilities, many of the following use cases may not apply in a specific host/plug-in combination. For example, a restoration plug-in will typically not bother with musical timing, time-stretching or MIDI notes. Nevertheless, all features which make sense in the given context shall be properly supported by all hosts and plug-ins that pick up ARA. <br>                              </p>
 <p>While testing, developers should also utilize the ARA Test Host and ARA Test Plug-In examples provided with the ARA SDK as well as Melodyne, which all feature extensive testing and validation as outlined <a class="el" href="implementing_a_r_a.html#sec_UtilizingExamples">above</a>.</p>
-<h1><a class="anchor" id="autotoc_md47"></a>
+<h1><a class="anchor" id="autotoc_md48"></a>
 Render Timing</h1>
 <ul>
 <li>Is sample timing correct in all cases? (It's easy to encounter an occasional single-sample offset due to rounding errors when feeding the plug-in's sample time)</li>
@@ -125,7 +125,7 @@ Render Timing</h1>
 </li>
 <li>If implemented in the host, do user-accessible track delay and/or region delay parameters still work properly when using ARA?</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md48"></a>
+<h1><a class="anchor" id="autotoc_md49"></a>
 Musical Timing</h1>
 <ul>
 <li>If both host and plug-in use musical song timing (tempo and signatures), is it properly exchanged? This can be tested both with Melodyne or the experimental <a href="https://github.com/Celemony/JUCE_ARA/tree/develop/examples/Plugins/ARAPluginDemo">JUCE_ARA plug-in demo</a>.<ul>
@@ -144,7 +144,7 @@ Musical Timing</h1>
 </li>
 <li>If supported by the host, can audio source tempo and signature analysis provided by the plug-in copied to the song timeline? For example, Studio One implements this by letting users drag events (i.e. playback regions) to the timeline.</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md49"></a>
+<h1><a class="anchor" id="autotoc_md50"></a>
 Time Stretching</h1>
 <ul>
 <li>Does timestretching work properly? Using an example audio file with a drum track that starts at 120 bpm then has a ritardando to 90 bpm:<ul>
@@ -155,7 +155,7 @@ Time Stretching</h1>
 </ul>
 </li>
 </ul>
-<h1><a class="anchor" id="autotoc_md50"></a>
+<h1><a class="anchor" id="autotoc_md51"></a>
 Signal Flow and Routing</h1>
 <ul>
 <li>Are crossfades set in the host rendered correctly?</li>
@@ -164,14 +164,14 @@ Signal Flow and Routing</h1>
 <li>Does track solo/mute/volume behave as expected?</li>
 <li>Is bypass behaving properly for ARA? (If the host chooses to bypass ARA plug-ins, it will need to apply any transformation done by the plug-in on its own - this may be tough esp. with regards to the the <a class="el" href="group___model___playback___region.html#gga258336ff5f674225e3ec403493461179ad0c5da282e792ae38e3551fec63c4e45">TimestretchReflectingTempo</a> flag. The easier choice is to not implement bypass for ARA on the host side and instead leave that up to the plug-in.)</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md51"></a>
+<h1><a class="anchor" id="autotoc_md52"></a>
 Maintaining the ARA Model</h1>
 <ul>
 <li>Does undo/redo in the host work as expected if ARA-fied regions/events are involved? (Note: it may be necessary to keep some ARA objects around for Undo even if not used elsewhere, see <a class="el" href="group___plug-_in___document___controller.html#a85ac14fe2e666eab8a6f63e1cebc7a70">deactivateAudioSource/ModificationForUndoHistory</a>)</li>
 <li>If the host has a concept of alias versus copy of regions/events, do edits in the plug-in reflect accordingly across alias regions/events while not affecting copied regions/events?</li>
 <li>If the host has a concept of track versions/alternatives and supports multiple audio modifications per audio source, does it correctly create individual modifications per track version/alternative?</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md52"></a>
+<h1><a class="anchor" id="autotoc_md53"></a>
 Audio-MIDI Conversion</h1>
 <ul>
 <li>If implemented on both sides, does audio-to-MIDI work properly?<ul>
@@ -180,7 +180,7 @@ Audio-MIDI Conversion</h1>
 </ul>
 </li>
 </ul>
-<h1><a class="anchor" id="autotoc_md53"></a>
+<h1><a class="anchor" id="autotoc_md54"></a>
 Key Signatures and Chords</h1>
 <ul>
 <li>Are enharmonic equivalents properly distinguished based on the circle of fifth index?</li>
@@ -188,7 +188,7 @@ Key Signatures and Chords</h1>
 <li>If the name is provided or evaluated, are the music related unicode characters (sharp, flat, triangle etc.) properly handled?</li>
 <li>When reading chords, and the internal chord model is covering only a subset of the possible ARA chords, are there reasonable fallbacks for the cases not covered?</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md54"></a>
+<h1><a class="anchor" id="autotoc_md55"></a>
 Persistence</h1>
 <ul>
 <li>Can documents be archived and restored properly with all edits in tact (see also ARA Test Host <code>testArchiving()</code>)?<ul>
@@ -207,7 +207,7 @@ Persistence</h1>
 </ul>
 </li>
 </ul>
-<h1><a class="anchor" id="autotoc_md55"></a>
+<h1><a class="anchor" id="autotoc_md56"></a>
 Versioning</h1>
 <ul>
 <li>On the host side, are the supported API generations evaluated properly?<ul>
@@ -219,7 +219,7 @@ Versioning</h1>
 </ul>
 </li>
 </ul>
-<h1><a class="anchor" id="autotoc_md56"></a>
+<h1><a class="anchor" id="autotoc_md57"></a>
 UI-Related Topics</h1>
 <ul>
 <li>Does rendering in stop mode work if the UI is open?<ul>
@@ -247,7 +247,7 @@ UI-Related Topics</h1>
 </ul>
 </li>
 </ul>
-<h1><a class="anchor" id="autotoc_md57"></a>
+<h1><a class="anchor" id="autotoc_md58"></a>
 General</h1>
 <ul>
 <li>Does the implementation scale well both in terms of CPU and memory usage when being used with many long audio files at the same time (e.g. a real-life test scenario with a 30 minutes life-recording of 20+ tracks)?</li>

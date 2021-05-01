@@ -6,8 +6,7 @@ var group___a_r_a___library___a_r_a_plug___plug_in_instance_roles =
       [ "getDocumentController", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#a0605db9b8bb5dc36980b814ea0db2a92", null ],
       [ "getPlaybackRegions", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#af8feba764a5eae6b0032294528586dab", null ],
       [ "willAddPlaybackRegion", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#a1f9e1918f3cdf0aa6186e20acfc9a885", null ],
-      [ "willRemovePlaybackRegion", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#a2a23a0785c7a9c9ebf82e5c8869b2471", null ],
-      [ "DocumentController", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#ae5b212aed3f241a9e44cb853d2865992", null ]
+      [ "willRemovePlaybackRegion", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#a2a23a0785c7a9c9ebf82e5c8869b2471", null ]
     ] ],
     [ "EditorRenderer", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#class_a_r_a_1_1_plug_in_1_1_editor_renderer", [
       [ "didAddPlaybackRegion", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#a7d1dbf1c89d3e48d13aee24aeec25332", null ],
@@ -20,8 +19,7 @@ var group___a_r_a___library___a_r_a_plug___plug_in_instance_roles =
       [ "willAddPlaybackRegion", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#a96101dc8b9578723f301f7692c95385a", null ],
       [ "willAddRegionSequence", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#a612693ee05e28887dd5286d060250661", null ],
       [ "willRemovePlaybackRegion", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#af4e49ab70b9aa3b5675eaee6a8154340", null ],
-      [ "willRemoveRegionSequence", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#ac992086eef85451295cbffdfb10aef5e", null ],
-      [ "DocumentController", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#ae5b212aed3f241a9e44cb853d2865992", null ]
+      [ "willRemoveRegionSequence", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#ac992086eef85451295cbffdfb10aef5e", null ]
     ] ],
     [ "EditorView", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#class_a_r_a_1_1_plug_in_1_1_editor_view", [
       [ "doNotifyHideRegionSequences", "group___a_r_a___library___a_r_a_plug___plug_in_instance_roles.html#ae77588072b669b8ec4834ddc646d028a", null ],

@@ -5,6 +5,8 @@ var group___a_r_a___library___a_r_a_plug___utility___classes =
       [ "getDataForEvent", "group___a_r_a___library___a_r_a_plug___utility___classes.html#ad2552455b85553825e23b7119d49be4a", null ],
       [ "getEventCount", "group___a_r_a___library___a_r_a_plug___utility___classes.html#a1550483f5ee7eb17151f5462ae6dbb6f", null ]
     ] ],
+    [ "RestoreObjectsFilter", "group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_restore_objects_filter", null ],
+    [ "StoreObjectsFilter", "group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_store_objects_filter", null ],
     [ "HostContentReader", "group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_host_content_reader", [
       [ "HostContentReader", "group___a_r_a___library___a_r_a_plug___utility___classes.html#a5ba730ddd8b56a891a80124d94f7d334", null ],
       [ "HostContentReader", "group___a_r_a___library___a_r_a_plug___utility___classes.html#a36fff11a38a8e0123681fd04404e0a34", null ]
@@ -24,8 +26,6 @@ var group___a_r_a___library___a_r_a_plug___utility___classes =
       [ "notifyDocumentArchivingProgress", "group___a_r_a___library___a_r_a_plug___utility___classes.html#aca061d532be84a78b5d048478728eb68", null ],
       [ "writeBytesToArchive", "group___a_r_a___library___a_r_a_plug___utility___classes.html#a0c0bcf2b728f27cf4ee8de6e0d1a71cb", null ]
     ] ],
-    [ "RestoreObjectsFilter", "group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_restore_objects_filter", null ],
-    [ "StoreObjectsFilter", "group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_store_objects_filter", null ],
     [ "ViewSelection", "group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_view_selection", [
       [ "getEffectivePlaybackRegions", "group___a_r_a___library___a_r_a_plug___utility___classes.html#a1844fc6fc474721fff1189c37f8e3723", null ],
       [ "getEffectivePlaybackRegions", "group___a_r_a___library___a_r_a_plug___utility___classes.html#ad5e60bc101872387c2a2d077a5dc13cb", null ],

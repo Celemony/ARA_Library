@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 1.9.14: Utility Classes</title>
+<title>ARA SDK 1.9.15: Utility Classes</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -105,8 +105,14 @@ Classes</h2></td></tr>
 <tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_optional_property"><td class="mdescLeft">&#160;</td><td class="mdescRight">Template container class managing optional property data sent from the host. If the host passes nullptr for the property, this is stored, otherwise the property data is copied to newly allocated memory.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_optional_property">More...</a><br /></td></tr>
 <tr class="separator:class_a_r_a_1_1_plug_in_1_1_optional_property"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:class_a_r_a_1_1_plug_in_1_1_content_reader"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_content_reader">ARA::PlugIn::ContentReader</a></td></tr>
-<tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_content_reader"><td class="mdescLeft">&#160;</td><td class="mdescRight">Abstract base class for objects that can export plug-in supplied content to the host. If your plug-in can supply ARA content, implementations of this class must be returned that can randomly access and iterate over plug-in content data. Concrete implementations of this class must be returned from <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#ad3c6172cb5be504c08caa45a10e29e0c" title="Override to implement createAudioSourceContentReader(), returning a custom subclass of ContentReader ...">DocumentController::doCreateAudioSourceContentReader</a>, <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a56c31ad5f7d27012fbfe84e6c946f6e5" title="Override to implement createAudioModificationContentReader(), returning a custom subclass of ContentR...">DocumentController::doCreateAudioModificationContentReader</a> and <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a18ece3aee5c545d1e7fb6037d7114102" title="Override to implement createPlaybackRegionContentReader(), returning a custom subclass of ContentRead...">DocumentController::doCreatePlaybackRegionContentReader</a>.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_content_reader">More...</a><br /></td></tr>
+<tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_content_reader"><td class="mdescLeft">&#160;</td><td class="mdescRight">Abstract base class for objects that can export plug-in supplied content to the host. If your plug-in can supply ARA content, implementations of this class must be returned that can randomly access and iterate over plug-in content data. Concrete implementations of this class must be returned from <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#ad3c6172cb5be504c08caa45a10e29e0c" title="Override to implement createAudioSourceContentReader() for all your supported content types,...">DocumentController::doCreateAudioSourceContentReader</a>, <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a56c31ad5f7d27012fbfe84e6c946f6e5" title="Override to implement createAudioModificationContentReader() for all your supported content types,...">DocumentController::doCreateAudioModificationContentReader</a> and <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a18ece3aee5c545d1e7fb6037d7114102" title="Override to implement createPlaybackRegionContentReader() for all your supported content types,...">DocumentController::doCreatePlaybackRegionContentReader</a>.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_content_reader">More...</a><br /></td></tr>
 <tr class="separator:class_a_r_a_1_1_plug_in_1_1_content_reader"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:class_a_r_a_1_1_plug_in_1_1_restore_objects_filter"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_restore_objects_filter">ARA::PlugIn::RestoreObjectsFilter</a></td></tr>
+<tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_restore_objects_filter"><td class="mdescLeft">&#160;</td><td class="mdescRight">Utility class that wraps an <a class="el" href="group___partial___document___persistency.html#struct_a_r_a_restore_objects_filter" title="Optional filter when restoring objects.  &lt;br&gt;                               \newline                 ...">ARARestoreObjectsFilter</a> instance.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_restore_objects_filter">More...</a><br /></td></tr>
+<tr class="separator:class_a_r_a_1_1_plug_in_1_1_restore_objects_filter"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:class_a_r_a_1_1_plug_in_1_1_store_objects_filter"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_store_objects_filter">ARA::PlugIn::StoreObjectsFilter</a></td></tr>
+<tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_store_objects_filter"><td class="mdescLeft">&#160;</td><td class="mdescRight">Utility class that wraps an <a class="el" href="group___partial___document___persistency.html#struct_a_r_a_store_objects_filter" title="Optional filter when storing objects.  &lt;br&gt;                               \newline                   ...">ARAStoreObjectsFilter</a> instance.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_store_objects_filter">More...</a><br /></td></tr>
+<tr class="separator:class_a_r_a_1_1_plug_in_1_1_store_objects_filter"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:class_a_r_a_1_1_plug_in_1_1_host_content_reader"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_host_content_reader">ARA::PlugIn::HostContentReader&lt; contentType &gt;</a></td></tr>
 <tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_host_content_reader"><td class="mdescLeft">&#160;</td><td class="mdescRight">Utility class that wraps the host <a class="el" href="group___host___model___content___access___controller.html#struct_a_r_a_content_access_controller_interface" title="Host interface: content access controller. As with all host interfaces, the function pointers in this...">ARAContentAccessControllerInterface</a>.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_host_content_reader">More...</a><br /></td></tr>
 <tr class="separator:class_a_r_a_1_1_plug_in_1_1_host_content_reader"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -119,12 +125,6 @@ Classes</h2></td></tr>
 <tr class="memitem:class_a_r_a_1_1_plug_in_1_1_host_archive_writer"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_host_archive_writer">ARA::PlugIn::HostArchiveWriter</a></td></tr>
 <tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_host_archive_writer"><td class="mdescLeft">&#160;</td><td class="mdescRight">Utility class that wraps the host <a class="el" href="group___host___archiving___controller.html#struct_a_r_a_archiving_controller_interface" title="Host interface: archive controller. As with all host interfaces, the function pointers in this struct...">ARAArchivingControllerInterface</a> archive writing functions.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_host_archive_writer">More...</a><br /></td></tr>
 <tr class="separator:class_a_r_a_1_1_plug_in_1_1_host_archive_writer"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:class_a_r_a_1_1_plug_in_1_1_restore_objects_filter"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_restore_objects_filter">ARA::PlugIn::RestoreObjectsFilter</a></td></tr>
-<tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_restore_objects_filter"><td class="mdescLeft">&#160;</td><td class="mdescRight">Utility class that wraps an <a class="el" href="group___partial___document___persistency.html#struct_a_r_a_restore_objects_filter" title="Optional filter when restoring objects.  &lt;br&gt;                               \newline                 ...">ARARestoreObjectsFilter</a> instance.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_restore_objects_filter">More...</a><br /></td></tr>
-<tr class="separator:class_a_r_a_1_1_plug_in_1_1_restore_objects_filter"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:class_a_r_a_1_1_plug_in_1_1_store_objects_filter"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_store_objects_filter">ARA::PlugIn::StoreObjectsFilter</a></td></tr>
-<tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_store_objects_filter"><td class="mdescLeft">&#160;</td><td class="mdescRight">Utility class that wraps an <a class="el" href="group___partial___document___persistency.html#struct_a_r_a_store_objects_filter" title="Optional filter when storing objects.  &lt;br&gt;                               \newline                   ...">ARAStoreObjectsFilter</a> instance.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_store_objects_filter">More...</a><br /></td></tr>
-<tr class="separator:class_a_r_a_1_1_plug_in_1_1_store_objects_filter"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:class_a_r_a_1_1_plug_in_1_1_view_selection"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_view_selection">ARA::PlugIn::ViewSelection</a></td></tr>
 <tr class="memdesc:class_a_r_a_1_1_plug_in_1_1_view_selection"><td class="mdescLeft">&#160;</td><td class="mdescRight">Utility class that wraps an <a class="el" href="group___editor___view___interface.html#struct_a_r_a_view_selection" title="Host generated ARA view selection.">ARAViewSelection</a> instance.  <a href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_view_selection">More...</a><br /></td></tr>
 <tr class="separator:class_a_r_a_1_1_plug_in_1_1_view_selection"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -167,7 +167,7 @@ class ARA::PlugIn::OptionalProperty&lt; T &gt;</h3>
         </tr>
       </table>
 </div><div class="memdoc">
-<div class="textblock"><p>Abstract base class for objects that can export plug-in supplied content to the host. If your plug-in can supply ARA content, implementations of this class must be returned that can randomly access and iterate over plug-in content data. Concrete implementations of this class must be returned from <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#ad3c6172cb5be504c08caa45a10e29e0c" title="Override to implement createAudioSourceContentReader(), returning a custom subclass of ContentReader ...">DocumentController::doCreateAudioSourceContentReader</a>, <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a56c31ad5f7d27012fbfe84e6c946f6e5" title="Override to implement createAudioModificationContentReader(), returning a custom subclass of ContentR...">DocumentController::doCreateAudioModificationContentReader</a> and <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a18ece3aee5c545d1e7fb6037d7114102" title="Override to implement createPlaybackRegionContentReader(), returning a custom subclass of ContentRead...">DocumentController::doCreatePlaybackRegionContentReader</a>. </p>
+<div class="textblock"><p>Abstract base class for objects that can export plug-in supplied content to the host. If your plug-in can supply ARA content, implementations of this class must be returned that can randomly access and iterate over plug-in content data. Concrete implementations of this class must be returned from <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#ad3c6172cb5be504c08caa45a10e29e0c" title="Override to implement createAudioSourceContentReader() for all your supported content types,...">DocumentController::doCreateAudioSourceContentReader</a>, <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a56c31ad5f7d27012fbfe84e6c946f6e5" title="Override to implement createAudioModificationContentReader() for all your supported content types,...">DocumentController::doCreateAudioModificationContentReader</a> and <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a18ece3aee5c545d1e7fb6037d7114102" title="Override to implement createPlaybackRegionContentReader() for all your supported content types,...">DocumentController::doCreatePlaybackRegionContentReader</a>. </p>
 </div><table class="memberdecls">
 <tr><td colspan="2"><h3>Public Member Functions</h3></td></tr>
 <tr class="memitem:a1550483f5ee7eb17151f5462ae6dbb6f"><td class="memItemLeft" align="right" valign="top"><a id="a1550483f5ee7eb17151f5462ae6dbb6f"></a>
@@ -178,6 +178,74 @@ virtual <a class="el" href="group___fixed-size__integers.html#gae89c0d982d17edbe
 virtual const void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#ad2552455b85553825e23b7119d49be4a">getDataForEvent</a> (<a class="el" href="group___fixed-size__integers.html#gae89c0d982d17edbe5bac0a55255f38d6">ARAInt32</a> eventIndex) noexcept=0</td></tr>
 <tr class="memdesc:ad2552455b85553825e23b7119d49be4a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get a pointer to the content for event <code>eventIndex</code>. <br /></td></tr>
 <tr class="separator:ad2552455b85553825e23b7119d49be4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+
+</div>
+</div>
+<a name="class_a_r_a_1_1_plug_in_1_1_restore_objects_filter" id="class_a_r_a_1_1_plug_in_1_1_restore_objects_filter"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#class_a_r_a_1_1_plug_in_1_1_restore_objects_filter">&#9670;&nbsp;</a></span>ARA::PlugIn::RestoreObjectsFilter</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">class ARA::PlugIn::RestoreObjectsFilter</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<div class="textblock"><p>Utility class that wraps an <a class="el" href="group___partial___document___persistency.html#struct_a_r_a_restore_objects_filter" title="Optional filter when restoring objects.  &lt;br&gt;                               \newline                 ...">ARARestoreObjectsFilter</a> instance. </p>
+</div><table class="memberdecls">
+<tr><td colspan="2"><h3>Filter Queries</h3></td></tr>
+<tr><td class="ititle" colspan="2"><p><a class="anchor" id="amgrp12e600d80fb41438e983fbe4e8c9327f"></a>Use these functions to filter and map the objects restored during <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a29bc4bd54809151ebd31b4fdfe8068fb" title="Override to implement restoreObjectsFromArchive().">DocumentController::doRestoreObjectsFromArchive()</a>. </p>
+</td></tr>
+<tr class="memitem:aa75d9d9525ea7a92c067b1c8867bc1c9"><td class="memItemLeft" align="right" valign="top"><a id="aa75d9d9525ea7a92c067b1c8867bc1c9"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>shouldRestoreDocumentData</b> () const noexcept</td></tr>
+<tr class="separator:aa75d9d9525ea7a92c067b1c8867bc1c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1696c45245ad979ba52a7d2556cf6f7e"><td class="memItemLeft" align="right" valign="top"><a id="a1696c45245ad979ba52a7d2556cf6f7e"></a>
+<a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_audio_source">AudioSource</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>getAudioSourceToRestoreStateWithID</b> (<a class="el" href="group___object___references.html#ga4debd59b541464cf35ccfd48ed8d6e68">ARAPersistentID</a> archivedAudioSourceID) const noexcept</td></tr>
+<tr class="separator:a1696c45245ad979ba52a7d2556cf6f7e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3da2eb272ceaf1fd455314cc4b397a9b"><td class="memTemplParams" colspan="2"><a id="a3da2eb272ceaf1fd455314cc4b397a9b"></a>
+template&lt;typename AudioSource_t  = AudioSource&gt; </td></tr>
+<tr class="memitem:a3da2eb272ceaf1fd455314cc4b397a9b"><td class="memTemplItemLeft" align="right" valign="top">AudioSource_t *&#160;</td><td class="memTemplItemRight" valign="bottom"><b>getAudioSourceToRestoreStateWithID</b> (<a class="el" href="group___object___references.html#ga4debd59b541464cf35ccfd48ed8d6e68">ARAPersistentID</a> archivedAudioSourceID) const noexcept</td></tr>
+<tr class="separator:a3da2eb272ceaf1fd455314cc4b397a9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8ffb02fc445c9e1838cb9b7d23b2e54c"><td class="memItemLeft" align="right" valign="top"><a id="a8ffb02fc445c9e1838cb9b7d23b2e54c"></a>
+<a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_audio_modification">AudioModification</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>getAudioModificationToRestoreStateWithID</b> (<a class="el" href="group___object___references.html#ga4debd59b541464cf35ccfd48ed8d6e68">ARAPersistentID</a> archivedAudioModificationID) const noexcept</td></tr>
+<tr class="separator:a8ffb02fc445c9e1838cb9b7d23b2e54c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed8a1ec2aa8ac15daafdfd4d060c3b72"><td class="memTemplParams" colspan="2"><a id="aed8a1ec2aa8ac15daafdfd4d060c3b72"></a>
+template&lt;typename AudioModification_t  = AudioModification&gt; </td></tr>
+<tr class="memitem:aed8a1ec2aa8ac15daafdfd4d060c3b72"><td class="memTemplItemLeft" align="right" valign="top">AudioModification_t *&#160;</td><td class="memTemplItemRight" valign="bottom"><b>getAudioModificationToRestoreStateWithID</b> (<a class="el" href="group___object___references.html#ga4debd59b541464cf35ccfd48ed8d6e68">ARAPersistentID</a> archivedAudioModificationID) const noexcept</td></tr>
+<tr class="separator:aed8a1ec2aa8ac15daafdfd4d060c3b72"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+
+</div>
+</div>
+<a name="class_a_r_a_1_1_plug_in_1_1_store_objects_filter" id="class_a_r_a_1_1_plug_in_1_1_store_objects_filter"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#class_a_r_a_1_1_plug_in_1_1_store_objects_filter">&#9670;&nbsp;</a></span>ARA::PlugIn::StoreObjectsFilter</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">class ARA::PlugIn::StoreObjectsFilter</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<div class="textblock"><p>Utility class that wraps an <a class="el" href="group___partial___document___persistency.html#struct_a_r_a_store_objects_filter" title="Optional filter when storing objects.  &lt;br&gt;                               \newline                   ...">ARAStoreObjectsFilter</a> instance. </p>
+</div><table class="memberdecls">
+<tr><td colspan="2"><h3>Filter Queries</h3></td></tr>
+<tr><td class="ititle" colspan="2"><p><a class="anchor" id="amgrp12e600d80fb41438e983fbe4e8c9327f"></a>Use these functions to filter the objects stored during <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#ab79fe3d7c992d46aa446680d803a9bd5" title="Override to implement storeObjectsToArchive().">DocumentController::doStoreObjectsToArchive()</a>. </p>
+</td></tr>
+<tr class="memitem:a44d4000cb79d28e3463fa232f0929b79"><td class="memItemLeft" align="right" valign="top"><a id="a44d4000cb79d28e3463fa232f0929b79"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>shouldStoreDocumentData</b> () const noexcept</td></tr>
+<tr class="separator:a44d4000cb79d28e3463fa232f0929b79"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05217dd9cb30665703972a7ab689255f"><td class="memTemplParams" colspan="2"><a id="a05217dd9cb30665703972a7ab689255f"></a>
+template&lt;typename AudioSource_t  = AudioSource&gt; </td></tr>
+<tr class="memitem:a05217dd9cb30665703972a7ab689255f"><td class="memTemplItemLeft" align="right" valign="top">std::vector&lt; const AudioSource_t * &gt; const  &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>getAudioSourcesToStore</b> () const noexcept</td></tr>
+<tr class="separator:a05217dd9cb30665703972a7ab689255f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a87a67d2e56a58c2384f1cd4f0846e815"><td class="memTemplParams" colspan="2"><a id="a87a67d2e56a58c2384f1cd4f0846e815"></a>
+template&lt;typename AudioModification_t  = AudioModification&gt; </td></tr>
+<tr class="memitem:a87a67d2e56a58c2384f1cd4f0846e815"><td class="memTemplItemLeft" align="right" valign="top">std::vector&lt; const AudioModification_t * &gt; const  &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>getAudioModificationsToStore</b> () const noexcept</td></tr>
+<tr class="separator:a87a67d2e56a58c2384f1cd4f0846e815"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 
 </div>
@@ -593,74 +661,6 @@ using&#160;</td><td class="memItemRight" valign="bottom"><b>const_iterator</b> =
 
 </div>
 </div>
-
-</div>
-</div>
-<a name="class_a_r_a_1_1_plug_in_1_1_restore_objects_filter" id="class_a_r_a_1_1_plug_in_1_1_restore_objects_filter"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#class_a_r_a_1_1_plug_in_1_1_restore_objects_filter">&#9670;&nbsp;</a></span>ARA::PlugIn::RestoreObjectsFilter</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">class ARA::PlugIn::RestoreObjectsFilter</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<div class="textblock"><p>Utility class that wraps an <a class="el" href="group___partial___document___persistency.html#struct_a_r_a_restore_objects_filter" title="Optional filter when restoring objects.  &lt;br&gt;                               \newline                 ...">ARARestoreObjectsFilter</a> instance. </p>
-</div><table class="memberdecls">
-<tr><td colspan="2"><h3>Filter Queries</h3></td></tr>
-<tr><td class="ititle" colspan="2"><p><a class="anchor" id="amgrp12e600d80fb41438e983fbe4e8c9327f"></a>Use these functions to filter and map the objects restored during <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#a29bc4bd54809151ebd31b4fdfe8068fb" title="Override to implement restoreObjectsFromArchive().">DocumentController::doRestoreObjectsFromArchive()</a>. </p>
-</td></tr>
-<tr class="memitem:aa75d9d9525ea7a92c067b1c8867bc1c9"><td class="memItemLeft" align="right" valign="top"><a id="aa75d9d9525ea7a92c067b1c8867bc1c9"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>shouldRestoreDocumentData</b> () const noexcept</td></tr>
-<tr class="separator:aa75d9d9525ea7a92c067b1c8867bc1c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1696c45245ad979ba52a7d2556cf6f7e"><td class="memItemLeft" align="right" valign="top"><a id="a1696c45245ad979ba52a7d2556cf6f7e"></a>
-<a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_audio_source">AudioSource</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>getAudioSourceToRestoreStateWithID</b> (<a class="el" href="group___object___references.html#ga4debd59b541464cf35ccfd48ed8d6e68">ARAPersistentID</a> archivedAudioSourceID) const noexcept</td></tr>
-<tr class="separator:a1696c45245ad979ba52a7d2556cf6f7e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3da2eb272ceaf1fd455314cc4b397a9b"><td class="memTemplParams" colspan="2"><a id="a3da2eb272ceaf1fd455314cc4b397a9b"></a>
-template&lt;typename AudioSource_t  = AudioSource&gt; </td></tr>
-<tr class="memitem:a3da2eb272ceaf1fd455314cc4b397a9b"><td class="memTemplItemLeft" align="right" valign="top">AudioSource_t *&#160;</td><td class="memTemplItemRight" valign="bottom"><b>getAudioSourceToRestoreStateWithID</b> (<a class="el" href="group___object___references.html#ga4debd59b541464cf35ccfd48ed8d6e68">ARAPersistentID</a> archivedAudioSourceID) const noexcept</td></tr>
-<tr class="separator:a3da2eb272ceaf1fd455314cc4b397a9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ffb02fc445c9e1838cb9b7d23b2e54c"><td class="memItemLeft" align="right" valign="top"><a id="a8ffb02fc445c9e1838cb9b7d23b2e54c"></a>
-<a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_audio_modification">AudioModification</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>getAudioModificationToRestoreStateWithID</b> (<a class="el" href="group___object___references.html#ga4debd59b541464cf35ccfd48ed8d6e68">ARAPersistentID</a> archivedAudioModificationID) const noexcept</td></tr>
-<tr class="separator:a8ffb02fc445c9e1838cb9b7d23b2e54c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aed8a1ec2aa8ac15daafdfd4d060c3b72"><td class="memTemplParams" colspan="2"><a id="aed8a1ec2aa8ac15daafdfd4d060c3b72"></a>
-template&lt;typename AudioModification_t  = AudioModification&gt; </td></tr>
-<tr class="memitem:aed8a1ec2aa8ac15daafdfd4d060c3b72"><td class="memTemplItemLeft" align="right" valign="top">AudioModification_t *&#160;</td><td class="memTemplItemRight" valign="bottom"><b>getAudioModificationToRestoreStateWithID</b> (<a class="el" href="group___object___references.html#ga4debd59b541464cf35ccfd48ed8d6e68">ARAPersistentID</a> archivedAudioModificationID) const noexcept</td></tr>
-<tr class="separator:aed8a1ec2aa8ac15daafdfd4d060c3b72"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table>
-
-</div>
-</div>
-<a name="class_a_r_a_1_1_plug_in_1_1_store_objects_filter" id="class_a_r_a_1_1_plug_in_1_1_store_objects_filter"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#class_a_r_a_1_1_plug_in_1_1_store_objects_filter">&#9670;&nbsp;</a></span>ARA::PlugIn::StoreObjectsFilter</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">class ARA::PlugIn::StoreObjectsFilter</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<div class="textblock"><p>Utility class that wraps an <a class="el" href="group___partial___document___persistency.html#struct_a_r_a_store_objects_filter" title="Optional filter when storing objects.  &lt;br&gt;                               \newline                   ...">ARAStoreObjectsFilter</a> instance. </p>
-</div><table class="memberdecls">
-<tr><td colspan="2"><h3>Filter Queries</h3></td></tr>
-<tr><td class="ititle" colspan="2"><p><a class="anchor" id="amgrp12e600d80fb41438e983fbe4e8c9327f"></a>Use these functions to filter the objects stored during <a class="el" href="group___a_r_a___library___a_r_a_plug___document___controller.html#ab79fe3d7c992d46aa446680d803a9bd5" title="Override to implement storeObjectsToArchive().">DocumentController::doStoreObjectsToArchive()</a>. </p>
-</td></tr>
-<tr class="memitem:a44d4000cb79d28e3463fa232f0929b79"><td class="memItemLeft" align="right" valign="top"><a id="a44d4000cb79d28e3463fa232f0929b79"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>shouldStoreDocumentData</b> () const noexcept</td></tr>
-<tr class="separator:a44d4000cb79d28e3463fa232f0929b79"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a05217dd9cb30665703972a7ab689255f"><td class="memTemplParams" colspan="2"><a id="a05217dd9cb30665703972a7ab689255f"></a>
-template&lt;typename AudioSource_t  = AudioSource&gt; </td></tr>
-<tr class="memitem:a05217dd9cb30665703972a7ab689255f"><td class="memTemplItemLeft" align="right" valign="top">std::vector&lt; const AudioSource_t * &gt; const  &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>getAudioSourcesToStore</b> () const noexcept</td></tr>
-<tr class="separator:a05217dd9cb30665703972a7ab689255f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a87a67d2e56a58c2384f1cd4f0846e815"><td class="memTemplParams" colspan="2"><a id="a87a67d2e56a58c2384f1cd4f0846e815"></a>
-template&lt;typename AudioModification_t  = AudioModification&gt; </td></tr>
-<tr class="memitem:a87a67d2e56a58c2384f1cd4f0846e815"><td class="memTemplItemLeft" align="right" valign="top">std::vector&lt; const AudioModification_t * &gt; const  &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>getAudioModificationsToStore</b> () const noexcept</td></tr>
-<tr class="separator:a87a67d2e56a58c2384f1cd4f0846e815"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table>
 
 </div>
 </div>

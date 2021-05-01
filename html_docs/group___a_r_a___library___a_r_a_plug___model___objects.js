@@ -65,7 +65,9 @@ var group___a_r_a___library___a_r_a_plug___model___objects =
       [ "getName", "group___a_r_a___library___a_r_a_plug___model___objects.html#a743889988f4071c2a8f3fc6564120a93", null ],
       [ "getPersistentID", "group___a_r_a___library___a_r_a_plug___model___objects.html#a04910db8bb2a49e1ed767bd08b32f076", null ],
       [ "getPlaybackRegions", "group___a_r_a___library___a_r_a_plug___model___objects.html#ac09c3840d13ec6c66ad59a2d9bcf89c8", null ],
-      [ "isDeactivatedForUndoHistory", "group___a_r_a___library___a_r_a_plug___model___objects.html#a117d83cd5dd0a4f57515aab3cd583bec", null ]
+      [ "isDeactivatedForUndoHistory", "group___a_r_a___library___a_r_a_plug___model___objects.html#a117d83cd5dd0a4f57515aab3cd583bec", null ],
+      [ "DocumentController", "group___a_r_a___library___a_r_a_plug___model___objects.html#ae5b212aed3f241a9e44cb853d2865992", null ],
+      [ "PlaybackRegion", "group___a_r_a___library___a_r_a_plug___model___objects.html#af9f9b11d86d17f50d44b01a23b437992", null ]
     ] ],
     [ "PlaybackRegion", "group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_playback_region", [
       [ "PlaybackRegion", "group___a_r_a___library___a_r_a_plug___model___objects.html#ac5e8da415652b2a8e20ef703e564bcfc", null ],
