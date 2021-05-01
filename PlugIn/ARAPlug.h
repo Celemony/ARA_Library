@@ -758,7 +758,8 @@ private:
 class StoreObjectsFilter
 {
 public:
-    explicit StoreObjectsFilter (const DocumentController* documentController, const ARAStoreObjectsFilter* filter) noexcept;
+    explicit StoreObjectsFilter (const ARAStoreObjectsFilter* filter) noexcept;
+    explicit StoreObjectsFilter (const Document* document) noexcept;
 
 //! @name Filter Queries
 //! Use these functions to filter the objects stored during DocumentController::doStoreObjectsToArchive().

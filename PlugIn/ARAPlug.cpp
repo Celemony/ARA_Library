@@ -770,31 +770,23 @@ AudioModification* RestoreObjectsFilter::getAudioModificationToRestoreStateWithI
 
 /*******************************************************************************/
 
-StoreObjectsFilter::StoreObjectsFilter (const DocumentController* documentController, const ARAStoreObjectsFilter* filter) noexcept
+StoreObjectsFilter::StoreObjectsFilter (const ARAStoreObjectsFilter* filter) noexcept
 : _filter { filter }
 {
-    if (_filter)
-    {
-        for (ARASize i { 0 }; i < _filter->audioSourceRefsCount; ++i)
-        {
-            const auto audioSource { fromRef (_filter->audioSourceRefs[i]) };
-            ARA_VALIDATE_API_ARGUMENT (_filter->audioSourceRefs[i], documentController->isValidAudioSource (audioSource));
-            _audioSourcesToStore.push_back (audioSource);
-        }
-        for (ARASize i { 0 }; i < _filter->audioModificationRefsCount; ++i)
-        {
-            const auto audioModification { fromRef (_filter->audioModificationRefs[i]) };
-            ARA_VALIDATE_API_ARGUMENT (_filter->audioModificationRefs[i], documentController->isValidAudioModification (audioModification));
-            _audioModificationsToStore.push_back (audioModification);
-        }
-    }
-    else
-    {
-        _audioSourcesToStore = documentController->getDocument ()->getAudioSources<const AudioSource> ();
-        _audioModificationsToStore.reserve (_audioSourcesToStore.size ());
-        for (const auto& audioSource : _audioSourcesToStore)
-            _audioModificationsToStore.insert (_audioModificationsToStore.end (), audioSource->getAudioModifications ().begin (), audioSource->getAudioModifications ().end ());
-    }
+    ARA_INTERNAL_ASSERT (filter != nullptr);
+    for (ARASize i { 0 }; i < _filter->audioSourceRefsCount; ++i)
+        _audioSourcesToStore.push_back (fromRef (_filter->audioSourceRefs[i]));
+    for (ARASize i { 0 }; i < _filter->audioModificationRefsCount; ++i)
+        _audioModificationsToStore.push_back (fromRef (_filter->audioModificationRefs[i]));
+}
+
+StoreObjectsFilter::StoreObjectsFilter (const Document* document) noexcept
+: _filter { nullptr }
+{
+    _audioSourcesToStore = document->getAudioSources<const AudioSource> ();
+    _audioModificationsToStore.reserve (_audioSourcesToStore.size ());
+    for (const auto& audioSource : _audioSourcesToStore)
+        _audioModificationsToStore.insert (_audioModificationsToStore.end (), audioSource->getAudioModifications ().begin (), audioSource->getAudioModifications ().end ());
 }
 
 bool StoreObjectsFilter::shouldStoreDocumentData () const noexcept
@@ -1144,8 +1136,20 @@ bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef writerHo
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
     HostArchiveWriter archiveWriter (this, writerHostRef);
-    const StoreObjectsFilter storeObjectsFilter (this, filter);
-    return doStoreObjectsToArchive (&archiveWriter, &storeObjectsFilter);
+    if (filter)
+    {
+        for (ARASize i { 0 }; i < filter->audioSourceRefsCount; ++i)
+            ARA_VALIDATE_API_ARGUMENT (filter->audioSourceRefs[i], isValidAudioSource (fromRef (filter->audioSourceRefs[i])));
+        for (ARASize i { 0 }; i < filter->audioModificationRefsCount; ++i)
+            ARA_VALIDATE_API_ARGUMENT (filter->audioModificationRefs[i], isValidAudioModification (fromRef (filter->audioModificationRefs[i])));
+        const StoreObjectsFilter storeObjectsFilter (filter);
+        return doStoreObjectsToArchive (&archiveWriter, &storeObjectsFilter);
+    }
+    else
+    {
+        const StoreObjectsFilter storeObjectsFilter (getDocument ());
+        return doStoreObjectsToArchive (&archiveWriter, &storeObjectsFilter);
+    }
 }
 
 void DocumentController::updateDocumentProperties (PropertiesPtr<ARADocumentProperties> properties) noexcept

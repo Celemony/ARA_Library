@@ -19,6 +19,7 @@ ARA SDK 2.0 draft 15 (aka 1.9.15) (2021/??/??)
   be implemented in derived classes. The previous behavior caused hard-to-find bugs in edge cases.
   Plug-Ins vendors that have relied on the previous behavior must update their code accordingly -
   running the test host will trigger all relevant code paths to validate the changed code.
+- refactored StoreObjectsFilter c'tor to make it usable without a DocumentController*
 
 ARA SDK 2.0 draft 14 (aka 1.9.14) (2021/02/26)
 - applied Apache License 2.0
