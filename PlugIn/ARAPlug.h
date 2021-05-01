@@ -48,8 +48,8 @@ namespace PlugIn
 #if !defined (ARA_DISABLE_UNREFERENCED_PARAMETER_WARNING_BEGIN) || !defined (ARA_DISABLE_UNREFERENCED_PARAMETER_WARNING_END)
     #if defined (_MSC_VER)
         #define ARA_DISABLE_UNREFERENCED_PARAMETER_WARNING_BEGIN \
-            __pragma (warning (push)) \
-            __pragma (warning (disable : 4100))
+            __pragma (warning(push)) \
+            __pragma (warning(disable : 4100))
         #define ARA_DISABLE_UNREFERENCED_PARAMETER_WARNING_END \
             __pragma (warning(pop))
     #elif defined (__GNUC__)
@@ -967,25 +967,44 @@ protected:
 
     //! @name Content Reader Management Hooks
     //@{
-    //! Override to implement isAudioSourceContentAvailable().
+    //! Override to implement isAudioSourceContentAvailable() for all your supported content types -
+    //! the default implementation always returns false, preventing any calls to doGetAudioSourceContentGrade()
+    //! and doCreateAudioSourceContentReader().
     virtual bool doIsAudioSourceContentAvailable (const AudioSource* audioSource, ARAContentType type) noexcept;
-    //! Override to implement getAudioSourceContentGrade().
+    //! Override to implement getAudioSourceContentGrade() for all your supported content types.
     virtual ARAContentGrade doGetAudioSourceContentGrade (const AudioSource* audioSource, ARAContentType type) noexcept;
-    //! Override to implement createAudioSourceContentReader(), returning a custom subclass instance of ContentReader providing contentType.
+    //! Override to implement createAudioSourceContentReader() for all your supported content types,
+    //! returning a custom subclass instance of ContentReader providing data of the requested \p type.
     virtual ContentReader* doCreateAudioSourceContentReader (AudioSource* audioSource, ARAContentType type, const ARAContentTimeRange* range) noexcept;
 
-    //! Override to implement isAudioModificationContentAvailable().
+    //! Override to implement isAudioModificationContentAvailable() for all your supported content types -
+    //! the default implementation always returns false.
+    //! For read-only data directly inherited from the underlying audio source you can just delegate the
+    //! call to the audio source, but user-editable modification data must be specifically handled here.
     virtual bool doIsAudioModificationContentAvailable (const AudioModification* audioModification, ARAContentType type) noexcept;
-    //! Override to implement getAudioModificationContentGrade().
+    //! Override to implement getAudioModificationContentGrade() for all your supported content types.
+    //! For read-only data directly inherited from the underlying audio source you can just delegate the
+    //! call to the audio source, but user-editable modification data must be specifically handled here.
     virtual ARAContentGrade doGetAudioModificationContentGrade (const AudioModification* audioModification, ARAContentType type) noexcept;
-    //! Override to implement createAudioModificationContentReader(), returning a custom subclass instance of ContentReader providing contentType.
+    //! Override to implement createAudioModificationContentReader() for all your supported content types,
+    //! returning a custom subclass instance of ContentReader providing data of the requested \p type.
+    //! For read-only data directly inherited from the underlying audio source you can just delegate the
+    //! call to the audio source, but user-editable modification data must be specifically handled here.
     virtual ContentReader* doCreateAudioModificationContentReader (AudioModification* audioModification, ARAContentType type, const ARAContentTimeRange* range) noexcept;
 
-    //! Override to implement isPlaybackRegionContentAvailable().
+    //! Override to implement isPlaybackRegionContentAvailable() for all your supported content types -
+    //! the default implementation always returns false.
+    //! Typically, this call can directly delegate to the underlying audio modification, since most
+    //! plug-ins will apply their modification data to the playback region with a transformation that
+    //! does not affect content availability.
     virtual bool doIsPlaybackRegionContentAvailable (const PlaybackRegion* playbackRegion, ARAContentType type) noexcept;
-    //! Override to implement getPlaybackRegionContentGrade().
+    //! Override to implement getPlaybackRegionContentGrade() for all your supported content types.
+    //! Typically, this call can directly delegate to the underlying audio modification, since most
+    //! plug-ins will apply their modification data to the playback region with a transformation that
+    //! does not affect content grade.
     virtual ARAContentGrade doGetPlaybackRegionContentGrade (const PlaybackRegion* playbackRegion, ARAContentType type) noexcept;
-    //! Override to implement createPlaybackRegionContentReader(), returning a custom subclass instance of ContentReader providing contentType.
+    //! Override to implement createPlaybackRegionContentReader() for all your supported content types,
+    //! returning a custom subclass instance of ContentReader providing data of the requested \p type.
     virtual ContentReader* doCreatePlaybackRegionContentReader (PlaybackRegion* playbackRegion, ARAContentType type, const ARAContentTimeRange* range) noexcept;
 
     //! Override if not using plain new in doCreateAudioSourceContentReader (), doCreateAudioModificationContentReader ()

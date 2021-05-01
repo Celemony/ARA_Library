@@ -10,6 +10,15 @@ ARA SDK 2.0 draft 15 (aka 1.9.15) (2021/??/??)
   destruction order between document controller and plug-in instances
   While the document is deleted immediately when the host destroys the controller, the controller
   itself will now be kept alive until all plug-in instances bound to it have been destroyed.
+- changed default implementations of content getters for audio modifications and playback regions to
+  require explicit override by user code: DocumentControllerDelegate::doIsAudioModificationContentAvailable (),
+  doGetAudioModificationContentGrade (), doIsPlaybackRegionContentAvailable () and doGetPlaybackRegionContentGrade ()
+  Forwarding these getters from modification to source is only appropriate for content that is not affected by the
+  audio modification edit state, and and forwarding from the region to the modification is affected by the
+  modification-to-playback transformation, both of which are opaque to the ARAPlug layer and therefore need to
+  be implemented in derived classes. The previous behavior caused hard-to-find bugs in edge cases.
+  Plug-Ins vendors that have relied on the previous behavior must update their code accordingly -
+  running the test host will trigger all relevant code paths to validate the changed code.
 
 ARA SDK 2.0 draft 14 (aka 1.9.14) (2021/02/26)
 - applied Apache License 2.0

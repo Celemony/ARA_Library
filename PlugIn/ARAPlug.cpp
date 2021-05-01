@@ -1724,8 +1724,14 @@ ARAContentGrade DocumentController::getAudioSourceContentGrade (ARAAudioSourceRe
 
 ARAContentGrade DocumentControllerDelegate::doGetAudioSourceContentGrade (const AudioSource* /*audioSource*/, ARAContentType /*type*/) noexcept
 {
-    // must be overridden if plug-in supports analysis
-    ARA_INTERNAL_ASSERT (_entry->getFactory ()->analyzeableContentTypesCount == 0);
+#if defined (_MSC_VER)
+    __pragma (warning(push))
+    __pragma (warning(disable : 4127))
+#endif
+    ARA_INTERNAL_ASSERT (false && "Overriding doIsAudioSourceContentAvailable () requires overriding doGetAudioSourceContentGrade () accordingly!");
+#if defined (_MSC_VER)
+    __pragma (warning(pop))
+#endif
     return kARAContentGradeInitial;
 }
 
@@ -1753,8 +1759,14 @@ ARAContentReaderRef DocumentController::createAudioSourceContentReader (ARAAudio
 
 ContentReader* DocumentControllerDelegate::doCreateAudioSourceContentReader (AudioSource* /*audioSource*/, ARAContentType /*type*/, const ARAContentTimeRange* /*range*/) noexcept
 {
-    // must be overridden if plug-in supports analysis
-    ARA_INTERNAL_ASSERT (_entry->getFactory ()->analyzeableContentTypesCount == 0);
+#if defined (_MSC_VER)
+    __pragma (warning(push))
+    __pragma (warning(disable : 4127))
+#endif
+    ARA_INTERNAL_ASSERT (false && "Overriding doIsAudioSourceContentAvailable () requires overriding doCreateAudioSourceContentReader () accordingly!");
+#if defined (_MSC_VER)
+    __pragma (warning(pop))
+#endif
     return nullptr;
 }
 
@@ -1770,9 +1782,9 @@ bool DocumentController::isAudioModificationContentAvailable (ARAAudioModificati
     return doIsAudioModificationContentAvailable (audioModification, type);
 }
 
-bool DocumentControllerDelegate::doIsAudioModificationContentAvailable (const AudioModification* audioModification, ARAContentType type) noexcept
+bool DocumentControllerDelegate::doIsAudioModificationContentAvailable (const AudioModification* /*audioModification*/, ARAContentType /*type*/) noexcept
 {
-    return doIsAudioSourceContentAvailable (audioModification->getAudioSource (), type);
+    return false;
 }
 
 ARAContentGrade DocumentController::getAudioModificationContentGrade (ARAAudioModificationRef audioModificationRef, ARAContentType type) noexcept
@@ -1785,9 +1797,17 @@ ARAContentGrade DocumentController::getAudioModificationContentGrade (ARAAudioMo
     return doGetAudioModificationContentGrade (audioModification, type);
 }
 
-ARAContentGrade DocumentControllerDelegate::doGetAudioModificationContentGrade (const AudioModification* audioModification, ARAContentType type) noexcept
+ARAContentGrade DocumentControllerDelegate::doGetAudioModificationContentGrade (const AudioModification* /*audioModification*/, ARAContentType /*type*/) noexcept
 {
-    return doGetAudioSourceContentGrade (audioModification->getAudioSource (), type);
+#if defined (_MSC_VER)
+    __pragma (warning(push))
+    __pragma (warning(disable : 4127))
+#endif
+    ARA_INTERNAL_ASSERT (false && "Overriding doIsAudioModificationContentAvailable () requires overriding doGetAudioModificationContentGrade () accordingly!");
+#if defined (_MSC_VER)
+    __pragma (warning(pop))
+#endif
+    return kARAContentGradeInitial;
 }
 
 ARAContentReaderRef DocumentController::createAudioModificationContentReader (ARAAudioModificationRef audioModificationRef, ARAContentType type, const ARAContentTimeRange* range) noexcept
@@ -1814,8 +1834,14 @@ ARAContentReaderRef DocumentController::createAudioModificationContentReader (AR
 
 ContentReader* DocumentControllerDelegate::doCreateAudioModificationContentReader (AudioModification* /*audioModification*/, ARAContentType /*type*/, const ARAContentTimeRange* /*range*/) noexcept
 {
-    // must be overridden if plug-in supports analysis
-    ARA_INTERNAL_ASSERT (_entry->getFactory ()->analyzeableContentTypesCount == 0);
+#if defined (_MSC_VER)
+    __pragma (warning(push))
+    __pragma (warning(disable : 4127))
+#endif
+    ARA_INTERNAL_ASSERT (false && "Overriding doIsAudioModificationContentAvailable () requires overriding doCreateAudioModificationContentReader () accordingly!");
+#if defined (_MSC_VER)
+    __pragma (warning(pop))
+#endif
     return nullptr;
 }
 
@@ -1831,9 +1857,9 @@ bool DocumentController::isPlaybackRegionContentAvailable (ARAPlaybackRegionRef 
     return doIsPlaybackRegionContentAvailable (playbackRegion, type);
 }
 
-bool DocumentControllerDelegate::doIsPlaybackRegionContentAvailable (const PlaybackRegion* playbackRegion, ARAContentType type) noexcept
+bool DocumentControllerDelegate::doIsPlaybackRegionContentAvailable (const PlaybackRegion* /*playbackRegion*/, ARAContentType /*type*/) noexcept
 {
-    return doIsAudioModificationContentAvailable (playbackRegion->getAudioModification (), type);
+    return false;
 }
 
 ARAContentGrade DocumentController::getPlaybackRegionContentGrade (ARAPlaybackRegionRef playbackRegionRef, ARAContentType type) noexcept
@@ -1846,9 +1872,17 @@ ARAContentGrade DocumentController::getPlaybackRegionContentGrade (ARAPlaybackRe
     return doGetPlaybackRegionContentGrade (playbackRegion, type);
 }
 
-ARAContentGrade DocumentControllerDelegate::doGetPlaybackRegionContentGrade (const PlaybackRegion* playbackRegion, ARAContentType type) noexcept
+ARAContentGrade DocumentControllerDelegate::doGetPlaybackRegionContentGrade (const PlaybackRegion* /*playbackRegion*/, ARAContentType /*type*/) noexcept
 {
-    return doGetAudioModificationContentGrade (playbackRegion->getAudioModification (), type);
+#if defined (_MSC_VER)
+    __pragma (warning(push))
+    __pragma (warning(disable : 4127))
+#endif
+    ARA_INTERNAL_ASSERT (false && "Overriding doIsPlaybackRegionContentAvailable () requires overriding doGetPlaybackRegionContentGrade () accordingly!");
+#if defined (_MSC_VER)
+    __pragma (warning(pop))
+#endif
+    return kARAContentGradeInitial;
 }
 
 ARAContentReaderRef DocumentController::createPlaybackRegionContentReader (ARAPlaybackRegionRef playbackRegionRef, ARAContentType type, const ARAContentTimeRange* range) noexcept
@@ -1875,8 +1909,14 @@ ARAContentReaderRef DocumentController::createPlaybackRegionContentReader (ARAPl
 
 ContentReader* DocumentControllerDelegate::doCreatePlaybackRegionContentReader (PlaybackRegion* /*playbackRegion*/, ARAContentType /*type*/, const ARAContentTimeRange* /*range*/) noexcept
 {
-    // must be overridden if plug-in supports analysis
-    ARA_INTERNAL_ASSERT (_entry->getFactory ()->analyzeableContentTypesCount == 0);
+#if defined (_MSC_VER)
+    __pragma (warning(push))
+    __pragma (warning(disable : 4127))
+#endif
+    ARA_INTERNAL_ASSERT (false && "Overriding doIsPlaybackRegionContentAvailable () requires overriding doCreatePlaybackRegionContentReader () accordingly!");
+#if defined (_MSC_VER)
+    __pragma (warning(pop))
+#endif
     return nullptr;
 }
 
