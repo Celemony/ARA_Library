@@ -3,6 +3,9 @@ This is a pre-release build of the ARA Library 2.0.
 Changes since previous releases:
 
 ARA SDK 2.0 draft 15 (aka 1.9.15) (2021/??/??)
+- added matching object destruction customization function for all object creation functions
+  This allows to use custom memory management, or to reuse already existing internal objects that
+  can implement the interface for which an object is created.
 - implemented reference counting for the document controller class in ARAPlug to ease dealing with
   destruction order between document controller and plug-in instances
   While the document is deleted immediately when the host destroys the controller, the controller

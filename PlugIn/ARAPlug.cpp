@@ -910,7 +910,7 @@ bool DocumentController::isValidEditorView (const EditorView* editorView) const 
 
 /*******************************************************************************/
 
-DocumentController::DocumentController (PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) noexcept
+DocumentController::DocumentController (const PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) noexcept
 : DocumentControllerDelegate { entry },
   _instance { this },
   _hostAudioAccessController { instance },
@@ -921,9 +921,6 @@ DocumentController::DocumentController (PlugInEntry* entry, const ARADocumentCon
 {
 #if ARA_VALIDATE_API_CALLS
     _documentControllers.emplace (this, entry);
-#endif
-#if ARA_ENABLE_OBJECT_LIFETIME_LOG
-    ARA_LOG ("Plug success: did create document controller %p", documentController);
 #endif
 }
 
@@ -952,7 +949,7 @@ void DocumentController::destroyDocumentController () noexcept
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy document", _document);
     willDestroyDocument (_document);
-    delete _document;
+    doDestroyDocument (_document);
     _document = nullptr;
 
     _destroyIfUnreferenced ();
@@ -973,11 +970,42 @@ void DocumentController::_destroyIfUnreferenced () noexcept
 #if ARA_VALIDATE_API_CALLS
     _documentControllers.erase (this);
 #endif
-#if ARA_ENABLE_OBJECT_LIFETIME_LOG
-    ARA_LOG ("Plug success: will destroy document controller %p", this);
-#endif
-    delete this;
+    getPlugInEntry ()->destroyDocumentController (this);
 }
+
+/*******************************************************************************/
+
+PlaybackRenderer* DocumentController::doCreatePlaybackRenderer () noexcept
+{
+    return new PlaybackRenderer (this);
+}
+
+void DocumentController::doDestroyPlaybackRenderer (PlaybackRenderer* playbackRenderer) noexcept
+{
+    delete playbackRenderer;
+}
+
+EditorRenderer* DocumentController::doCreateEditorRenderer () noexcept
+{
+    return new EditorRenderer (this);
+}
+
+void DocumentController::doDestroyEditorRenderer (EditorRenderer* editorRenderer) noexcept
+{
+    delete editorRenderer;
+}
+
+EditorView* DocumentController::doCreateEditorView () noexcept
+{
+    return new EditorView (this);
+}
+
+void DocumentController::doDestroyEditorView (EditorView* editorView) noexcept
+{
+    delete editorView;
+}
+
+/*******************************************************************************/
 
 const ARAFactory* DocumentController::getFactory () const noexcept
 {
@@ -990,6 +1018,8 @@ ARAAPIGeneration DocumentController::getUsedApiGeneration () const noexcept
 {
     return getPlugInEntry ()->getUsedApiGeneration ();
 }
+
+/*******************************************************************************/
 
 void DocumentController::beginEditing () noexcept
 {
@@ -1225,7 +1255,7 @@ void DocumentController::destroyMusicalContext (ARAMusicalContextRef musicalCont
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy musical context", musicalContext);
     willDestroyMusicalContext (musicalContext);
-    delete musicalContext;
+    doDestroyMusicalContext (musicalContext);
 }
 
 /*******************************************************************************/
@@ -1334,7 +1364,7 @@ void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSeque
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy region sequence", regionSequence);
     willDestroyRegionSequence (regionSequence);
-    delete regionSequence;
+    doDestroyRegionSequence (regionSequence);
 }
 
 /*******************************************************************************/
@@ -1446,7 +1476,8 @@ void DocumentController::destroyAudioSource (ARAAudioSourceRef audioSourceRef) n
     willDestroyAudioSource (audioSource);
 
     _audioSourceContentUpdates.erase (audioSource);
-    delete audioSource;
+
+    doDestroyAudioSource (audioSource);
 }
 
 /*******************************************************************************/
@@ -1547,7 +1578,8 @@ void DocumentController::destroyAudioModification (ARAAudioModificationRef audio
     willDestroyAudioModification (audioModification);
 
     _audioModificationContentUpdates.erase (audioModification);
-    delete audioModification;
+
+    doDestroyAudioModification (audioModification);
 }
 
 /*******************************************************************************/
@@ -1657,7 +1689,8 @@ void DocumentController::destroyPlaybackRegion (ARAPlaybackRegionRef playbackReg
     willDestroyPlaybackRegion (playbackRegion);
 
     _playbackRegionContentUpdates.erase (playbackRegion);
-    delete playbackRegion;
+
+    doDestroyPlaybackRegion (playbackRegion);
 }
 
 /*******************************************************************************/
@@ -1886,7 +1919,7 @@ void DocumentController::destroyContentReader (ARAContentReaderRef contentReader
 #if ARA_VALIDATE_API_CALLS
     find_erase (_contentReaders, contentReader);
 #endif
-    delete contentReader;
+    doDestroyContentReader (contentReader);
 }
 
 /*******************************************************************************/
@@ -2111,23 +2144,6 @@ void DocumentController::notifyPlaybackRegionContentChanged (PlaybackRegion* pla
 {
     if (getHostModelUpdateController ())
         _playbackRegionContentUpdates[playbackRegion] += scopeFlags;
-}
-
-/*******************************************************************************/
-
-PlaybackRenderer* DocumentController::doCreatePlaybackRenderer () noexcept
-{
-    return new PlaybackRenderer (this);
-}
-
-EditorRenderer* DocumentController::doCreateEditorRenderer () noexcept
-{
-    return new EditorRenderer (this);
-}
-
-EditorView* DocumentController::doCreateEditorView () noexcept
-{
-    return new EditorView (this);
 }
 
 /*******************************************************************************/
@@ -2533,9 +2549,12 @@ PlugInExtension::~PlugInExtension () noexcept
         ARA_LOG ("Plug success: will destroy plug-in extension %p (playbackRenderer %p, editorRenderer %p, editorView %p)", this, getPlaybackRenderer (), getEditorRenderer (), getEditorView ());
 #endif
 
-    delete getEditorView ();
-    delete getEditorRenderer ();
-    delete getPlaybackRenderer ();
+    if (auto editorView = getEditorView ())
+        editorView->getDocumentController ()->doDestroyEditorView (editorView);
+    if (auto editorRenderer = getEditorRenderer ())
+        editorRenderer->getDocumentController ()->doDestroyEditorRenderer (editorRenderer);
+    if (auto playbackRenderer = getPlaybackRenderer ())
+        playbackRenderer->getDocumentController ()->doDestroyPlaybackRenderer (playbackRenderer);
 }
 
 const ARAPlugInExtensionInstance* PlugInExtension::bindToARA (ARADocumentControllerRef documentControllerRef,
@@ -2572,12 +2591,16 @@ const ARAPlugInExtensionInstance* PlugInExtension::bindToARA (ARADocumentControl
 
 /*******************************************************************************/
 
+#if ARA_VALIDATE_API_CALLS
+static int _assertInitCount { 0 };
+#endif
+
 PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
                           void (ARA_CALL * initializeARAWithConfigurationFunc) (const ARAInterfaceConfiguration*),
                           void (ARA_CALL * uninitializeARAFunc) (),
-                          const ARADocumentControllerInstance* (ARA_CALL *createDocumentControllerWithDocumentFunc) (const ARADocumentControllerHostInstance*, const ARADocumentProperties*),
-                          CreateDocumentControllerCall createDocumentController) noexcept
-  : _factory { factoryConfig->getLowestSupportedApiGeneration (), factoryConfig->getHighestSupportedApiGeneration (),
+                          const ARADocumentControllerInstance* (ARA_CALL *createDocumentControllerWithDocumentFunc) (const ARADocumentControllerHostInstance*, const ARADocumentProperties*)) noexcept
+  : _factoryConfig { factoryConfig },
+    _factory { factoryConfig->getLowestSupportedApiGeneration (), factoryConfig->getHighestSupportedApiGeneration (),
                factoryConfig->getFactoryID (),
                initializeARAWithConfigurationFunc, uninitializeARAFunc,
                factoryConfig->getPlugInName (), factoryConfig->getManufacturerName (), factoryConfig->getInformationURL (), factoryConfig->getVersion (),
@@ -2585,8 +2608,7 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
                factoryConfig->getDocumentArchiveID (), factoryConfig->getCompatibleDocumentArchiveIDsCount (), factoryConfig->getCompatibleDocumentArchiveIDs (),
                factoryConfig->getAnalyzeableContentTypesCount (), factoryConfig->getAnalyzeableContentTypes (),
                factoryConfig->getSupportedPlaybackTransformationFlags ()
-             },
-    _createDocumentController { createDocumentController }
+             }
 {
     ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_1_0_Draft);
     ARA_INTERNAL_ASSERT (_factory.highestSupportedApiGeneration >= _factory.lowestSupportedApiGeneration);
@@ -2619,7 +2641,7 @@ void PlugInEntry::initializeARAWithConfiguration (const ARAInterfaceConfiguratio
     ARA_LOG_HOST_ENTRY (nullptr);
     ARA_VALIDATE_API_STATE (_usedApiGeneration == 0);
 
-    const SizedStructPtr<ARAInterfaceConfiguration> ptr (config);
+    const SizedStructPtr<ARAInterfaceConfiguration> ptr { config };
     ARA_VALIDATE_API_STRUCT_PTR (ptr, ARAInterfaceConfiguration);
     ARA_VALIDATE_API_ARGUMENT (ptr, getFactory ()->lowestSupportedApiGeneration <= config->desiredApiGeneration);
     ARA_VALIDATE_API_ARGUMENT (ptr, ptr->desiredApiGeneration <= getFactory ()->highestSupportedApiGeneration);
@@ -2627,6 +2649,7 @@ void PlugInEntry::initializeARAWithConfiguration (const ARAInterfaceConfiguratio
     _usedApiGeneration = ptr->desiredApiGeneration;
 
 #if ARA_VALIDATE_API_CALLS
+    ++_assertInitCount;
 #if defined (NDEBUG)
     // when not debugging from our side, use host asserts if possible
     ARASetExternalAssertReference (ptr->assertFunctionAddress);
@@ -2645,8 +2668,8 @@ void PlugInEntry::uninitializeARA () noexcept
     ARA_VALIDATE_API_STATE (!DocumentController::hasValidInstancesForPlugInEntry (this));
 
 #if ARA_VALIDATE_API_CALLS
-    // \todo this may cause problems when running multiple PlugInEntries!
-    ARASetExternalAssertReference (nullptr);
+    if ((--_assertInitCount) == 0)
+        ARASetExternalAssertReference (nullptr);
 #endif
 
     _usedApiGeneration = 0;
@@ -2668,8 +2691,12 @@ const ARADocumentControllerInstance* PlugInEntry::createDocumentControllerWithDo
         ARA_VALIDATE_API_INTERFACE (hostInstance->playbackControllerInterface, ARAPlaybackControllerInterface);
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARADocumentProperties);
 
-    auto documentController { (*_createDocumentController) (this, hostInstance) };
+    auto documentController { _factoryConfig->createDocumentController (this, hostInstance) };
     ARA_INTERNAL_ASSERT (documentController != nullptr);
+#if ARA_ENABLE_OBJECT_LIFETIME_LOG
+    ARA_LOG ("Plug success: did create document controller %p", documentController);
+#endif
+
     documentController->initializeDocument (properties);
 
     return documentController->getInstance ();

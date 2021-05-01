@@ -823,8 +823,10 @@ protected:
 
     //! @name Document Management Hooks
     //@{
-    //! Override to return a custom subclass of Document when initializing the DocumentController.
+    //! Override to return a custom subclass instance of Document when initializing the DocumentController.
     virtual Document* doCreateDocument () noexcept = 0;
+    //! Override if not using plain new in doCreateDocument () or relying on reference counting for your subclass.
+    virtual void doDestroyDocument (Document* document) noexcept = 0;
     //! Override to customize pre-update behavior of updateDocumentProperties().
     virtual void willUpdateDocumentProperties (Document* document, PropertiesPtr<ARADocumentProperties> newProperties) noexcept {}
     //! Override to customize post-update behavior of updateDocumentProperties().
@@ -855,8 +857,10 @@ protected:
 
     //! @name Musical Context Management Hooks
     //@{
-    //! Override to return a custom subclass of MusicalContext from createMusicalContext().
+    //! Override to return a custom subclass instance of MusicalContext from createMusicalContext().
     virtual MusicalContext* doCreateMusicalContext (Document* document, ARAMusicalContextHostRef hostRef) noexcept = 0;
+    //! Override if not using plain new in doCreateMusicalContext () or relying on reference counting for your subclass.
+    virtual void doDestroyMusicalContext (MusicalContext* musicalContext) noexcept = 0;
     //! Override to customize pre-update behavior of updateMusicalContextProperties().
     virtual void willUpdateMusicalContextProperties (MusicalContext* musicalContext, PropertiesPtr<ARAMusicalContextProperties> newProperties) noexcept {}
     //! Override to customize post-update behavior of updateMusicalContextProperties().
@@ -877,8 +881,10 @@ protected:
 
     //! @name Region Sequence Management Hooks
     //@{
-    //! Override to return a custom subclass of RegionSequence from createRegionSequence().
+    //! Override to return a custom subclass instance of RegionSequence from createRegionSequence().
     virtual RegionSequence* doCreateRegionSequence (Document* document, ARARegionSequenceHostRef hostRef) noexcept = 0;
+    //! Override if not using plain new in doCreateRegionSequence () or relying on reference counting for your subclass.
+    virtual void doDestroyRegionSequence (RegionSequence* regionSequence) noexcept = 0;
     //! Override to customize pre-update behavior of updateRegionSequenceProperties().
     virtual void willUpdateRegionSequenceProperties (RegionSequence* regionSequence, PropertiesPtr<ARARegionSequenceProperties> newProperties) noexcept {}
     //! Override to customize pre-update behavior of updateRegionSequenceProperties().
@@ -893,8 +899,10 @@ protected:
 
     //! @name Audio Source Management Hooks
     //@{
-    //! Override to return a custom subclass of AudioSource from createAudioSource().
+    //! Override to return a custom subclass instance of AudioSource from createAudioSource().
     virtual AudioSource* doCreateAudioSource (Document* document, ARAAudioSourceHostRef hostRef) noexcept = 0;
+    //! Override if not using plain new in doCreateAudioSource () or relying on reference counting for your subclass.
+    virtual void doDestroyAudioSource (AudioSource* audioSource) noexcept = 0;
     //! Override to customize pre-update behavior of updateAudioSourceProperties().
     virtual void willUpdateAudioSourceProperties (AudioSource* audioSource, PropertiesPtr<ARAAudioSourceProperties> newProperties) noexcept {}
     //! Override to customize pre-update behavior of updateAudioSourceProperties().
@@ -919,10 +927,12 @@ protected:
 
     //! @name Audio Modification Management Hooks
     //@{
-    //! Override to return a custom subclass of AudioModification from createAudioModification() or cloneAudioModification().
+    //! Override to return a custom subclass instance of AudioModification from createAudioModification() or cloneAudioModification().
     //! optionalModificationToClone will be nullptr when creating new modifications with default state from scratch,
     //! or will point to a modification from which the internal state should be cloned into the new modification.
     virtual AudioModification* doCreateAudioModification (AudioSource* audioSource, ARAAudioModificationHostRef hostRef, const AudioModification* optionalModificationToClone) noexcept = 0;
+    //! Override if not using plain new in doCreateAudioModification () or relying on reference counting for your subclass.
+    virtual void doDestroyAudioModification (AudioModification* audioModification) noexcept = 0;
     //! Override to customize pre-update behavior of updateAudioModificationProperties().
     virtual void willUpdateAudioModificationProperties (AudioModification* audioModification, PropertiesPtr<ARAAudioModificationProperties> newProperties) noexcept {}
     //! Override to customize post-update behavior of updateAudioModificationProperties().
@@ -941,8 +951,10 @@ protected:
 
     //! @name Playback Region Management Hooks
     //@{
-    //! Override to return a custom subclass of PlaybackRegion.
+    //! Override to return a custom subclass instance of PlaybackRegion.
     virtual PlaybackRegion* doCreatePlaybackRegion (AudioModification* modification, ARAPlaybackRegionHostRef hostRef) noexcept = 0;
+    //! Override if not using plain new in doCreatePlaybackRegion () or relying on reference counting for your subclass.
+    virtual void doDestroyPlaybackRegion (PlaybackRegion* playbackRegion) noexcept = 0;
     //! Override to customize pre-update behavior of updatePlaybackRegionProperties().
     virtual void willUpdatePlaybackRegionProperties (PlaybackRegion* playbackRegion, PropertiesPtr<ARAPlaybackRegionProperties> newProperties) noexcept {}
     //! Override to customize post-update behavior of updatePlaybackRegionProperties().
@@ -959,22 +971,26 @@ protected:
     virtual bool doIsAudioSourceContentAvailable (const AudioSource* audioSource, ARAContentType type) noexcept;
     //! Override to implement getAudioSourceContentGrade().
     virtual ARAContentGrade doGetAudioSourceContentGrade (const AudioSource* audioSource, ARAContentType type) noexcept;
-    //! Override to implement createAudioSourceContentReader(), returning a custom subclass of ContentReader providing contentType.
+    //! Override to implement createAudioSourceContentReader(), returning a custom subclass instance of ContentReader providing contentType.
     virtual ContentReader* doCreateAudioSourceContentReader (AudioSource* audioSource, ARAContentType type, const ARAContentTimeRange* range) noexcept;
 
     //! Override to implement isAudioModificationContentAvailable().
     virtual bool doIsAudioModificationContentAvailable (const AudioModification* audioModification, ARAContentType type) noexcept;
     //! Override to implement getAudioModificationContentGrade().
     virtual ARAContentGrade doGetAudioModificationContentGrade (const AudioModification* audioModification, ARAContentType type) noexcept;
-    //! Override to implement createAudioModificationContentReader(), returning a custom subclass of ContentReader providing contentType.
+    //! Override to implement createAudioModificationContentReader(), returning a custom subclass instance of ContentReader providing contentType.
     virtual ContentReader* doCreateAudioModificationContentReader (AudioModification* audioModification, ARAContentType type, const ARAContentTimeRange* range) noexcept;
 
     //! Override to implement isPlaybackRegionContentAvailable().
     virtual bool doIsPlaybackRegionContentAvailable (const PlaybackRegion* playbackRegion, ARAContentType type) noexcept;
     //! Override to implement getPlaybackRegionContentGrade().
     virtual ARAContentGrade doGetPlaybackRegionContentGrade (const PlaybackRegion* playbackRegion, ARAContentType type) noexcept;
-    //! Override to implement createPlaybackRegionContentReader(), returning a custom subclass of ContentReader providing contentType.
+    //! Override to implement createPlaybackRegionContentReader(), returning a custom subclass instance of ContentReader providing contentType.
     virtual ContentReader* doCreatePlaybackRegionContentReader (PlaybackRegion* playbackRegion, ARAContentType type, const ARAContentTimeRange* range) noexcept;
+
+    //! Override if not using plain new in doCreateAudioSourceContentReader (), doCreateAudioModificationContentReader ()
+    //! or doCreatePlaybackRegionContentReader () or relying on reference counting for your subclasses.
+    virtual void doDestroyContentReader (ContentReader* contentReader) noexcept { delete contentReader; }
     //@}
 
     //! @name Controlling Analysis Hooks
@@ -1007,21 +1023,27 @@ protected:
     //! @name Plug-In Instance Management Hooks
     //! These functions are conditionally called from createPlugInExtensionWithRoles(), depending on the roles fulfilled by the plug-in instance.
     //@{
-    //! Override to return a custom subclass of PlaybackRenderer.
+    //! Override to return a custom subclass instance of PlaybackRenderer.
     virtual PlaybackRenderer* doCreatePlaybackRenderer () noexcept = 0;
-    //! Override to return a custom subclass of EditorRenderer.
+    //! Override if not using plain new in doCreatePlaybackRenderer () or relying on reference counting for your subclass.
+    virtual void doDestroyPlaybackRenderer (PlaybackRenderer* playbackRenderer) noexcept = 0;
+    //! Override to return a custom subclass instance of EditorRenderer.
     virtual EditorRenderer* doCreateEditorRenderer () noexcept = 0;
-    //! Override to return a custom subclass of EditorView.
+    //! Override if not using plain new in doCreateEditorRenderer () or relying on reference counting for your subclass.
+    virtual void doDestroyEditorRenderer (EditorRenderer* editorRenderer) noexcept = 0;
+    //! Override to return a custom subclass instance of EditorView.
     virtual EditorView* doCreateEditorView () noexcept = 0;
+    //! Override if not using plain new in doCreateEditorView () or relying on reference counting for your subclass.
+    virtual void doDestroyEditorView (EditorView* editorView) noexcept = 0;
     //@}
 
 protected:
-    DocumentControllerDelegate (PlugInEntry* entry) noexcept : _entry { entry } {}
+    DocumentControllerDelegate (const PlugInEntry* entry) noexcept : _entry { entry } {}
     virtual ~DocumentControllerDelegate () { _entry = nullptr; }
-    PlugInEntry* getPlugInEntry () const noexcept { return _entry; }
+    const PlugInEntry* getPlugInEntry () const noexcept { return _entry; }
 
 private:
-    PlugInEntry* _entry;
+    const PlugInEntry* _entry;
 };
 
 
@@ -1031,20 +1053,29 @@ class DocumentController : public DocumentControllerInterface,
                            protected DocumentControllerDelegate
 {
 public:
-    explicit DocumentController (PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) noexcept;
+    explicit DocumentController (const PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) noexcept;
 
 protected:
     Document* doCreateDocument () noexcept override { return new Document (this); }
+    void doDestroyDocument (Document* document) noexcept override { delete document; }
     MusicalContext* doCreateMusicalContext (Document* document, ARAMusicalContextHostRef hostRef) noexcept override { return new MusicalContext (document, hostRef); }
+    void doDestroyMusicalContext (MusicalContext* musicalContext) noexcept override { delete musicalContext; }
     RegionSequence* doCreateRegionSequence (Document* document, ARARegionSequenceHostRef hostRef) noexcept override { return new RegionSequence (document, hostRef); }
+    void doDestroyRegionSequence (RegionSequence* regionSequence) noexcept override { delete regionSequence; }
     AudioSource* doCreateAudioSource (Document* document, ARAAudioSourceHostRef hostRef) noexcept override { return new AudioSource (document, hostRef); }
+    void doDestroyAudioSource (AudioSource* audioSource) noexcept override { delete audioSource; }
     AudioModification* doCreateAudioModification (AudioSource* audioSource, ARAAudioModificationHostRef hostRef, const AudioModification* optionalModificationToClone) noexcept override { return new AudioModification (audioSource, hostRef, optionalModificationToClone); }
+    void doDestroyAudioModification (AudioModification* audioModification) noexcept override { delete audioModification; }
     PlaybackRegion* doCreatePlaybackRegion (AudioModification* modification, ARAPlaybackRegionHostRef hostRef) noexcept override { return new PlaybackRegion (modification, hostRef); }
+    void doDestroyPlaybackRegion (PlaybackRegion* playbackRegion) noexcept override { delete playbackRegion; }
 
     friend class PlugInExtension;
     PlaybackRenderer* doCreatePlaybackRenderer () noexcept override;
+    void doDestroyPlaybackRenderer (PlaybackRenderer* playbackRenderer) noexcept override;
     EditorRenderer* doCreateEditorRenderer () noexcept override;
+    void doDestroyEditorRenderer (EditorRenderer* editorRenderer) noexcept override;
     EditorView* doCreateEditorView () noexcept override;
+    void doDestroyEditorView (EditorView* editorView) noexcept override;
 
 #if !ARA_DOXYGEN_BUILD
 public:
@@ -1720,6 +1751,9 @@ public:
     //! \copydoc ARAFactory::highestSupportedApiGeneration
     virtual ARAAPIGeneration getHighestSupportedApiGeneration () const noexcept { return kARAAPIGeneration_2_0_Final; }
 
+    virtual DocumentController* createDocumentController (const PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) const noexcept = 0;
+    virtual void destroyDocumentController (DocumentController* documentController) const noexcept { delete documentController; }
+
     //! \copydoc ARAFactory::factoryID
     virtual const char* getFactoryID () const noexcept = 0;
     //! \copydoc ARAFactory::plugInName
@@ -1768,21 +1802,39 @@ private:
             { return entryFunc ()->createDocumentControllerWithDocument (hostInstance, properties); }
     };
 
-    // internal helper template class used to provide the correct template argument for the DispatcherFunctions<>
-    // and to provide the actual allocation for the DocumentControllerClass
+    // internal helper template class used to subclass FactoryConfigClass if DocumentControllerClass
+    // is provided to inject its creation/deletion.
     template<typename FactoryConfigClass, typename DocumentControllerClass>
-    struct EntryWrapper
+    class WrappedFactoryConfig : public FactoryConfigClass
     {
-        static DocumentController* createDocumentControllerInstance (PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) noexcept
+    public:
+        using FactoryConfigClass::FactoryConfigClass;
+
+        DocumentController* createDocumentController (const PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) const noexcept override
         {
             return new DocumentControllerClass (entry, instance);
         }
+        void destroyDocumentController (DocumentController* documentController) const noexcept override
+        {
+            delete documentController;
+        }
+    };
+    template<typename FactoryConfigClass>
+    class WrappedFactoryConfig<FactoryConfigClass, void> : public FactoryConfigClass
+    {
+        public:
+            using FactoryConfigClass::FactoryConfigClass;
+    };
 
+    // internal helper template class used to provide the correct template argument for the DispatcherFunctions<>
+    template<typename FactoryConfigClass, typename DocumentControllerClass>
+    struct EntryWrapper
+    {
         static inline PlugInEntry* getEntry () noexcept
         {
-            static FactoryConfigClass factoryConfig;
+            static WrappedFactoryConfig<FactoryConfigClass, DocumentControllerClass> factoryConfig;
             using Dispatcher = DispatcherFunctions<getEntry>;
-            static PlugInEntry entry { &factoryConfig, Dispatcher::initializeARAWithConfiguration, Dispatcher::uninitializeARA, Dispatcher::createDocumentControllerWithDocument, createDocumentControllerInstance };
+            static PlugInEntry entry { &factoryConfig, Dispatcher::initializeARAWithConfiguration, Dispatcher::uninitializeARA, Dispatcher::createDocumentControllerWithDocument };
             return &entry;
         }
     };
@@ -1792,8 +1844,7 @@ protected:
     PlugInEntry (const FactoryConfig* factoryConfig,
                  void (ARA_CALL * initializeARAWithConfigurationFunc) (const ARAInterfaceConfiguration*),
                  void (ARA_CALL * uninitializeARAFunc) (),
-                 const ARADocumentControllerInstance* (ARA_CALL *createDocumentControllerWithDocumentFunc) (const ARADocumentControllerHostInstance*, const ARADocumentProperties*),
-                 CreateDocumentControllerCall createDocumentController) noexcept;
+                 const ARADocumentControllerInstance* (ARA_CALL *createDocumentControllerWithDocumentFunc) (const ARADocumentControllerHostInstance*, const ARADocumentProperties*)) noexcept;
     ~PlugInEntry ();
 
     void initializeARAWithConfiguration (const ARAInterfaceConfiguration* config) noexcept;
@@ -1806,6 +1857,10 @@ public:
 //@{
     //! This static template function should be used to create a single static PlugInEntry per
     //! DocumentController class.
+    //! The DocumentControllerClass parameter is optional - if omitted, the FactoryConfigClass
+    //! must overload createDocumentController () and can optionally overload destroyDocumentController (),
+    //! otherwise the template takes care of this using new and delete.
+    //!
     //! \code{.cpp}
     //!     class MyFactoryConfig : public FactoryConfig
     //!     {
@@ -1821,7 +1876,7 @@ public:
     //!         return PlugInEntry::getPlugInEntry<MyFactoryConfig, MyDocumentController> ()->getFactory ();
     //!     }
     //! \endcode
-    template<typename FactoryConfigClass, typename DocumentControllerClass>
+    template<typename FactoryConfigClass, typename DocumentControllerClass = void>
     static inline PlugInEntry* getPlugInEntry () noexcept
     {
         return EntryWrapper<FactoryConfigClass, DocumentControllerClass>::getEntry ();
@@ -1835,8 +1890,13 @@ public:
 //@}
 
 private:
+    // to be called by DocumentController during destruction exclusively
+    friend class DocumentController;
+    void destroyDocumentController(DocumentController* documentController) const noexcept { _factoryConfig->destroyDocumentController(documentController); }
+
+private:
+    const FactoryConfig* const _factoryConfig;
     const SizedStruct<ARA_STRUCT_MEMBER (ARAFactory, supportedPlaybackTransformationFlags)> _factory;
-    CreateDocumentControllerCall _createDocumentController;
     ARAAPIGeneration _usedApiGeneration { 0 };
 
     ARA_DISABLE_COPY_AND_MOVE (PlugInEntry)
