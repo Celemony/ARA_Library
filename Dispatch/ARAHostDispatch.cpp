@@ -450,24 +450,24 @@ ARARegionSequenceRef DocumentController::createRegionSequence (ARARegionSequence
     return getInterface ()->createRegionSequence (getRef (), hostRef, properties);
 }
 
-void DocumentController::updateRegionSequenceProperties (ARARegionSequenceRef regionSequencRef, const ARARegionSequenceProperties* properties) noexcept
+void DocumentController::updateRegionSequenceProperties (ARARegionSequenceRef regionSequenceRef, const ARARegionSequenceProperties* properties) noexcept
 {
 #if ARA_SUPPORT_VERSION_1
     if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, destroyRegionSequence)> ())
         return;
 #endif
 
-    return getInterface ()->updateRegionSequenceProperties (getRef (), regionSequencRef, properties);
+    return getInterface ()->updateRegionSequenceProperties (getRef (), regionSequenceRef, properties);
 }
 
-void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSequencRef) noexcept
+void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept
 {
 #if ARA_SUPPORT_VERSION_1
     if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, destroyRegionSequence)> ())
         return;
 #endif
 
-    return getInterface ()->destroyRegionSequence (getRef (), regionSequencRef);
+    return getInterface ()->destroyRegionSequence (getRef (), regionSequenceRef);
 }
 
 ARAAudioSourceRef DocumentController::createAudioSource (ARAAudioSourceHostRef hostRef, const ARAAudioSourceProperties* properties) noexcept
@@ -784,14 +784,14 @@ void EditorRenderer::removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRe
     getInterface ()->removePlaybackRegion (getRef (), playbackRegionRef);
 }
 
-void EditorRenderer::addRegionSequence (ARARegionSequenceRef regionSequencRef) noexcept
+void EditorRenderer::addRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept
 {
-    getInterface ()->addRegionSequence (getRef (), regionSequencRef);
+    getInterface ()->addRegionSequence (getRef (), regionSequenceRef);
 }
 
-void EditorRenderer::removeRegionSequence (ARARegionSequenceRef regionSequencRef) noexcept
+void EditorRenderer::removeRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept
 {
-    getInterface ()->removeRegionSequence (getRef (), regionSequencRef);
+    getInterface ()->removeRegionSequence (getRef (), regionSequenceRef);
 }
 
 //************************************************************************************************

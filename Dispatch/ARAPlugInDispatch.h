@@ -75,7 +75,7 @@ namespace PlugIn {
 #endif
 
 /*******************************************************************************/
-/** Tag objects maintained by the host to prevent accidently copying/moving them. */
+/** Tag objects maintained by the host to prevent accidentally copying/moving them. */
 /*******************************************************************************/
 
 #if !defined (ARA_HOST_MANAGED_OBJECT)

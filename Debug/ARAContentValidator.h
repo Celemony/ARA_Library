@@ -113,9 +113,8 @@ struct ContentReaderValidatorImplementation<kARAContentTypeStaticTuning>
 template <>
 struct ContentReaderValidatorImplementation<kARAContentTypeKeySignatures>
 {
-//! \todo this can currently fail in Studio One
-//  static inline void validateEventCount (ARAInt32 eventCount) { ARA_VALIDATE_API_CONDITION (eventCount > 0); }
-    static inline void validateEventCount (ARAInt32 eventCount) { ARA_VALIDATE_API_CONDITION (eventCount >= 0); }
+    // this may fail in older versions of Studio One if no key has been set for the song - fixed in version 5.2.1
+    static inline void validateEventCount (ARAInt32 eventCount) { ARA_VALIDATE_API_CONDITION (eventCount > 0); }
 
     static inline void validateEvent (const ARAContentKeySignature* /*event*/) {}
 

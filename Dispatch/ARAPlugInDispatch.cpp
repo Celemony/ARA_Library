@@ -615,7 +615,7 @@ void HostArchivingController::notifyDocumentUnarchivingProgress (float value) no
 
 ARAPersistentID HostArchivingController::getDocumentArchiveID (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
-    // getDocumentArchiveID was added in the ARA 2.0 final, so check its presence here to support older hosts
+    // getDocumentArchiveID() was added in the ARA 2.0 final release, so check its presence here to support older hosts
     if (getInterface ().implements<ARA_STRUCT_MEMBER (ARAArchivingControllerInterface, getDocumentArchiveID)> ())
         return getInterface ()->getDocumentArchiveID (getRef (), archiveReaderHostRef);
     return nullptr;

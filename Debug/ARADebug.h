@@ -59,7 +59,7 @@ extern "C"
         kARADebugLevelAssert = 2    // output indicates programming error
     } ARADebugLevel;
 
-    // primitve macro for all debug output
+    // primitive macro for all debug output
     // can be overridden by SDK clients to use their own custom logging system
     // typically not called directly - instead ARA_LOG, ARA_WARN or asserts are used
     #if !defined(ARA_DEBUG_MESSAGE)

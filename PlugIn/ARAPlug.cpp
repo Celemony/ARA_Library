@@ -157,7 +157,7 @@ void logToStream (const PlaybackRegion* playbackRegion, std::ostringstream& oss,
     if (detailed)
     {
         oss << ", modification:" << playbackRegion->getStartInAudioModificationTime () << " to " << playbackRegion->getEndInAudioModificationTime ()
-            << ", timestretching:" << (playbackRegion->isTimestretchEnabled () ? (playbackRegion->isTimeStretchReflectingTempo () ? "musical" : "linear") : "off)")
+            << ", time-stretching:" << (playbackRegion->isTimestretchEnabled () ? (playbackRegion->isTimeStretchReflectingTempo () ? "musical" : "linear") : "off)")
             << ", content based fades:" << (playbackRegion->hasContentBasedFadeAtHead () ? (playbackRegion->hasContentBasedFadeAtTail () ? "both" : "head only") : (playbackRegion->hasContentBasedFadeAtTail () ? "tail only" : "none"))
             << ", regionSequence:" << playbackRegion->getRegionSequence ()->getName ()
             << ", color:"  << playbackRegion->getColor ();
@@ -596,13 +596,12 @@ void PlaybackRegion::updateProperties (PropertiesPtr<ARAPlaybackRegionProperties
     _durationInPlaybackTime = properties->durationInPlaybackTime;
 
 #if ARA_VALIDATE_API_CALLS
-//! \todo these currently fail in Studio One: they enable the time stretching flag even if not supported (but don't stretch),
-//!       and in some configurations also send slightly different time ranges even though not stretching.
-//  const auto supportedTransformationFlags = DocumentController::getARAFactory ()->supportedPlaybackTransformationFlags;
-//  ARA_VALIDATE_API_ARGUMENT (properties, (properties->transformationFlags & ~supportedTransformationFlags) == 0);
-//  if (((properties->transformationFlags & kARAPlaybackTransformationTimestretch) == 0) ||
-//      ((supportedTransformationFlags & kARAPlaybackTransformationTimestretch) == 0))
-//      ARA_VALIDATE_API_ARGUMENT (properties, properties->durationInModificationTime == properties->durationInPlaybackTime);
+    const auto supportedTransformationFlags { getDocumentController ()->getFactory ()->supportedPlaybackTransformationFlags };
+    // this may fail in older versions of Studio One which always set the flag (despite never actually stretching if not supported) - fixed in version 5.2.1
+    ARA_VALIDATE_API_ARGUMENT (properties, (properties->transformationFlags & ~supportedTransformationFlags) == 0);
+    if (((properties->transformationFlags & kARAPlaybackTransformationTimestretch) == 0) ||
+        ((supportedTransformationFlags & kARAPlaybackTransformationTimestretch) == 0))
+        ARA_VALIDATE_API_ARGUMENT (properties, properties->durationInModificationTime == properties->durationInPlaybackTime);
 #endif
 
     _timestretchEnabled = ((properties->transformationFlags & kARAPlaybackTransformationTimestretch) != 0);
@@ -2695,7 +2694,7 @@ void PlugInEntry::initializeARAWithConfiguration (const ARAInterfaceConfiguratio
 #if ARA_VALIDATE_API_CALLS
     ++_assertInitCount;
 #if defined (NDEBUG)
-    // when not debugging from our side, use host asserts if possible
+    // when not debugging from our side, use host asserts (if provided)
     ARASetExternalAssertReference (ptr->assertFunctionAddress);
 #else
     // when debugging from our side, switch host to our asserts

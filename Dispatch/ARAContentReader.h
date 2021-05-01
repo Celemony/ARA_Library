@@ -56,7 +56,7 @@ struct ContentTypeMapper;
 
 /*******************************************************************************/
 // ContentReaderFunctionMapper
-// Map to allow templated content reader code to pick the proper non-polymporhic ARA interface calls.
+// Map to allow templated content reader code to pick the proper non-polymorphic ARA interface calls.
 /*******************************************************************************/
 
 template <typename ControllerType, typename ModelObjectRefType> struct ContentReaderFunctionMapper;

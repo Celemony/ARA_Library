@@ -519,7 +519,7 @@ public:
     //! provide a matching c'tor if subclassing AudioModification.
     //! \p optionalModificationToClone will be nullptr when creating new modifications with
     //! default state from scratch, or will point to a modification (referencing the same
-    //! \p audioSource) from which the internal state should be cloned into the new modifiction.
+    //! \p audioSource) from which the internal state should be cloned into the new modification.
     explicit AudioModification (AudioSource* audioSource, ARAAudioModificationHostRef hostRef, const AudioModification* optionalModificationToClone) noexcept;
 //@}
 
@@ -1195,10 +1195,15 @@ public:
 
 //! @name Host Interface Access
 //@{
+    //! Returns the audio access controller that the host has provided for this document controller.
     HostAudioAccessController* getHostAudioAccessController () noexcept { return &_hostAudioAccessController; }
+    //! Returns the archiving controller that the host has provided for this document controller.
     HostArchivingController* getHostArchivingController () noexcept { return &_hostArchivingController; }
+    //! Returns the optional content access controller that the host has provided for this document controller.
     HostContentAccessController* getHostContentAccessController () noexcept { return (_hostContentAccessController.isProvided ()) ? &_hostContentAccessController : nullptr; }
+    //! Returns the optional model update controller that the host has provided for this document controller.
     HostModelUpdateController* getHostModelUpdateController () noexcept { return (_hostModelUpdateController.isProvided ()) ? &_hostModelUpdateController : nullptr; }
+    //! Returns the optional playback controller that the host has provided for this document controller.
     HostPlaybackController* getHostPlaybackController () noexcept { return (_hostPlaybackController.isProvided ()) ? &_hostPlaybackController : nullptr; }
 //@}
 
@@ -1277,13 +1282,15 @@ private:
     friend class PlugInEntry;
 
     // Creation Helper
-    // Only to be called by ARAFactory::createDocumentControllerWithDocument () implementations.
+    // Only to be called by the ARAFactory::createDocumentControllerWithDocument () implementations
+    // provided via PlugInEntry.
     // Must be called directly after construction of the DocumentController
     // (cannot be called from constructor because it calls virtual functions).
     void initializeDocument (const ARADocumentProperties* properties) noexcept;
 
     // Creation Helper
-    // Only to be called by ARAFactory::createDocumentControllerWithDocument () implementations.
+    // Only to be called by the ARAFactory::createDocumentControllerWithDocument () implementations
+    // provided via PlugInEntry.
     const ARADocumentControllerInstance* getInstance () const noexcept { return &_instance; }
 #endif
 
@@ -1698,14 +1705,14 @@ private:
 
 /*******************************************************************************/
 //! Utility class that wraps an ARAPlugInExtensionInstance.
-//! Each Companion API plug-in instance owns one PlugInExtension (or custom subclass thereof).
+//! Each companion API plug-in instance owns one PlugInExtension (or custom subclass thereof).
 class PlugInExtension
 {
 public:
     PlugInExtension () noexcept = default;
     virtual ~PlugInExtension () noexcept;
 
-    //! Establish the binding to ARA when requested through the Companion API,
+    //! Establish the binding to ARA when requested through the companion API,
     //! switching the plug-in from regular processing to ARA mode.
     const ARAPlugInExtensionInstance* bindToARA (ARADocumentControllerRef documentControllerRef, ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles) noexcept;
 

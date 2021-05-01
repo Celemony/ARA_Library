@@ -344,9 +344,9 @@ public:
     //! \copydoc ARADocumentControllerInterface::createRegionSequence
     ARARegionSequenceRef createRegionSequence (ARARegionSequenceHostRef hostRef, const ARARegionSequenceProperties* properties) noexcept;
     //! \copydoc ARADocumentControllerInterface::updateRegionSequenceProperties
-    void updateRegionSequenceProperties (ARARegionSequenceRef regionSequencRef, const ARARegionSequenceProperties* properties) noexcept;
+    void updateRegionSequenceProperties (ARARegionSequenceRef regionSequenceRef, const ARARegionSequenceProperties* properties) noexcept;
     //! \copydoc ARADocumentControllerInterface::destroyRegionSequence
-    void destroyRegionSequence (ARARegionSequenceRef regionSequencRef) noexcept;
+    void destroyRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept;
 //@}
 
 //! @name Audio Source Management
@@ -526,8 +526,8 @@ public:
 //@{
     void addPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept;
     void removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept;
-    void addRegionSequence (ARARegionSequenceRef regionSequencRef) noexcept;
-    void removeRegionSequence (ARARegionSequenceRef regionSequencRef) noexcept;
+    void addRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept;
+    void removeRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept;
 //@}
 };
 
