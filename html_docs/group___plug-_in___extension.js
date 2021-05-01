@@ -1,8 +1,8 @@
 var group___plug__in___extension =
 [
-    [ "Playback Renderer Interface (added in ARA 2.0)", "group___playback___renderer___interface.html", "group___playback___renderer___interface" ],
-    [ "Editor Renderer Interface (added in ARA 2.0)", "group___editor___renderer___interface.html", "group___editor___renderer___interface" ],
-    [ "Editor View Interface (added in ARA 2.0)", "group___editor___view___interface.html", "group___editor___view___interface" ],
+    [ "Playback Renderer Interface (Added In ARA 2.0)", "group___playback___renderer___interface.html", "group___playback___renderer___interface" ],
+    [ "Editor Renderer Interface (Added In ARA 2.0)", "group___editor___renderer___interface.html", "group___editor___renderer___interface" ],
+    [ "Editor View Interface (Added In ARA 2.0)", "group___editor___view___interface.html", "group___editor___view___interface" ],
     [ "Deprecated: Plug-In Extension Interface.", "group___plug-_in___extension___interface.html", null ],
     [ "ARAPlugInExtensionInstance", "group___plug-_in___extension.html#struct_a_r_a_plug_in_extension_instance", null ],
     [ "ARAPlugInInstanceRoleFlags", "group___plug-_in___extension.html#gadb888a1dc7f658281705411c7b4c253e", [

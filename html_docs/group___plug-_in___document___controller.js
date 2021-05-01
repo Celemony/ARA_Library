@@ -20,7 +20,7 @@ var group___plug__in___document___controller =
       [ "destroyDocumentController", "group___plug-_in___document___controller.html#a867fcd0161daa52f186aaa34c0c22bf7", null ],
       [ "destroyMusicalContext", "group___plug-_in___document___controller.html#a5a6645409d8c95ca0d16855a4d974d7c", null ],
       [ "destroyPlaybackRegion", "group___plug-_in___document___controller.html#a6a7ce235d69ae57ee3c64921fb7f32b6", null ],
-      [ "destroyRegionSequence", "group___plug-_in___document___controller.html#aea95857ea39c0b8e0af34028e8d3e797", null ],
+      [ "destroyRegionSequence", "group___plug-_in___document___controller.html#afad0176a72317ed4e903a2b5e7c7e1b0", null ],
       [ "enableAudioSourceSamplesAccess", "group___plug-_in___document___controller.html#a25219110cde06efeceeda830a23be94a", null ],
       [ "endEditing", "group___plug-_in___document___controller.html#ab4946909515472d8ea4f5f1ee5cac599", null ],
       [ "endRestoringDocumentFromArchive", "group___plug-_in___document___controller.html#a5ae3d0b80aa357eccb5561c776221cff", null ],
@@ -52,7 +52,7 @@ var group___plug__in___document___controller =
       [ "updateMusicalContextContent", "group___plug-_in___document___controller.html#adfa1747d10db24d62e811cf4947c8aee", null ],
       [ "updateMusicalContextProperties", "group___plug-_in___document___controller.html#a07987e7f0ce8524e4412f364ab830620", null ],
       [ "updatePlaybackRegionProperties", "group___plug-_in___document___controller.html#ac1a4bf57528e782fc0182b4246227b57", null ],
-      [ "updateRegionSequenceProperties", "group___plug-_in___document___controller.html#ab4e9cc0dce38f0048c2d4c86b16e607a", null ]
+      [ "updateRegionSequenceProperties", "group___plug-_in___document___controller.html#af61b70f0afa3cc5d70cb4bf91aac25c0", null ]
     ] ],
     [ "ARADocumentControllerRef", "group___plug-_in___document___controller.html#ga8bff5d917f3cbcaf9febb7d5945ecb7d", null ]
 ];

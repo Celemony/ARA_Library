@@ -24,109 +24,111 @@
 */
 var NAVTREE =
 [
-  [ "ARA SDK 1.9.15", "index.html", [
+  [ "ARA SDK 2.0.0", "index.html", [
     [ "Introduction", "intro.html", [
       [ "Welcome", "intro.html#sec_Welcome", null ],
       [ "About ARA", "intro.html#autotoc_md0", null ]
     ] ],
     [ "ARA Design Overview", "ara_design_overview.html", [
-      [ "ARA API technical design overview", "ara_design_overview.html#sec_ARATechnicalDesign", [
-        [ "Relationship between ARA and established plug-in APIs", "ara_design_overview.html#sec_ARACompanionAPIs", null ],
-        [ "Language and Platform Support", "ara_design_overview.html#sec_LanguageAndPlatformSupport", null ],
+      [ "Technical Design Overview", "ara_design_overview.html#sec_ARATechnicalDesign", [
+        [ "Relationship Between ARA And Established Plug-In APIs", "ara_design_overview.html#sec_ARACompanionAPIs", null ],
+        [ "Language And Platform Support", "ara_design_overview.html#sec_LanguageAndPlatformSupport", null ],
         [ "API Versioning", "ara_design_overview.html#autotoc_md1", null ],
-        [ "Objects and Object References", "ara_design_overview.html#sec_ARA_Object_References", null ]
+        [ "Objects And Object References", "ara_design_overview.html#sec_ARA_Object_References", null ]
       ] ],
-      [ "The ARA document controller", "ara_design_overview.html#sec_ARA_Document_Controller", null ],
-      [ "ARA model graph overview", "ara_design_overview.html#sec_ModelGraphOverview", null ],
-      [ "Exchanging content information", "ara_design_overview.html#autotoc_md2", null ],
-      [ "Updating the ARA Model Graph", "ara_design_overview.html#autotoc_md3", null ],
-      [ "ARA model persistency", "ara_design_overview.html#autotoc_md4", null ],
-      [ "Host Signal Flow and Threading", "ara_design_overview.html#autotoc_md5", null ],
-      [ "Inserting ARA into the Signal Flow", "ara_design_overview.html#autotoc_md6", null ],
+      [ "The ARA Document Controller", "ara_design_overview.html#sec_ARA_Document_Controller", null ],
+      [ "ARA Model Graph Overview", "ara_design_overview.html#sec_ModelGraphOverview", null ],
+      [ "Exchanging Content Information", "ara_design_overview.html#autotoc_md2", null ],
+      [ "Updating The ARA Model Graph", "ara_design_overview.html#autotoc_md3", null ],
+      [ "ARA Model Persistency", "ara_design_overview.html#autotoc_md4", null ],
+      [ "Host Signal Flow And Threading", "ara_design_overview.html#autotoc_md5", null ],
+      [ "Inserting ARA Into The Signal Flow", "ara_design_overview.html#autotoc_md6", null ],
       [ "Plug-In Instance Roles", "ara_design_overview.html#sec_PlugInInstanceRoles", null ],
-      [ "Audio Access and Threading", "ara_design_overview.html#sec_AudioAccessAndThreading", null ]
+      [ "Audio Access And Threading", "ara_design_overview.html#sec_AudioAccessAndThreading", null ]
     ] ],
     [ "Implementing ARA", "implementing_a_r_a.html", [
-      [ "Utilizing the examples and existing products", "implementing_a_r_a.html#sec_UtilizingExamples", [
+      [ "Preparing Your Implementation: Studying SDK Examples And Existing Products", "implementing_a_r_a.html#sec_UtilizingExamples", [
         [ "Mini Host", "implementing_a_r_a.html#autotoc_md7", null ],
         [ "Test Host and Test Plug-In", "implementing_a_r_a.html#autotoc_md8", null ],
         [ "JUCE_ARA", "implementing_a_r_a.html#autotoc_md9", null ],
-        [ "Existing Products", "implementing_a_r_a.html#autotoc_md10", null ]
+        [ "Interaction With Existing Products", "implementing_a_r_a.html#autotoc_md10", null ]
       ] ],
-      [ "Integrating the ARA SDK into your products", "implementing_a_r_a.html#autotoc_md11", [
+      [ "Integrating The ARA SDK Into Your Products", "implementing_a_r_a.html#autotoc_md11", [
         [ "ARAInterface, Debug", "implementing_a_r_a.html#autotoc_md12", null ],
         [ "C++ Dispatcher, Utilities", "implementing_a_r_a.html#autotoc_md13", null ],
         [ "ARAPlug", "implementing_a_r_a.html#autotoc_md14", null ],
         [ "JUCE_ARA", "implementing_a_r_a.html#autotoc_md15", null ]
       ] ],
-      [ "Mapping the Internal Model to ARA", "implementing_a_r_a.html#autotoc_md16", [
-        [ "Dealing with overlapping Playback Regions", "implementing_a_r_a.html#autotoc_md17", null ],
-        [ "What should Audio Modifications represent in a host?", "implementing_a_r_a.html#autotoc_md18", null ],
-        [ "What do Region Sequences represent?", "implementing_a_r_a.html#autotoc_md19", null ]
+      [ "Mapping The Internal Model To ARA", "implementing_a_r_a.html#autotoc_md16", [
+        [ "Dealing With Overlapping Playback Regions", "implementing_a_r_a.html#autotoc_md17", null ],
+        [ "Modelling Audio Modifications In The Host", "implementing_a_r_a.html#autotoc_md18", null ],
+        [ "Choosing An Appropriate Region Sequence Representation", "implementing_a_r_a.html#autotoc_md19", null ]
       ] ],
-      [ "Configuring the rendering", "implementing_a_r_a.html#autotoc_md20", [
-        [ "Setting up an ARA Playback Renderer", "implementing_a_r_a.html#autotoc_md21", null ],
+      [ "Configuring The Rendering", "implementing_a_r_a.html#autotoc_md20", [
+        [ "Setting Up An ARA Playback Renderer", "implementing_a_r_a.html#autotoc_md21", null ],
         [ "Preview Rendering", "implementing_a_r_a.html#autotoc_md22", null ],
-        [ "Sample rate conversion upon playback", "implementing_a_r_a.html#autotoc_md23", null ],
-        [ "Playback region head and tail times", "implementing_a_r_a.html#autotoc_md24", null ],
-        [ "Dealing with denormals", "implementing_a_r_a.html#autotoc_md25", null ],
-        [ "Caching especially CPU-intense DSP", "implementing_a_r_a.html#autotoc_md26", null ]
+        [ "Conversion Between Audio Source and Song Sample Rate", "implementing_a_r_a.html#autotoc_md23", null ],
+        [ "Playback Region Head And Tail Times", "implementing_a_r_a.html#autotoc_md24", null ],
+        [ "Dealing With Denormals", "implementing_a_r_a.html#autotoc_md25", null ],
+        [ "Caching Especially CPU-intense DSP", "implementing_a_r_a.html#autotoc_md26", null ]
       ] ],
-      [ "Analyzing audio material", "implementing_a_r_a.html#autotoc_md27", [
-        [ "What can be analyzed", "implementing_a_r_a.html#autotoc_md28", null ],
-        [ "Manual adjustments", "implementing_a_r_a.html#autotoc_md29", null ],
-        [ "Triggering explicit analysis", "implementing_a_r_a.html#autotoc_md30", null ],
-        [ "Algorithm selection", "implementing_a_r_a.html#autotoc_md31", null ]
+      [ "Analyzing Audio Material", "implementing_a_r_a.html#autotoc_md27", [
+        [ "What Can Be Analyzed?", "implementing_a_r_a.html#autotoc_md28", null ],
+        [ "Manual Adjustments", "implementing_a_r_a.html#autotoc_md29", null ],
+        [ "Triggering Explicit Analysis", "implementing_a_r_a.html#autotoc_md30", null ],
+        [ "Algorithm Selection", "implementing_a_r_a.html#autotoc_md31", null ]
       ] ],
-      [ "Utilizing content exchange", "implementing_a_r_a.html#autotoc_md32", [
-        [ "Musical Timing Information, including Content Grade examples", "implementing_a_r_a.html#autotoc_md33", null ],
-        [ "Notes, including examples of transformations affecting content data", "implementing_a_r_a.html#autotoc_md34", null ],
-        [ "Chords, Key Signatures and other content types", "implementing_a_r_a.html#autotoc_md35", null ]
+      [ "Utilizing Content Exchange", "implementing_a_r_a.html#autotoc_md32", [
+        [ "Musical Timing Information", "implementing_a_r_a.html#sec_MusicalTimingInformation", null ],
+        [ "Content Grade Examples", "implementing_a_r_a.html#autotoc_md33", null ],
+        [ "Notes And How Playback Transformations Affect Content Data", "implementing_a_r_a.html#autotoc_md34", null ],
+        [ "Chords, Key Signatures And Other Content Types", "implementing_a_r_a.html#autotoc_md35", null ]
       ] ],
-      [ "Manipulating the timing", "implementing_a_r_a.html#sec_manipulatingTiming", null ],
-      [ "Content Based Fades", "implementing_a_r_a.html#autotoc_md36", null ],
+      [ "Manipulating The Timing", "implementing_a_r_a.html#sec_ManipulatingTheTiming", null ],
+      [ "Content Based Fades", "implementing_a_r_a.html#sec_ContentBasedFades", null ],
       [ "Managing ARA Archives", "implementing_a_r_a.html#sec_ManagingARAArchives", null ],
       [ "Partial Persistency", "implementing_a_r_a.html#sec_PartialPersistency", [
-        [ "Copying ARA data between documents", "implementing_a_r_a.html#autotoc_md37", null ],
-        [ "Audio File Chunks", "implementing_a_r_a.html#autotoc_md38", null ]
+        [ "Copying ARA Data Between Documents", "implementing_a_r_a.html#autotoc_md36", null ],
+        [ "Audio File Chunks", "implementing_a_r_a.html#sec_AudioFileChunks", null ]
       ] ],
-      [ "User interface considerations", "implementing_a_r_a.html#autotoc_md39", null ],
-      [ "Choosing Companion APIs", "implementing_a_r_a.html#autotoc_md40", null ],
-      [ "VST3 specific considerations", "implementing_a_r_a.html#sec_vst3Considerations", [
-        [ "setActive vs. setProcessing", "implementing_a_r_a.html#autotoc_md41", null ],
+      [ "Companion API Considerations", "implementing_a_r_a.html#autotoc_md37", [
+        [ "Choosing Companion APIs", "implementing_a_r_a.html#sec_ChoosingCompanionAPIs", null ],
+        [ "VST3: setActive() vs. setProcessing()", "implementing_a_r_a.html#autotoc_md38", null ],
+        [ "Audio Unit: Optimizing Buffer Allocation", "implementing_a_r_a.html#autotoc_md39", null ]
+      ] ],
+      [ "User Interface Considerations", "implementing_a_r_a.html#autotoc_md40", [
         [ "View Embedding", "implementing_a_r_a.html#sec_ViewEmbedding", null ],
-        [ "View Scaling", "implementing_a_r_a.html#autotoc_md42", null ]
+        [ "Reflecting Arrangement Selection In The Plug-In", "implementing_a_r_a.html#autotoc_md41", null ],
+        [ "Windows High DPI View Scaling", "implementing_a_r_a.html#autotoc_md42", null ],
+        [ "Key Event Handling", "implementing_a_r_a.html#autotoc_md43", null ]
       ] ],
-      [ "Audio Unit specific considerations", "implementing_a_r_a.html#autotoc_md43", [
-        [ "Buffer allocation", "implementing_a_r_a.html#autotoc_md44", null ]
-      ] ],
-      [ "Future ARA development", "implementing_a_r_a.html#autotoc_md45", null ]
+      [ "Future ARA Development", "implementing_a_r_a.html#autotoc_md44", null ]
     ] ],
-    [ "ARA Use Cases and Testing", "test_cases.html", [
-      [ "Synopsis", "test_cases.html#autotoc_md46", null ],
-      [ "Render Timing", "test_cases.html#autotoc_md47", null ],
-      [ "Musical Timing", "test_cases.html#autotoc_md48", null ],
-      [ "Time Stretching", "test_cases.html#autotoc_md49", null ],
-      [ "Signal Flow and Routing", "test_cases.html#autotoc_md50", null ],
-      [ "Maintaining the ARA Model", "test_cases.html#autotoc_md51", null ],
-      [ "Audio-MIDI Conversion", "test_cases.html#autotoc_md52", null ],
-      [ "Key Signatures and Chords", "test_cases.html#autotoc_md53", null ],
-      [ "Persistence", "test_cases.html#autotoc_md54", null ],
-      [ "Versioning", "test_cases.html#autotoc_md55", null ],
-      [ "UI-Related Topics", "test_cases.html#autotoc_md56", null ],
-      [ "General", "test_cases.html#autotoc_md57", null ]
+    [ "Use Cases and Testing", "test_cases.html", [
+      [ "Synopsis", "test_cases.html#autotoc_md45", null ],
+      [ "Render Timing", "test_cases.html#autotoc_md46", null ],
+      [ "Musical Timing", "test_cases.html#autotoc_md47", null ],
+      [ "Time Stretching", "test_cases.html#autotoc_md48", null ],
+      [ "Signal Flow And Routing", "test_cases.html#autotoc_md49", null ],
+      [ "Maintaining The ARA Model", "test_cases.html#autotoc_md50", null ],
+      [ "Audio-MIDI Conversion", "test_cases.html#autotoc_md51", null ],
+      [ "Key Signatures And Chords", "test_cases.html#autotoc_md52", null ],
+      [ "Persistence", "test_cases.html#autotoc_md53", null ],
+      [ "Versioning", "test_cases.html#autotoc_md54", null ],
+      [ "UI-Related Topics", "test_cases.html#autotoc_md55", null ],
+      [ "General", "test_cases.html#autotoc_md56", null ]
     ] ],
-    [ "ARA API Reference", "modules.html", "modules" ]
+    [ "Module Documentation", "modules.html", "modules" ]
   ] ]
 ];
 
 var NAVTREEINDEX =
 [
 "ara_design_overview.html",
-"group___a_r_a___library___a_r_a_plug___plug_in_entry.html#aa76bca76b4ce54b7a91154dfd0667713",
-"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#acaf328d061fde206ee89a3fc5ba6b12b",
-"group___model___audio___source.html#a1a1245be3de086548ad768d9c6ba7553",
-"group___sampled__audio__data.html"
+"group___a_r_a___library___a_r_a_plug___plug_in_entry.html#a2c730711a4bc4daca565f90fb08b292a",
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a9d3eab5fa47d18a9f42a6176357ae229",
+"group___model___audio___modification.html#ga4fcadfe860312728c065593e1f7cf104",
+"group___processing___algorithm___selection.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

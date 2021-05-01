@@ -1,7 +1,7 @@
 var modules =
 [
     [ "Basic Types", "group___basic___types.html", "group___basic___types" ],
-    [ "API versions", "group___a_p_i__versions.html", "group___a_p_i__versions" ],
+    [ "API Versions", "group___a_p_i__versions.html", "group___a_p_i__versions" ],
     [ "Debugging", "group___debugging.html", "group___debugging" ],
     [ "ARA Model Graph", "group___a_r_a___model___graph.html", "group___a_r_a___model___graph" ],
     [ "Content Reading", "group___content___reading.html", "group___content___reading" ],

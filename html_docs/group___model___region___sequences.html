@@ -6,7 +6,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 1.9.15: Region Sequences (added in ARA 2.0)</title>
+<title>ARA SDK 2.0.0: Region Sequences (Added In ARA 2.0)</title>
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="shortcut icon" sizes="16x16" href="./favicon.ico">
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -93,11 +97,11 @@ $(document).ready(function(){initNavTree('group___model___region___sequences.htm
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#typedef-members">Typedefs</a>  </div>
   <div class="headertitle">
-<div class="title">Region Sequences (added in ARA 2.0)<div class="ingroups"><a class="el" href="group___a_r_a___model___graph.html">ARA Model Graph</a></div></div>  </div>
+<div class="title">Region Sequences (Added In ARA 2.0)<div class="ingroups"><a class="el" href="group___a_r_a___model___graph.html">ARA Model Graph</a></div></div>  </div>
 </div><!--header-->
 <div class="contents">
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<p>Region sequences allow hosts to group playback regions, typically by "tracks" or "lanes" in their arrangement. Each sequence is associated with a musical context, and all regions in a sequence will be adapted to that same context. Further, all regions within a sequence are expected to play back through the same routing (incl. same latency), typically the same "mixer track" or "audio channel". Regions in a sequence can overlap, and such overlapping regions will sound concurrently. A region sequence is always linked to one document. Region sequences are not persistent when storing documents, instead the host re-creates them as needed.  <br>                               Plug-in developers using the C++ ARA Library can use the <a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_region_sequence" title="Extensible model object class representing an ARA Region Sequences (added in ARA 2....">ARA::PlugIn::RegionSequence</a> class. </p>
+<p>Region sequences allow hosts to group playback regions, typically by "tracks" or "lanes" in their arrangement. Each sequence is associated with a musical context, and all regions in a sequence will be adapted to that same context. Further, all regions within a sequence are expected to play back through the same routing (incl. same latency), typically the same "mixer track" or "audio channel". Regions in a sequence can overlap, and such overlapping regions will sound concurrently. A region sequence is always owned by one document, and refers to a musical context. Region sequences are not persistent when storing documents, instead the host re-creates them as needed.  <br>                               Plug-in developers using the C++ ARA Library can use the <a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_region_sequence" title="Extensible model object class representing an ARA Region Sequences (Added In ARA 2....">ARA::PlugIn::RegionSequence</a> class. </p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>

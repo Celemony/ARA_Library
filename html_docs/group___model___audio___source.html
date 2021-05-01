@@ -6,7 +6,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 1.9.15: Audio Source</title>
+<title>ARA SDK 2.0.0: Audio Source</title>
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="shortcut icon" sizes="16x16" href="./favicon.ico">
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -97,7 +101,7 @@ $(document).ready(function(){initNavTree('group___model___audio___source.html','
 </div><!--header-->
 <div class="contents">
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<p>An audio source represents a continuous sequence of sampled audio data. Typically a host will create an audio source object for each audio file used with ARA plug-ins. Conceptually, the contents of an audio source are immutable (even though updates are possible, this is an expensive process, and user edits based on the modified content may get lost). An audio source is alway linked to one document. 0..n audio modifications may be linked to a given audio source. An audio source is persistent when storing documents.  <br>                               Plug-in developers using the C++ ARA Library can use the <a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_audio_source" title="Extensible model object class representing an ARA Audio Source.">ARA::PlugIn::AudioSource</a> class. </p>
+<p>An audio source represents a continuous sequence of sampled audio data. Typically a host will create an audio source object for each audio file used with ARA plug-ins. Conceptually, the contents of an audio source are immutable (even though updates are possible, this is an expensive process, and user edits based on the modified content may get lost). An audio source is always owned by one document, and in turn owns any amount of associated audio modifications. Audio sources are persistent when storing documents.  <br>                               Plug-in developers using the C++ ARA Library can use the <a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_audio_source" title="Extensible model object class representing an ARA Audio Source.">ARA::PlugIn::AudioSource</a> class. </p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>

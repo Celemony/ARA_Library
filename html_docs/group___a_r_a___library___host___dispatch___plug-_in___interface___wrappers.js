@@ -20,7 +20,7 @@ var group___a_r_a___library___host___dispatch___plug__in___interface___wrappers 
       [ "destroyDocumentController", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#aca59157523a1dfb713b06fbf02f5eb5d", null ],
       [ "destroyMusicalContext", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#af1e9d837fb8980693affc77cf77d1dc0", null ],
       [ "destroyPlaybackRegion", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a33dbfa40f425508876e125541164cd3d", null ],
-      [ "destroyRegionSequence", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#af7c51441e560b6c05f6dd0e2fd43dfe2", null ],
+      [ "destroyRegionSequence", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a6ac0eb04ef99d61b04b02f7a07160380", null ],
       [ "enableAudioSourceSamplesAccess", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a03c19ecade2cc7e2a988166d2aaaebd1", null ],
       [ "endEditing", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a55e6e57a97e7b22de22736e94dcb86f2", null ],
       [ "endRestoringDocumentFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#abe7aea0970835088e72704aaa008432d", null ],
@@ -54,7 +54,7 @@ var group___a_r_a___library___host___dispatch___plug__in___interface___wrappers 
       [ "updateMusicalContextContent", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#afd6faadca64c46ff1c0ef4a510f6014c", null ],
       [ "updateMusicalContextProperties", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a0b24171517f8509ecda669ed61b0c790", null ],
       [ "updatePlaybackRegionProperties", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#acdd8f9d72ed187576ad69662d3863390", null ],
-      [ "updateRegionSequenceProperties", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a39875f874d0cbe3d81b01716d3044062", null ]
+      [ "updateRegionSequenceProperties", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a6932d8976f8971e3a653cd6384e58ea7", null ]
     ] ],
     [ "DocumentControllerInstance", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#class_a_r_a_1_1_host_1_1_document_controller_instance", null ],
     [ "PlaybackRenderer", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#class_a_r_a_1_1_host_1_1_playback_renderer", null ],

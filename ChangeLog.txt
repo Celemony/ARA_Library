@@ -1,8 +1,4 @@
-This is a pre-release build of the ARA Library 2.0.
-
-Changes since previous releases:
-
-ARA SDK 2.0 draft 15 (aka 1.9.15) (2021/??/??)
+ARA SDK 2.0 release (aka 2.0.001) (2021/05/03)
 - added matching object destruction customization function for all object creation functions
   This allows to use custom memory management, or to reuse already existing internal objects that
   can implement the interface for which an object is created.

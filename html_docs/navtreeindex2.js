@@ -1,5 +1,10 @@
 var NAVTREEINDEX2 =
 {
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a9d3eab5fa47d18a9f42a6176357ae229":[4,9,2,0,4,1],
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#aa31a4ce868b0eed7673a2148fd47cc9a":[4,9,2,0,0,7],
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ab05b440d0590981cf47c37171b0e0af7":[4,9,2,0,0,19],
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ac417aebba9b55025c124ab95df280229":[4,9,2,0,0,17],
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ac4acb7d30b6ebdb7be57e32a1442e5d8":[4,9,2,0,0,13],
 "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#acaf328d061fde206ee89a3fc5ba6b12b":[4,9,2,0,0,24],
 "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#acbe985f9a890a092acd5bf25b2f02620":[4,9,2,0,0,3],
 "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#acdc22d37fc6a122bd08f90b3a11e6281":[4,9,2,0,0,2],
@@ -71,9 +76,9 @@ var NAVTREEINDEX2 =
 "group___a_r_a___library___utility___pitch___interpretation.html#ab09cb5905108205bef3e98c7ec90fb41":[4,9,0,3,2,2],
 "group___a_r_a___library___utility___pitch___interpretation.html#ad0752435efadc0b44e07cbb9569a7751":[4,9,0,3,2,3],
 "group___a_r_a___library___utility___pitch___interpretation.html#ad7835f1f0fc91cd365c6b910d5c4b19f":[4,9,0,3,0,5],
-"group___a_r_a___library___utility___pitch___interpretation.html#ad7cd26957813690d55ea9c439d65edd2":[4,9,0,3,0,0],
 "group___a_r_a___library___utility___pitch___interpretation.html#ad7cd26957813690d55ea9c439d65edd2":[4,9,0,3,1,2],
 "group___a_r_a___library___utility___pitch___interpretation.html#ad7cd26957813690d55ea9c439d65edd2":[4,9,0,3,2,8],
+"group___a_r_a___library___utility___pitch___interpretation.html#ad7cd26957813690d55ea9c439d65edd2":[4,9,0,3,0,0],
 "group___a_r_a___library___utility___pitch___interpretation.html#aeca88628d0f11e21448b78963f240ac4":[4,9,0,3,0,4],
 "group___a_r_a___library___utility___pitch___interpretation.html#class_a_r_a_1_1_chord_interpreter":[4,9,0,3,1],
 "group___a_r_a___library___utility___pitch___interpretation.html#class_a_r_a_1_1_key_signature_interpreter":[4,9,0,3,2],
@@ -244,10 +249,5 @@ var NAVTREEINDEX2 =
 "group___model___audio___modification.html":[4,3,4],
 "group___model___audio___modification.html#a02601060be05f211bb9510fe168f6027":[4,3,4,0,0],
 "group___model___audio___modification.html#a33cfcc21577640169510f295efe0c423":[4,3,4,0,2],
-"group___model___audio___modification.html#ab8555a3a444529f8aceb783e5604eb63":[4,3,4,0,1],
-"group___model___audio___modification.html#ga4fcadfe860312728c065593e1f7cf104":[4,3,4,1],
-"group___model___audio___modification.html#gae04722e89e1143ea3cd9b947ce891889":[4,3,4,2],
-"group___model___audio___modification.html#struct_a_r_a_audio_modification_properties":[4,3,4,0],
-"group___model___audio___source.html":[4,3,3],
-"group___model___audio___source.html#a0a25ad63552cd4dfed0f8e9a96769e05":[4,3,3,0,5]
+"group___model___audio___modification.html#ab8555a3a444529f8aceb783e5604eb63":[4,3,4,0,1]
 };

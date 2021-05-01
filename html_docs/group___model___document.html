@@ -6,7 +6,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 1.9.15: Document</title>
+<title>ARA SDK 2.0.0: Document</title>
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="shortcut icon" sizes="16x16" href="./favicon.ico">
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -96,7 +100,7 @@ $(document).ready(function(){initNavTree('group___model___document.html',''); in
 </div><!--header-->
 <div class="contents">
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<p>The document is the root object for a model graph and typically represents a piece of music such as a song or an entire performance. It is bound to a document controller in a 1:1 relationship. The document controller is used to manage the entire graph it contains. Because of the 1:1 relationship, the document is never specified when calling into the document controller. Edits of the document and any of the objects it contains are done in cycles started with <a class="el" href="group___plug-_in___document___controller.html#a73d999e8600d4b9576c3b18fe8dce16f" title="Start an editing session on a document. An editing session can contain an arbitrary set of modificati...">ARADocumentControllerInterface::beginEditing()</a> and concluded with <a class="el" href="group___plug-_in___document___controller.html#ab4946909515472d8ea4f5f1ee5cac599" title="End an editing session on a document.">ARADocumentControllerInterface::endEditing()</a>. This allows plug-ins to deal with any render thread synchronization that may be necessary, as well as postponing any internal updates until the end of the cycle when the ARA graph has its full state available. A document can contain 0..n audio sources and 0..m musical contexts. A document is the root object for persistency.  <br>                               Plug-in developers using the C++ ARA Library can use the <a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_document" title="Extensible model object class representing an ARA Document.">ARA::PlugIn::Document</a> class. </p>
+<p>The document is the root object for a model graph and typically represents a piece of music such as a song or an entire performance. It is bound to a document controller in a 1:1 relationship. The document controller is used to manage the entire graph it contains. Because of the 1:1 relationship, the document is never specified when calling into the document controller. Edits of the document and any of the objects it contains are done in cycles started with <a class="el" href="group___plug-_in___document___controller.html#a73d999e8600d4b9576c3b18fe8dce16f" title="Start an editing session on a document. An editing session can contain an arbitrary set of modificati...">ARADocumentControllerInterface::beginEditing()</a> and concluded with <a class="el" href="group___plug-_in___document___controller.html#ab4946909515472d8ea4f5f1ee5cac599" title="End an editing session on a document. Note that when receiving this call, the plug-in will update any...">ARADocumentControllerInterface::endEditing()</a>. This allows plug-ins to deal with any render thread synchronization that may be necessary, as well as postponing any internal updates until the end of the cycle when the ARA graph has its full state available. A document is the root object for persistency and is the owner of any amount of associated audio sources, region sequences and musical contexts.  <br>                               Plug-in developers using the C++ ARA Library can use the <a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_document" title="Extensible model object class representing an ARA Document.">ARA::PlugIn::Document</a> class. </p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>

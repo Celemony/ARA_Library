@@ -6,7 +6,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 1.9.15: Basic Types</title>
+<title>ARA SDK 2.0.0: Basic Types</title>
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="shortcut icon" sizes="16x16" href="./favicon.ico">
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -100,10 +104,10 @@ $(document).ready(function(){initNavTree('group___basic___types.html',''); initR
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="groups"></a>
 Subpages</h2></td></tr>
-<tr class="memitem:group___fixed-size__integers"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___fixed-size__integers.html">Fixed-size integers</a></td></tr>
+<tr class="memitem:group___fixed-size__integers"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___fixed-size__integers.html">Fixed-size Integers</a></td></tr>
 <tr class="memdesc:group___fixed-size__integers"><td class="mdescLeft">&#160;</td><td class="mdescRight">ARA defines platform-independent signed integers with fixed size of 32 or 64 bits and for a pointer-sized signed integer. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group___boolean__values"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___boolean__values.html">Boolean values</a></td></tr>
+<tr class="memitem:group___boolean__values"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___boolean__values.html">Boolean Values</a></td></tr>
 <tr class="memdesc:group___boolean__values"><td class="mdescLeft">&#160;</td><td class="mdescRight">Since Microsoft still doesn't fully support C99 and fails to provide &lt;stdbool.h&gt;, we need to roll our own. On the other hand this ensures a fixed size of 32 bits, too. 32 bits were chosen so that ARABool is consistent with the other enum-like data types such as ARAContentType. Since ARABool is only used in temporary structs that are valid only for the duration of a call and likely passed in a register in most cases, there's no point in trying to optimize for size by using 8 bit boolean types. Note that in order to avoid conversion warnings in Visual Studio, you should not directly cast bool to ARABool or vice versa, but instead use a ternary operator or a comparison like this: <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group___enums"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___enums.html">Enums</a></td></tr>
@@ -112,10 +116,10 @@ Subpages</h2></td></tr>
 <tr class="memitem:group___strings"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___strings.html">Strings</a></td></tr>
 <tr class="memdesc:group___strings"><td class="mdescLeft">&#160;</td><td class="mdescRight">User-readable texts are stored as UTF-8 encoded unicode strings. It's not defined if and how the string is normalized - if either side has requirements regarding normalization, it needs to apply these after reading the string from the other side. Unicode rules apply regarding normalization, comparison etc. Both hosts and plug-ins are required to support at least all ISO/IEC 8859-1 based characters (from U+0020 up to U+007E and from U+00A0 up to U+00FF) in their text display rendering. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group___common__time-related__data__types"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___common__time-related__data__types.html">Common time-related data types</a></td></tr>
+<tr class="memitem:group___common__time-related__data__types"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___common__time-related__data__types.html">Common Time-Related Data Types</a></td></tr>
 <tr class="memdesc:group___common__time-related__data__types"><td class="mdescLeft">&#160;</td><td class="mdescRight">Some basic data types used in several contexts. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group___sampled__audio__data"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___sampled__audio__data.html">Sampled audio data</a></td></tr>
+<tr class="memitem:group___sampled__audio__data"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___sampled__audio__data.html">Sampled Audio Data</a></td></tr>
 <tr class="memdesc:group___sampled__audio__data"><td class="mdescLeft">&#160;</td><td class="mdescRight">The audio samples are encoded using these format descriptions. The data alignment and byte order always matches the machine's native layout. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group___color"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___color.html">Color</a></td></tr>

@@ -117,6 +117,11 @@ var group___a_r_a___library___a_r_a_plug___document___controller =
       [ "getDocument", "group___a_r_a___library___a_r_a_plug___document___controller.html#a0b53046e5907b7a5498d7fc413ff46ee", null ],
       [ "getEditorRenderers", "group___a_r_a___library___a_r_a_plug___document___controller.html#ad10f2677307ecdc2bc734c7cb5d8eb49", null ],
       [ "getEditorViews", "group___a_r_a___library___a_r_a_plug___document___controller.html#a10e9acfaa8a7442de7855ed56e6beba4", null ],
+      [ "getHostArchivingController", "group___a_r_a___library___a_r_a_plug___document___controller.html#a44dd6cd4253a29ae879436b92104bf98", null ],
+      [ "getHostAudioAccessController", "group___a_r_a___library___a_r_a_plug___document___controller.html#a07eaa8f224a8d432a092a9c99bdda024", null ],
+      [ "getHostContentAccessController", "group___a_r_a___library___a_r_a_plug___document___controller.html#aeaeafc679fe2f8df43255adf717917f0", null ],
+      [ "getHostModelUpdateController", "group___a_r_a___library___a_r_a_plug___document___controller.html#a6401e37c1606d9a6c25e20bd05cce71a", null ],
+      [ "getHostPlaybackController", "group___a_r_a___library___a_r_a_plug___document___controller.html#a13b15aaa0b1be9648cc58b7637309b97", null ],
       [ "getPlaybackRenderers", "group___a_r_a___library___a_r_a_plug___document___controller.html#a4f2a7cd3b3a1ef3713beaa4af719cfb4", null ],
       [ "getUsedApiGeneration", "group___a_r_a___library___a_r_a_plug___document___controller.html#a4bc0505fa0eb40b39af35c8cc36017ed", null ],
       [ "isHostEditingDocument", "group___a_r_a___library___a_r_a_plug___document___controller.html#af4f989ba886d8e2e574757c23479c9c8", null ]
