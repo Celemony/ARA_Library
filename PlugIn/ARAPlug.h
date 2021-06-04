@@ -1776,7 +1776,7 @@ public:
                                                                                 { return kARAAPIGeneration_2_0_Draft; }
 #endif
     //! \copydoc ARAFactory::highestSupportedApiGeneration
-    virtual ARAAPIGeneration getHighestSupportedApiGeneration () const noexcept { return kARAAPIGeneration_2_0_Final; }
+    virtual ARAAPIGeneration getHighestSupportedApiGeneration () const noexcept { return kARAAPIGeneration_2_X_Draft; }
 
     virtual DocumentController* createDocumentController (const PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) const noexcept = 0;
     virtual void destroyDocumentController (DocumentController* documentController) const noexcept { delete documentController; }
