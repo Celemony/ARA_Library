@@ -820,6 +820,11 @@ protected:
     virtual bool doRestoreObjectsFromArchive (HostArchiveReader* archiveReader, const RestoreObjectsFilter* filter) noexcept = 0;
     //! Override to implement storeObjectsToArchive().
     virtual bool doStoreObjectsToArchive (HostArchiveWriter* archiveWriter, const StoreObjectsFilter* filter) noexcept = 0;
+    //! Override to customize storeAudioSourceToAudioFileChunk() if needed.
+    //! The default implementation calls doStoreObjectsToArchive() with an appropriate StoreObjectsFilter
+    //! and sets openAutomatically to false - check if your internal data format allows for optimizing
+    //! this according to the criteria documented for storeAudioSourceToAudioFileChunk().
+    virtual bool doStoreAudioSourceToAudioFileChunk (HostArchiveWriter* archiveWriter, AudioSource* audioSource, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept;
     //@}
 
     //! @name Document Management Hooks
@@ -1120,6 +1125,7 @@ public:
     // Archiving
     bool restoreObjectsFromArchive (ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept override;
     bool storeObjectsToArchive (ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept override;
+    bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept override;
 
     // Document Management
     void updateDocumentProperties (PropertiesPtr<ARADocumentProperties> properties) noexcept override;
@@ -1808,6 +1814,9 @@ public:
 
     //! \copydoc ARAFactory::supportedPlaybackTransformationFlags
     virtual ARAPlaybackTransformationFlags getSupportedPlaybackTransformationFlags () const noexcept { return kARAPlaybackTransformationNoChanges; }
+
+    //! \copydoc ARAFactory::supportsStoringAudioFileChunks
+    virtual bool supportsStoringAudioFileChunks () const noexcept { return false; }
 };
 
 
@@ -1925,7 +1934,7 @@ private:
 
 private:
     const FactoryConfig* const _factoryConfig;
-    const SizedStruct<ARA_STRUCT_MEMBER (ARAFactory, supportedPlaybackTransformationFlags)> _factory;
+    const SizedStruct<ARA_STRUCT_MEMBER (ARAFactory, supportsStoringAudioFileChunks)> _factory;
     ARAAPIGeneration _usedApiGeneration { 0 };
 
     ARA_DISABLE_COPY_AND_MOVE (PlugInEntry)
