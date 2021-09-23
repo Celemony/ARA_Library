@@ -1115,9 +1115,9 @@ bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef read
 
         ARA_VALIDATE_API_STATE ((documentArchiveID != nullptr) && (std::strlen (documentArchiveID) > 0));
 
-        bool isValidDocumentArchiveID { 0 == strcmp (documentArchiveID, getFactory ()->documentArchiveID) };
+        bool isValidDocumentArchiveID { 0 == std::strcmp (documentArchiveID, getFactory ()->documentArchiveID) };
         for (ARASize i { 0 }; !isValidDocumentArchiveID && (i < getFactory ()->compatibleDocumentArchiveIDsCount); ++i)
-            isValidDocumentArchiveID = (0 == strcmp (documentArchiveID, getFactory ()->compatibleDocumentArchiveIDs[i]));
+            isValidDocumentArchiveID = (0 == std::strcmp (documentArchiveID, getFactory ()->compatibleDocumentArchiveIDs[i]));
         ARA_VALIDATE_API_STATE (isValidDocumentArchiveID);
     }
 #endif
