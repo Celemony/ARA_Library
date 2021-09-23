@@ -131,11 +131,11 @@ public:
 //! @name Archiving
 //@{
     //! \copydoc ARADocumentControllerInterface::restoreObjectsFromArchive
-    virtual bool restoreObjectsFromArchive (ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept = 0;
+    virtual bool restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::storeObjectsToArchive
-    virtual bool storeObjectsToArchive (ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept = 0;
+    virtual bool storeObjectsToArchive (ARAArchiveWriterHostRef archiveWriterHostRef, const ARAStoreObjectsFilter* filter) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::storeAudioSourceToAudioFileChunk
-    virtual bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept = 0;
+    virtual bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef archiveWriterHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept = 0;
 //@}
 
 //! @name Document Management
@@ -385,10 +385,10 @@ public:
     //! \copydoc ARAAudioAccessControllerInterface::createAudioReaderForSource
     ARAAudioReaderHostRef createAudioReaderForSource (ARAAudioSourceHostRef audioSourceHostRef, bool use64BitSamples) noexcept;
     //! \copydoc ARAAudioAccessControllerInterface::readAudioSamples
-    bool readAudioSamples (ARAAudioReaderHostRef readerRef,
+    bool readAudioSamples (ARAAudioReaderHostRef audioReaderHostRef,
                            ARASamplePosition samplePosition, ARASampleCount samplesPerChannel, void* const buffers[]) noexcept;
     //! \copydoc ARAAudioAccessControllerInterface::destroyAudioReader
-    void destroyAudioReader (ARAAudioReaderHostRef readerRef) noexcept;
+    void destroyAudioReader (ARAAudioReaderHostRef audioReaderHostRef) noexcept;
 };
 
 /*******************************************************************************/

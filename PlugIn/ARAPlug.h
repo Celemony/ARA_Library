@@ -1123,9 +1123,9 @@ public:
     void notifyModelUpdates () noexcept override;
 
     // Archiving
-    bool restoreObjectsFromArchive (ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept override;
-    bool storeObjectsToArchive (ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept override;
-    bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept override;
+    bool restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept override;
+    bool storeObjectsToArchive (ARAArchiveWriterHostRef archiveWriterHostRef, const ARAStoreObjectsFilter* filter) noexcept override;
+    bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef archiveWriterHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept override;
 
     // Document Management
     void updateDocumentProperties (PropertiesPtr<ARADocumentProperties> properties) noexcept override;
@@ -1418,7 +1418,7 @@ private:
 class HostArchiveReader
 {
 public:
-    HostArchiveReader (DocumentController* documentController, ARAArchiveReaderHostRef readerHostRef) noexcept;
+    HostArchiveReader (DocumentController* documentController, ARAArchiveReaderHostRef archiveReaderHostRef) noexcept;
 
     ARASize getArchiveSize () const noexcept;                                                       //!< \copydoc ARAArchivingControllerInterface::getArchiveSize
     bool readBytesFromArchive (ARASize position, ARASize length, ARAByte buffer[]) const noexcept;  //!< \copydoc ARAArchivingControllerInterface::readBytesFromArchive
@@ -1438,7 +1438,7 @@ private:
 class HostArchiveWriter
 {
 public:
-    HostArchiveWriter (DocumentController* documentController, ARAArchiveWriterHostRef writerHostRef) noexcept;
+    HostArchiveWriter (DocumentController* documentController, ARAArchiveWriterHostRef archiveWriterHostRef) noexcept;
 
     bool writeBytesToArchive (ARASize position, ARASize length, const ARAByte buffer[]) noexcept;   //!< \copydoc ARAArchivingControllerInterface::writeBytesToArchive
     void notifyDocumentArchivingProgress (float value) noexcept;                                    //!< \copydoc ARAArchivingControllerInterface::notifyDocumentArchivingProgress
