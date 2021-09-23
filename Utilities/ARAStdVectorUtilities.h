@@ -54,7 +54,7 @@ inline std::vector<T> const& vector_cast (std::vector<U> const& container) noexc
 //@{
 
 template <typename T, typename U, typename std::enable_if<std::is_convertible<T, U>::value || std::is_convertible<U, T>::value, bool>::type = true>
-inline bool find_erase (std::vector<T>& container, const U element) noexcept
+inline bool find_erase (std::vector<T>& container, const U& element) noexcept
 {
     const auto it { std::find (container.begin (), container.end (), element) };
     if (it == container.end ())
@@ -71,7 +71,7 @@ inline bool find_erase (std::vector<T>& container, const U element) noexcept
 //@{
 
 template <typename T, typename U, typename std::enable_if<std::is_convertible<T, U>::value || std::is_convertible<U, T>::value, bool>::type = true>
-inline bool contains (std::vector<T> const& container, const U element) noexcept
+inline bool contains (std::vector<T> const& container, const U& element) noexcept
 {
     return std::find (container.begin (), container.end (), element) != container.end ();
 }
