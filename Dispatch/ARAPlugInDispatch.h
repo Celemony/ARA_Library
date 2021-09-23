@@ -330,7 +330,7 @@ public:
     //! \copydoc ARAEditorViewInterface::notifySelection
     virtual void notifySelection (SizedStructPtr<ARAViewSelection> selection) noexcept = 0;
     //! \copydoc ARAEditorViewInterface::notifyHideRegionSequences
-    virtual void notifyHideRegionSequences (ARASize regionSequencesCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept = 0;
+    virtual void notifyHideRegionSequences (ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept = 0;
 //@}
 };
 ARA_MAP_REF (EditorViewInterface, ARAEditorViewRef)

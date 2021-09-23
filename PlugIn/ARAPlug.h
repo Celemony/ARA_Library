@@ -1687,7 +1687,7 @@ public:
     // Inherited public interface used by the C++ dispatcher, to be called by the ARAPlugInDispatch code exclusively.
     // Typically not overridden - need to call base class implementation if so.
     void notifySelection (SizedStructPtr<ARAViewSelection> selection) noexcept override;
-    void notifyHideRegionSequences (ARASize regionSequencesCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept override;
+    void notifyHideRegionSequences (ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept override;
 #endif
 
 private:
