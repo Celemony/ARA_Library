@@ -322,7 +322,7 @@ namespace DocumentControllerDispatcher
 
     static ARABool ARA_CALL isLicensedForCapabilities (ARADocumentControllerRef controllerRef, ARABool runModalActivationDialogIfNeeded, ARASize contentTypesCount, const ARAContentType contentTypes[], ARAPlaybackTransformationFlags transformationFlags) noexcept
     {
-        return (fromRef (controllerRef)->isLicensedForCapabilities (runModalActivationDialogIfNeeded != kARAFalse, contentTypesCount, contentTypes, transformationFlags)) ? kARATrue : kARAFalse;
+        return (fromRef (controllerRef)->isLicensedForCapabilities ((runModalActivationDialogIfNeeded != kARAFalse), contentTypesCount, contentTypes, transformationFlags)) ? kARATrue : kARAFalse;
     }
 
     static ARABool ARA_CALL storeAudioSourceToAudioFileChunk (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, ARABool* openAutomatically) noexcept

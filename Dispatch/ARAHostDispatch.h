@@ -84,7 +84,7 @@ namespace Host {
 #endif
 
 /*******************************************************************************/
-/** Tag objects maintained by the plug-in to prevent accidently copying/moving them. */
+/** Tag objects maintained by the plug-in to prevent accidentally copying/moving them. */
 /*******************************************************************************/
 
 #if !defined (ARA_PLUGIN_MANAGED_OBJECT)
