@@ -2702,7 +2702,7 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
     ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_1_0_Draft);
     ARA_INTERNAL_ASSERT (_factory.highestSupportedApiGeneration >= _factory.lowestSupportedApiGeneration);
 #if ARA_CPU_ARM
-    ARA_INTERNAL_ASSERT (_factory.highestSupportedApiGeneration >= kARAAPIGeneration_2_x_Draft);
+    ARA_INTERNAL_ASSERT (_factory.highestSupportedApiGeneration >= kARAAPIGeneration_2_X_Draft);
 #endif
 
     ARA_INTERNAL_ASSERT (std::strlen (_factory.factoryID) > 5);             // at least "xx.y." needed to form a valid url-based unique ID
