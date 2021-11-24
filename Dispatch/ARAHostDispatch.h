@@ -46,6 +46,10 @@ namespace Host {
     #define ARA_SUPPORT_VERSION_1 0
 #endif
 
+#if ARA_SUPPORT_VERSION_1 && ARA_CPU_ARM
+    #error "ARA v1 is not supported on ARM architecture"
+#endif
+
 /*******************************************************************************/
 /** Type safe conversions to/from host ref: toHostRef () and fromHostRef<> ().
     This macro defines custom overloads of the toHostRef () and fromHostRef<> () conversion functions

@@ -2653,7 +2653,11 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
                factoryConfig->getSupportedPlaybackTransformationFlags ()
              }
 {
+#if ARA_CPU_ARM
+    ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
+#else
     ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_1_0_Draft);
+#endif
     ARA_INTERNAL_ASSERT (_factory.highestSupportedApiGeneration >= _factory.lowestSupportedApiGeneration);
 
     ARA_INTERNAL_ASSERT (std::strlen (_factory.factoryID) > 5);             // at least "xx.y." needed to form a valid url-based unique ID

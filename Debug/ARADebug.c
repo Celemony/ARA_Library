@@ -135,9 +135,9 @@ static ARABool IsDebuggerAttached(void)
     #if !defined(BreakIntoDebugger)
         // GDB: signal SIGINT to have the debugger stop directly at the expression
         // see https://cocoawithlove.com/2008/03/break-into-debugger.html
-        #if (defined(__ppc__) || defined(__ppc64__))
-            #define BreakIntoDebugger(...) __asm__ volatile("li r0,20\n  sc\n  nop\n  li r0,37\n  li r4,2\n  sc\n  nop\n" : : : "memory","r0","r4")
-        #elif (defined(__i386__) || defined(__x86_64__))
+//      #if ARA_CPU_PPC
+//          #define BreakIntoDebugger(...) __asm__ volatile("li r0,20\n  sc\n  nop\n  li r0,37\n  li r4,2\n  sc\n  nop\n" : : : "memory","r0","r4")
+        #if ARA_CPU_X86
             #define BreakIntoDebugger(...) __asm__ volatile("int $3\n  nop\n" : : )
         #else
             #warning "BreakIntoDebugger() not yet implemented for this processor, falling back to __builtin_trap() which aborts the program."

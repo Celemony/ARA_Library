@@ -1772,6 +1772,8 @@ public:
     virtual ARAAPIGeneration getLowestSupportedApiGeneration () const noexcept
 #if ARA_SUPPORT_VERSION_1
                                                                                 { return kARAAPIGeneration_1_0_Final; }
+#elif ARA_CPU_ARM
+                                                                                { return kARAAPIGeneration_2_0_Final; }
 #else
                                                                                 { return kARAAPIGeneration_2_0_Draft; }
 #endif
