@@ -1930,7 +1930,7 @@ public:
 private:
     // to be called by DocumentController during destruction exclusively
     friend class DocumentController;
-    void destroyDocumentController(DocumentController* documentController) const noexcept { _factoryConfig->destroyDocumentController(documentController); }
+    void destroyDocumentController (DocumentController* documentController) const noexcept { _factoryConfig->destroyDocumentController (documentController); }
 
 private:
     const FactoryConfig* const _factoryConfig;

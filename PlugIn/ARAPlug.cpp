@@ -658,7 +658,7 @@ ARASamplePosition PlaybackRegion::getStartInAudioModificationSamples () const no
 
 ARASampleCount PlaybackRegion::getDurationInAudioModificationSamples () const noexcept
 {
-    return getEndInAudioModificationSamples() - getStartInAudioModificationSamples ();
+    return getEndInAudioModificationSamples () - getStartInAudioModificationSamples ();
 }
 
 ARASamplePosition PlaybackRegion::getEndInAudioModificationSamples () const noexcept
