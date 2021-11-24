@@ -1496,6 +1496,7 @@ void DocumentController::deactivateAudioSourceForUndoHistory (ARAAudioSourceRef 
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
     auto audioSource { fromRef (audioSourceRef) };
+    ARA_VALIDATE_API_ARGUMENT (audioSourceRef, isValidAudioSource (audioSource));
     if (deactivate != audioSource->isDeactivatedForUndoHistory ())
     {
         willDeactivateAudioSourceForUndoHistory (audioSource, deactivate);
@@ -1673,6 +1674,7 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
     // determine if the region sequence will change from this update
     auto currentSequence { playbackRegion->getRegionSequence () };
     auto newSequence { fromRef (properties->regionSequenceRef) };
+    ARA_VALIDATE_API_ARGUMENT (newSequence, isValidRegionSequence (newSequence));
 
     if (currentSequence && (currentSequence != newSequence))
         willRemovePlaybackRegionFromRegionSequence (currentSequence, playbackRegion);
@@ -1974,6 +1976,7 @@ ARAInt32 DocumentController::getContentReaderEventCount (ARAContentReaderRef con
 
     const auto contentReader { fromRef (contentReaderRef) };
     ARA_VALIDATE_API_ARGUMENT (contentReaderRef, isValidContentReader (contentReader));
+
     return contentReader->getEventCount ();
 }
 
