@@ -2331,14 +2331,14 @@ std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentControl
     return playbackRegions;
 }
 
-std::vector<RegionSequence*> _convertRegionSequencesArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize regionSequencesCount, const ARARegionSequenceRef regionSequenceRefs[])
+std::vector<RegionSequence*> _convertRegionSequencesArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[])
 {
     std::vector<RegionSequence*> regionSequences;
-    if (regionSequencesCount > 0)
+    if (regionSequenceRefsCount > 0)
     {
         ARA_VALIDATE_API_ARGUMENT (regionSequenceRefs, regionSequenceRefs != nullptr);
-        regionSequences.reserve (regionSequencesCount);
-        for (ARASize i { 0 }; i < regionSequencesCount; ++i)
+        regionSequences.reserve (regionSequenceRefsCount);
+        for (ARASize i { 0 }; i < regionSequenceRefsCount; ++i)
         {
             auto regionSequence { fromRef (regionSequenceRefs[i]) };
             ARA_VALIDATE_API_ARGUMENT (regionSequenceRefs[i], documentController->isValidRegionSequence (regionSequence));
@@ -2594,11 +2594,11 @@ void EditorView::notifySelection (SizedStructPtr<ARAViewSelection> selection) no
         doNotifySelection (&_viewSelection);
 }
 
-void EditorView::notifyHideRegionSequences (ARASize regionSequencesCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept
+void EditorView::notifyHideRegionSequences (ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidEditorView (this));
-    _hiddenRegionSequences = _convertRegionSequencesArray (_documentController, regionSequencesCount, regionSequenceRefs);
+    _hiddenRegionSequences = _convertRegionSequencesArray (_documentController, regionSequenceRefsCount, regionSequenceRefs);
 
 #if ARA_ENABLE_VIEW_UPDATE_LOG
     if (_hiddenRegionSequences.empty ())

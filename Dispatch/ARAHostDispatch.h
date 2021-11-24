@@ -560,7 +560,7 @@ public:
     //! \copydoc ARAEditorViewInterface::notifySelection
     void notifySelection (const ARAViewSelection* selection) noexcept;
     //! \copydoc ARAEditorViewInterface::notifyHideRegionSequences
-    void notifyHideRegionSequences (ARASize regionSequencesCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept;
+    void notifyHideRegionSequences (ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept;
 //@}
 };
 

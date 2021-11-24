@@ -480,9 +480,9 @@ namespace EditorViewDispatcher
         fromRef (editorViewRef)->notifySelection (selection);
     }
 
-    static void ARA_CALL notifyHideRegionSequences (ARAEditorViewRef editorViewRef, ARASize regionSequencesCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept
+    static void ARA_CALL notifyHideRegionSequences (ARAEditorViewRef editorViewRef, ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept
     {
-        fromRef (editorViewRef)->notifyHideRegionSequences (regionSequencesCount, regionSequenceRefs);
+        fromRef (editorViewRef)->notifyHideRegionSequences (regionSequenceRefsCount, regionSequenceRefs);
     }
 
     static const ARAEditorViewInterface* getInterface () noexcept
