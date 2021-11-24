@@ -325,9 +325,17 @@ namespace DocumentControllerDispatcher
         return (fromRef (controllerRef)->isLicensedForCapabilities (runModalActivationDialogIfNeeded != kARAFalse, contentTypesCount, contentTypes, transformationFlags)) ? kARATrue : kARAFalse;
     }
 
+    static ARABool ARA_CALL storeAudioSourceToAudioFileChunk (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, ARABool* openAutomatically) noexcept
+    {
+        bool autoOpen { false };
+        const auto result {fromRef (controllerRef)->storeAudioSourceToAudioFileChunk (writerHostRef, audioSourceRef, documentArchiveID, &autoOpen) };
+        *openAutomatically = (autoOpen) ? kARATrue : kARAFalse;
+        return (result) ? kARATrue : kARAFalse;
+    }
+
     static const ARADocumentControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isLicensedForCapabilities)> ifc =
+        static const SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk)> ifc =
         {
             DocumentControllerDispatcher::destroyDocumentController,
             DocumentControllerDispatcher::getFactory,
@@ -380,7 +388,8 @@ namespace DocumentControllerDispatcher
             DocumentControllerDispatcher::getProcessingAlgorithmProperties,
             DocumentControllerDispatcher::getProcessingAlgorithmForAudioSource,
             DocumentControllerDispatcher::requestProcessingAlgorithmForAudioSource,
-            DocumentControllerDispatcher::isLicensedForCapabilities
+            DocumentControllerDispatcher::isLicensedForCapabilities,
+            DocumentControllerDispatcher::storeAudioSourceToAudioFileChunk
         };
         return &ifc;
     }

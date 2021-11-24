@@ -322,6 +322,10 @@ public:
     bool restoreObjectsFromArchive (ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept;
     //! \copydoc ARADocumentControllerInterface::storeObjectsToArchive
     bool storeObjectsToArchive (ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept;
+    //! Test whether storeAudioSourceToAudioFileChunk () is supported by the plug-in.
+    bool supportsStoringAudioFileChunks () noexcept;
+    //! \copydoc ARADocumentControllerInterface::storeAudioSourceToAudioFileChunk
+    bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept;
 //@}
 
 //! @name Document Management

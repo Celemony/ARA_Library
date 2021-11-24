@@ -1151,6 +1151,48 @@ bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef writerHo
     }
 }
 
+bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept
+{
+    ARA_LOG_HOST_ENTRY (this);
+    ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+
+    auto audioSource { fromRef (audioSourceRef) };
+    ARA_VALIDATE_API_ARGUMENT (audioSourceRef, isValidAudioSource (audioSource));
+
+    ARA_VALIDATE_API_ARGUMENT (documentArchiveID, documentArchiveID != nullptr);
+    ARA_VALIDATE_API_ARGUMENT (openAutomatically, openAutomatically != nullptr);
+
+    ARA_VALIDATE_API_STATE (getFactory ()->supportsStoringAudioFileChunks != kARAFalse);
+    ARA_VALIDATE_API_STATE (!isHostEditingDocument ());
+    ARA_VALIDATE_API_STATE (_contentReaders.empty ());
+
+    HostArchiveWriter archiveWriter (this, writerHostRef);
+    *documentArchiveID = nullptr;
+    const auto result { doStoreAudioSourceToAudioFileChunk (&archiveWriter, audioSource, documentArchiveID, openAutomatically) };
+    ARA_INTERNAL_ASSERT (*documentArchiveID != nullptr);
+#if ARA_ENABLE_INTERNAL_ASSERTS
+    bool isValidID { *documentArchiveID == getFactory ()->documentArchiveID };
+    for (auto i { 0U }; !isValidID && (i < getFactory ()->compatibleDocumentArchiveIDsCount); ++i)
+        isValidID = (*documentArchiveID == getFactory ()->compatibleDocumentArchiveIDs[i]);
+    ARA_INTERNAL_ASSERT (isValidID);
+#endif
+    return result;
+}
+
+bool DocumentControllerDelegate::doStoreAudioSourceToAudioFileChunk (HostArchiveWriter* archiveWriter, AudioSource* audioSource, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept
+{
+    *documentArchiveID = getPlugInEntry ()->getFactory ()->documentArchiveID;
+    *openAutomatically = false;
+
+    ARAAudioSourceRef audioSourceRef { toRef (audioSource) };
+    const ARA::SizedStruct<ARA_STRUCT_MEMBER (ARAStoreObjectsFilter, audioModificationRefs)> filter { ARA::kARATrue,
+                                                                                                      1U, &audioSourceRef,
+                                                                                                      0U, nullptr
+                                                                                                    };
+    const StoreObjectsFilter storeObjectsFilter { &filter };
+    return doStoreObjectsToArchive (archiveWriter, &storeObjectsFilter);
+}
+
 void DocumentController::updateDocumentProperties (PropertiesPtr<ARADocumentProperties> properties) noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
@@ -2650,7 +2692,8 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
                createDocumentControllerWithDocumentFunc,
                factoryConfig->getDocumentArchiveID (), factoryConfig->getCompatibleDocumentArchiveIDsCount (), factoryConfig->getCompatibleDocumentArchiveIDs (),
                factoryConfig->getAnalyzeableContentTypesCount (), factoryConfig->getAnalyzeableContentTypes (),
-               factoryConfig->getSupportedPlaybackTransformationFlags ()
+               factoryConfig->getSupportedPlaybackTransformationFlags (),
+               (factoryConfig->supportsStoringAudioFileChunks ()) ? kARATrue : kARAFalse
              }
 {
 #if ARA_CPU_ARM

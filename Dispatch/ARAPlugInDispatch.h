@@ -134,6 +134,8 @@ public:
     virtual bool restoreObjectsFromArchive (ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::storeObjectsToArchive
     virtual bool storeObjectsToArchive (ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept = 0;
+    //! \copydoc ARADocumentControllerInterface::storeAudioSourceToAudioFileChunk
+    virtual bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept = 0;
 //@}
 
 //! @name Document Management

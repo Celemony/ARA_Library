@@ -420,6 +420,28 @@ bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef writerHo
     return (getInterface ()->storeObjectsToArchive (getRef (), writerHostRef, filter) != kARAFalse);
 }
 
+bool DocumentController::supportsStoringAudioFileChunks () noexcept
+{
+    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk)> ())
+        return false;
+
+    const SizedStructPtr<ARAFactory> factory { getInterface ()->getFactory (getRef ()) };
+    if (!factory.implements<ARA_STRUCT_MEMBER (ARAFactory, supportsStoringAudioFileChunks)> ())
+        return false;
+    return (factory->supportsStoringAudioFileChunks != kARAFalse);
+}
+
+bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept
+{
+    if (!supportsStoringAudioFileChunks ())
+        return false;
+
+    ARABool autoOpen { kARAFalse };
+    const auto result { getInterface ()->storeAudioSourceToAudioFileChunk (getRef (), writerHostRef, audioSourceRef, documentArchiveID, &autoOpen) };
+    *openAutomatically = (autoOpen != kARAFalse);
+    return (result != kARAFalse);
+}
+
 ARAMusicalContextRef DocumentController::createMusicalContext (ARAMusicalContextHostRef hostRef, const ARAMusicalContextProperties* properties) noexcept
 {
     return getInterface ()->createMusicalContext (getRef (), hostRef, properties);

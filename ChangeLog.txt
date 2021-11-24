@@ -3,7 +3,7 @@ This is a development build of the ARA Library 2.1.
 
 
 ARA SDK 2.1 draft 1 (aka 2.0.1) (2021/??/??)
-- no changes yet
+- initial draft of ARA audio file chunk authoring directly in the host
 
 
 === ARA SDK 2.0 release (aka 2.0.001) (2021/05/03) ===
