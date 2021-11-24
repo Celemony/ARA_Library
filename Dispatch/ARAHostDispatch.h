@@ -120,9 +120,9 @@ public:
     //! \copydoc ARAAudioAccessControllerInterface::createAudioReaderForSource
     virtual ARAAudioReaderHostRef createAudioReaderForSource (ARAAudioSourceHostRef audioSourceHostRef, bool use64BitSamples) noexcept = 0;
     //! \copydoc ARAAudioAccessControllerInterface::readAudioSamples
-    virtual bool readAudioSamples (ARAAudioReaderHostRef readerRef, ARASamplePosition samplePosition, ARASampleCount samplesPerChannel, void* const buffers[]) noexcept = 0;
+    virtual bool readAudioSamples (ARAAudioReaderHostRef audioReaderHostRef, ARASamplePosition samplePosition, ARASampleCount samplesPerChannel, void* const buffers[]) noexcept = 0;
     //! \copydoc ARAAudioAccessControllerInterface::destroyAudioReader
-    virtual void destroyAudioReader (ARAAudioReaderHostRef readerRef) noexcept = 0;
+    virtual void destroyAudioReader (ARAAudioReaderHostRef audioReaderHostRef) noexcept = 0;
 };
 ARA_MAP_HOST_REF (AudioAccessControllerInterface, ARAAudioAccessControllerHostRef)
 
@@ -309,23 +309,23 @@ public:
 //@{
     // deprecated ARA 1 monolithic persistency calls, must be used unless requiring plug-ins to support kARAAPIGeneration_2_0_Final
     //! \copydoc ARADocumentControllerInterface::beginRestoringDocumentFromArchive
-    ARA_DEPRECATED(2_0_Final) bool beginRestoringDocumentFromArchive (ARAArchiveReaderHostRef readerHostRef) noexcept;
+    ARA_DEPRECATED(2_0_Final) bool beginRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept;
     //! \copydoc ARADocumentControllerInterface::endRestoringDocumentFromArchive
-    ARA_DEPRECATED(2_0_Final) bool endRestoringDocumentFromArchive (ARAArchiveReaderHostRef readerHostRef) noexcept;
+    ARA_DEPRECATED(2_0_Final) bool endRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept;
     //! \copydoc ARADocumentControllerInterface::storeDocumentToArchive
-    ARA_DEPRECATED(2_0_Final) bool storeDocumentToArchive (ARAArchiveWriterHostRef writerHostRef) noexcept;
+    ARA_DEPRECATED(2_0_Final) bool storeDocumentToArchive (ARAArchiveWriterHostRef archiveWriterHostRef) noexcept;
     //! If supporting both types of persistency, this call can be used to pick the appropriate type for the given plug-in.
     ARA_DEPRECATED(2_0_Final) bool supportsPartialPersistency () noexcept;
     // new ARA 2 partial persistency calls, may only be used for plug-ins that support the new ARA 2 persistency,
     // which is part of kARAAPIGeneration_2_0_Final (but not yet present in kARAAPIGeneration_2_0_Draft !)
     //! \copydoc ARADocumentControllerInterface::restoreObjectsFromArchive
-    bool restoreObjectsFromArchive (ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept;
+    bool restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept;
     //! \copydoc ARADocumentControllerInterface::storeObjectsToArchive
-    bool storeObjectsToArchive (ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept;
+    bool storeObjectsToArchive (ARAArchiveWriterHostRef archiveWriterHostRef, const ARAStoreObjectsFilter* filter) noexcept;
     //! Test whether storeAudioSourceToAudioFileChunk () is supported by the plug-in.
     bool supportsStoringAudioFileChunks () noexcept;
     //! \copydoc ARADocumentControllerInterface::storeAudioSourceToAudioFileChunk
-    bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept;
+    bool storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef archiveWriterHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept;
 //@}
 
 //! @name Document Management

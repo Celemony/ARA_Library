@@ -1099,14 +1099,14 @@ void DocumentController::notifyModelUpdates () noexcept
     didNotifyModelUpdates ();
 }
 
-bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept
+bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
-    HostArchiveReader archiveReader (this, readerHostRef);
+    HostArchiveReader archiveReader (this, archiveReaderHostRef);
 
 #if ARA_VALIDATE_API_CALLS
     if (DocumentController::getUsedApiGeneration () >= kARAAPIGeneration_2_0_Final)
@@ -1127,14 +1127,14 @@ bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef read
     return doRestoreObjectsFromArchive (&archiveReader, &restoreObjectsFilter);
 }
 
-bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept
+bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef archiveWriterHostRef, const ARAStoreObjectsFilter* filter) noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
     ARA_VALIDATE_API_STATE (!isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
-    HostArchiveWriter archiveWriter (this, writerHostRef);
+    HostArchiveWriter archiveWriter (this, archiveWriterHostRef);
     if (filter)
     {
         for (ARASize i { 0 }; i < filter->audioSourceRefsCount; ++i)
@@ -1151,7 +1151,7 @@ bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef writerHo
     }
 }
 
-bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept
+bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef archiveWriterHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
@@ -1166,7 +1166,7 @@ bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostR
     ARA_VALIDATE_API_STATE (!isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
-    HostArchiveWriter archiveWriter (this, writerHostRef);
+    HostArchiveWriter archiveWriter (this, archiveWriterHostRef);
     *documentArchiveID = nullptr;
     const auto result { doStoreAudioSourceToAudioFileChunk (&archiveWriter, audioSource, documentArchiveID, openAutomatically) };
     ARA_INTERNAL_ASSERT (*documentArchiveID != nullptr);
@@ -2269,9 +2269,9 @@ bool HostAudioReader::readAudioSamples (ARASamplePosition samplePosition, ARASam
 
 /*******************************************************************************/
 
-HostArchiveReader::HostArchiveReader (DocumentController* documentController, ARAArchiveReaderHostRef readerHostRef) noexcept
+HostArchiveReader::HostArchiveReader (DocumentController* documentController, ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 : _hostArchivingController { documentController->getHostArchivingController () },
-  _hostRef { readerHostRef }
+  _hostRef { archiveReaderHostRef }
 {}
 
 ARASize HostArchiveReader::getArchiveSize () const noexcept
@@ -2296,9 +2296,9 @@ ARAPersistentID HostArchiveReader::getDocumentArchiveID () const noexcept
 
 /*******************************************************************************/
 
-HostArchiveWriter::HostArchiveWriter (DocumentController* documentController, ARAArchiveWriterHostRef writerHostRef) noexcept
+HostArchiveWriter::HostArchiveWriter (DocumentController* documentController, ARAArchiveWriterHostRef archiveWriterHostRef) noexcept
 : _hostArchivingController { documentController->getHostArchivingController () },
-  _hostRef { writerHostRef }
+  _hostRef { archiveWriterHostRef }
 {}
 
 bool HostArchiveWriter::writeBytesToArchive (ARASize position, ARASize length, const ARAByte buffer[]) noexcept

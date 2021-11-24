@@ -60,35 +60,35 @@ namespace DocumentControllerDispatcher
 
     // Archiving
 
-    static ARABool ARA_CALL beginRestoringDocumentFromArchive (ARADocumentControllerRef controllerRef, ARAArchiveReaderHostRef /*readerHostRef*/) noexcept
+    static ARABool ARA_CALL beginRestoringDocumentFromArchive (ARADocumentControllerRef controllerRef, ARAArchiveReaderHostRef /*archiveReaderHostRef*/) noexcept
     {
         // begin-/endRestoringDocumentFromArchive () is deprecated, but can be fully mapped to supported calls
         fromRef (controllerRef)->beginEditing ();
         return kARATrue;
     }
 
-    static ARABool ARA_CALL endRestoringDocumentFromArchive (ARADocumentControllerRef controllerRef, ARAArchiveReaderHostRef readerHostRef) noexcept
+    static ARABool ARA_CALL endRestoringDocumentFromArchive (ARADocumentControllerRef controllerRef, ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
     {
         // begin-/endRestoringDocumentFromArchive () is deprecated, but can be fully mapped to supported calls
-        const auto result { fromRef (controllerRef)->restoreObjectsFromArchive (readerHostRef, nullptr) };
+        const auto result { fromRef (controllerRef)->restoreObjectsFromArchive (archiveReaderHostRef, nullptr) };
         fromRef (controllerRef)->endEditing ();
         return (result) ? kARATrue : kARAFalse;
     }
 
-    static ARABool ARA_CALL storeDocumentToArchive (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef writerHostRef) noexcept
+    static ARABool ARA_CALL storeDocumentToArchive (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef archiveWriterHostRef) noexcept
     {
         // storeDocumentToArchive () is deprecated, but can be fully mapped to supported calls
-        return (fromRef (controllerRef)->storeObjectsToArchive (writerHostRef, nullptr)) ? kARATrue : kARAFalse;
+        return (fromRef (controllerRef)->storeObjectsToArchive (archiveWriterHostRef, nullptr)) ? kARATrue : kARAFalse;
     }
 
-    static ARABool ARA_CALL restoreObjectsFromArchive (ARADocumentControllerRef controllerRef, ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept
+    static ARABool ARA_CALL restoreObjectsFromArchive (ARADocumentControllerRef controllerRef, ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept
     {
-        return (fromRef (controllerRef)->restoreObjectsFromArchive (readerHostRef, filter)) ? kARATrue : kARAFalse;
+        return (fromRef (controllerRef)->restoreObjectsFromArchive (archiveReaderHostRef, filter)) ? kARATrue : kARAFalse;
     }
 
-    static ARABool ARA_CALL storeObjectsToArchive (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept
+    static ARABool ARA_CALL storeObjectsToArchive (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef archiveWriterHostRef, const ARAStoreObjectsFilter* filter) noexcept
     {
-        return (fromRef (controllerRef)->storeObjectsToArchive (writerHostRef, filter)) ? kARATrue : kARAFalse;
+        return (fromRef (controllerRef)->storeObjectsToArchive (archiveWriterHostRef, filter)) ? kARATrue : kARAFalse;
     }
 
     // Document Management
@@ -325,10 +325,10 @@ namespace DocumentControllerDispatcher
         return (fromRef (controllerRef)->isLicensedForCapabilities ((runModalActivationDialogIfNeeded != kARAFalse), contentTypesCount, contentTypes, transformationFlags)) ? kARATrue : kARAFalse;
     }
 
-    static ARABool ARA_CALL storeAudioSourceToAudioFileChunk (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, ARABool* openAutomatically) noexcept
+    static ARABool ARA_CALL storeAudioSourceToAudioFileChunk (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef archiveWriterHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, ARABool* openAutomatically) noexcept
     {
         bool autoOpen { false };
-        const auto result {fromRef (controllerRef)->storeAudioSourceToAudioFileChunk (writerHostRef, audioSourceRef, documentArchiveID, &autoOpen) };
+        const auto result {fromRef (controllerRef)->storeAudioSourceToAudioFileChunk (archiveWriterHostRef, audioSourceRef, documentArchiveID, &autoOpen) };
         *openAutomatically = (autoOpen) ? kARATrue : kARAFalse;
         return (result) ? kARATrue : kARAFalse;
     }
@@ -580,15 +580,15 @@ ARAAudioReaderHostRef HostAudioAccessController::createAudioReaderForSource (ARA
     return getInterface ()->createAudioReaderForSource (getRef (), audioSourceHostRef, (use64BitSamples) ? kARATrue : kARAFalse);
 }
 
-bool HostAudioAccessController::readAudioSamples (ARAAudioReaderHostRef readerRef,
+bool HostAudioAccessController::readAudioSamples (ARAAudioReaderHostRef audioReaderHostRef,
                                                  ARASamplePosition samplePosition, ARASampleCount samplesPerChannel, void* const buffers[]) noexcept
 {
-    return (getInterface ()->readAudioSamples (getRef (), readerRef, samplePosition, samplesPerChannel, buffers) != kARAFalse);
+    return (getInterface ()->readAudioSamples (getRef (), audioReaderHostRef, samplePosition, samplesPerChannel, buffers) != kARAFalse);
 }
 
-void HostAudioAccessController::destroyAudioReader (ARAAudioReaderHostRef readerRef) noexcept
+void HostAudioAccessController::destroyAudioReader (ARAAudioReaderHostRef audioReaderHostRef) noexcept
 {
-    getInterface ()->destroyAudioReader (getRef (), readerRef);
+    getInterface ()->destroyAudioReader (getRef (), audioReaderHostRef);
 }
 
 /*******************************************************************************/

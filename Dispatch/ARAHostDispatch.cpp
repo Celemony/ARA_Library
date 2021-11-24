@@ -35,15 +35,15 @@ namespace AudioAccessControllerDispatcher
         return fromHostRef (controllerHostRef)->createAudioReaderForSource (audioSourceHostRef, use64BitSamples != kARAFalse);
     }
 
-    static ARABool ARA_CALL readAudioSamples (ARAAudioAccessControllerHostRef controllerHostRef, ARAAudioReaderHostRef readerRef,
+    static ARABool ARA_CALL readAudioSamples (ARAAudioAccessControllerHostRef controllerHostRef, ARAAudioReaderHostRef audioReaderHostRef,
                                               ARASamplePosition samplePosition, ARASampleCount samplesPerChannel, void* const buffers[]) noexcept
     {
-        return (fromHostRef (controllerHostRef)->readAudioSamples (readerRef, samplePosition, samplesPerChannel, buffers)) ? kARATrue : kARAFalse;
+        return (fromHostRef (controllerHostRef)->readAudioSamples (audioReaderHostRef, samplePosition, samplesPerChannel, buffers)) ? kARATrue : kARAFalse;
     }
 
-    static void ARA_CALL destroyAudioReader (ARAAudioAccessControllerHostRef controllerHostRef, ARAAudioReaderHostRef readerRef) noexcept
+    static void ARA_CALL destroyAudioReader (ARAAudioAccessControllerHostRef controllerHostRef, ARAAudioReaderHostRef audioReaderHostRef) noexcept
     {
-        fromHostRef (controllerHostRef)->destroyAudioReader (readerRef);
+        fromHostRef (controllerHostRef)->destroyAudioReader (audioReaderHostRef);
     }
 
     static const ARAAudioAccessControllerInterface* getInterface () noexcept
@@ -361,7 +361,7 @@ void DocumentController::updateDocumentProperties (const ARADocumentProperties* 
     getInterface ()->updateDocumentProperties (getRef (), properties);
 }
 
-bool DocumentController::beginRestoringDocumentFromArchive (ARAArchiveReaderHostRef readerHostRef) noexcept
+bool DocumentController::beginRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
     // begin-/endRestoringDocumentFromArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
     if (supportsPartialPersistency ())
@@ -371,32 +371,32 @@ bool DocumentController::beginRestoringDocumentFromArchive (ARAArchiveReaderHost
     }
     else
     {
-        return (getInterface ()->beginRestoringDocumentFromArchive (getRef (), readerHostRef) != kARAFalse);
+        return (getInterface ()->beginRestoringDocumentFromArchive (getRef (), archiveReaderHostRef) != kARAFalse);
     }
 }
 
-bool DocumentController::endRestoringDocumentFromArchive (ARAArchiveReaderHostRef readerHostRef) noexcept
+bool DocumentController::endRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
     // begin-/endRestoringDocumentFromArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
     if (supportsPartialPersistency ())
     {
-        const auto result { getInterface ()->restoreObjectsFromArchive (getRef (), readerHostRef, nullptr) };
+        const auto result { getInterface ()->restoreObjectsFromArchive (getRef (), archiveReaderHostRef, nullptr) };
         getInterface ()->endEditing (getRef ());
         return (result != kARAFalse);
     }
     else
     {
-        return (getInterface ()->endRestoringDocumentFromArchive (getRef (), readerHostRef) != kARAFalse);
+        return (getInterface ()->endRestoringDocumentFromArchive (getRef (), archiveReaderHostRef) != kARAFalse);
     }
 }
 
-bool DocumentController::storeDocumentToArchive (ARAArchiveWriterHostRef writerHostRef) noexcept
+bool DocumentController::storeDocumentToArchive (ARAArchiveWriterHostRef archiveWriterHostRef) noexcept
 {
     // storeDocumentToArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
     if (supportsPartialPersistency ())
-        return (getInterface ()->storeObjectsToArchive (getRef (), writerHostRef, nullptr) != kARAFalse);
+        return (getInterface ()->storeObjectsToArchive (getRef (), archiveWriterHostRef, nullptr) != kARAFalse);
     else
-        return (getInterface ()->storeDocumentToArchive (getRef (), writerHostRef) != kARAFalse);
+        return (getInterface ()->storeDocumentToArchive (getRef (), archiveWriterHostRef) != kARAFalse);
 }
 
 bool DocumentController::supportsPartialPersistency () noexcept
@@ -404,20 +404,20 @@ bool DocumentController::supportsPartialPersistency () noexcept
     return getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeObjectsToArchive)> ();
 }
 
-bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef readerHostRef, const ARARestoreObjectsFilter* filter) noexcept
+bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept
 {
     if (!supportsPartialPersistency ())
         return false;
 
-    return (getInterface ()->restoreObjectsFromArchive (getRef (), readerHostRef, filter) != kARAFalse);
+    return (getInterface ()->restoreObjectsFromArchive (getRef (), archiveReaderHostRef, filter) != kARAFalse);
 }
 
-bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef writerHostRef, const ARAStoreObjectsFilter* filter) noexcept
+bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef archiveWriterHostRef, const ARAStoreObjectsFilter* filter) noexcept
 {
     if (!supportsPartialPersistency ())
         return false;
 
-    return (getInterface ()->storeObjectsToArchive (getRef (), writerHostRef, filter) != kARAFalse);
+    return (getInterface ()->storeObjectsToArchive (getRef (), archiveWriterHostRef, filter) != kARAFalse);
 }
 
 bool DocumentController::supportsStoringAudioFileChunks () noexcept
@@ -431,13 +431,13 @@ bool DocumentController::supportsStoringAudioFileChunks () noexcept
     return (factory->supportsStoringAudioFileChunks != kARAFalse);
 }
 
-bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef writerHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept
+bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostRef archiveWriterHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, bool* openAutomatically) noexcept
 {
     if (!supportsStoringAudioFileChunks ())
         return false;
 
     ARABool autoOpen { kARAFalse };
-    const auto result { getInterface ()->storeAudioSourceToAudioFileChunk (getRef (), writerHostRef, audioSourceRef, documentArchiveID, &autoOpen) };
+    const auto result { getInterface ()->storeAudioSourceToAudioFileChunk (getRef (), archiveWriterHostRef, audioSourceRef, documentArchiveID, &autoOpen) };
     *openAutomatically = (autoOpen != kARAFalse);
     return (result != kARAFalse);
 }
