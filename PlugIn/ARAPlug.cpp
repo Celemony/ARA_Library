@@ -2733,7 +2733,7 @@ void PlugInEntry::initializeARAWithConfiguration (const ARAInterfaceConfiguratio
 
     const SizedStructPtr<ARAInterfaceConfiguration> ptr { config };
     ARA_VALIDATE_API_STRUCT_PTR (ptr, ARAInterfaceConfiguration);
-    ARA_VALIDATE_API_ARGUMENT (ptr, getFactory ()->lowestSupportedApiGeneration <= config->desiredApiGeneration);
+    ARA_VALIDATE_API_ARGUMENT (ptr, getFactory ()->lowestSupportedApiGeneration <= ptr->desiredApiGeneration);
     ARA_VALIDATE_API_ARGUMENT (ptr, ptr->desiredApiGeneration <= getFactory ()->highestSupportedApiGeneration);
 
     _usedApiGeneration = ptr->desiredApiGeneration;
