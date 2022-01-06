@@ -1,5 +1,12 @@
 var NAVTREEINDEX4 =
 {
+"group___plug-_in___factory.html#adba299d1cc79314d518fb546375ce5db":[4,6,4,0,1],
+"group___plug-_in___factory.html#adebff6774723eb0490324afdcb2a993d":[4,6,4,1,5],
+"group___plug-_in___factory.html#ae4328146f1b55f9bc7d0e694e1bb6b16":[4,6,4,1,8],
+"group___plug-_in___factory.html#afc23d9c3159d74aac0598f08ed905f35":[4,6,4,0,0],
+"group___plug-_in___factory.html#struct_a_r_a_factory":[4,6,4,1],
+"group___plug-_in___factory.html#struct_a_r_a_interface_configuration":[4,6,4,0],
+"group___plug___in___interfaces.html":[4,6],
 "group___processing___algorithm___selection.html":[4,6,1],
 "group___processing___algorithm___selection.html#a351f1b3d1c0dd7574d6f1025b2fcfe9c":[4,6,1,0,0],
 "group___processing___algorithm___selection.html#aac46b2c58a94845208bfe423f7d8c57a":[4,6,1,0,2],

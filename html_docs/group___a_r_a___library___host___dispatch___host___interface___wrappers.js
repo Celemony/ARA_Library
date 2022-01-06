@@ -2,8 +2,8 @@ var group___a_r_a___library___host___dispatch___host___interface___wrappers =
 [
     [ "HostAudioAccessController", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#class_a_r_a_1_1_plug_in_1_1_host_audio_access_controller", [
       [ "createAudioReaderForSource", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#ae29402a5599fc17090d0c293e5f443c4", null ],
-      [ "destroyAudioReader", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#ad7b357b60aa68ded67de4e9bf1749266", null ],
-      [ "readAudioSamples", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#a1c75eaf5ea9284c3bf681115b735d862", null ]
+      [ "destroyAudioReader", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#ad4edc3152d6036f89fc3b4e391a4e0e3", null ],
+      [ "readAudioSamples", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#aac3b2916ff6a3cc61d0ec5738524eaa3", null ]
     ] ],
     [ "HostArchivingController", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#class_a_r_a_1_1_plug_in_1_1_host_archiving_controller", [
       [ "getArchiveSize", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#acc87bf911b3aac4da3bdea1849268a50", null ],

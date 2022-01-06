@@ -20,6 +20,7 @@ var group___plug__in___factory =
       [ "manufacturerName", "group___plug-_in___factory.html#a4eba81b15dddeb2d342a2a8bf57a8113", null ],
       [ "plugInName", "group___plug-_in___factory.html#a341b269750f1c71e37d9717a6c04cd46", null ],
       [ "supportedPlaybackTransformationFlags", "group___plug-_in___factory.html#ad86be852472fa25593b8801c4ade263a", null ],
+      [ "supportsStoringAudioFileChunks", "group___plug-_in___factory.html#a109051a3e886c9522ea4dd03ffc34fc3", null ],
       [ "uninitializeARA", "group___plug-_in___factory.html#a6f0bfeb3bda439bf7f4d63e4435a1653", null ],
       [ "version", "group___plug-_in___factory.html#a4c00e0226ef2e553d8c614304891485d", null ]
     ] ]

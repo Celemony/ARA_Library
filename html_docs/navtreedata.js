@@ -24,7 +24,7 @@
 */
 var NAVTREE =
 [
-  [ "ARA SDK 2.0.0", "index.html", [
+  [ "ARA SDK 2.1.0", "index.html", [
     [ "Introduction", "intro.html", [
       [ "Welcome", "intro.html#sec_Welcome", null ],
       [ "About ARA", "intro.html#autotoc_md0", null ]
@@ -125,10 +125,10 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "ara_design_overview.html",
-"group___a_r_a___library___a_r_a_plug___plug_in_entry.html#a2c730711a4bc4daca565f90fb08b292a",
-"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a9d3eab5fa47d18a9f42a6176357ae229",
-"group___model___audio___modification.html#ga4fcadfe860312728c065593e1f7cf104",
-"group___processing___algorithm___selection.html"
+"group___a_r_a___library___a_r_a_plug___plug_in_entry.html#a232f7e41a55da306cd0e3f5299a0d393",
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a920d4417abbc218175253107f549a37f",
+"group___host___playback___controller___interface.html#struct_a_r_a_playback_controller_interface",
+"group___plug-_in___factory.html#adba299d1cc79314d518fb546375ce5db"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

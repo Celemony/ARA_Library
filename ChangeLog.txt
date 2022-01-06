@@ -1,9 +1,6 @@
-This is a development build of the ARA Library 2.1.
-=== PRELIMINARY - DO NOT USE FOR SHIPPING PRODUCTS! ===
-
-
-ARA SDK 2.1 draft 1 (aka 2.0.1) (2021/??/??)
-- initial draft of ARA audio file chunk authoring directly in the host
+=== ARA SDK 2.1 release (aka 2.1.001) (2022/01/06) ===
+- finalized ARM support for Apple Silicon
+- enable ARA audio file chunk authoring directly in the host
 
 
 === ARA SDK 2.0 release (aka 2.0.001) (2021/05/03) ===

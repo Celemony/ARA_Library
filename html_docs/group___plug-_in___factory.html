@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.0.0: Plug-In Factory</title>
+<title>ARA SDK 2.1.0: Plug-In Factory</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -237,6 +237,10 @@ const <a class="el" href="group___model___content___readers__and___content___eve
 <a class="el" href="group___model___playback___region.html#ga258336ff5f674225e3ec403493461179">ARAPlaybackTransformationFlags</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___plug-_in___factory.html#ad86be852472fa25593b8801c4ade263a">supportedPlaybackTransformationFlags</a></td></tr>
 <tr class="memdesc:ad86be852472fa25593b8801c4ade263a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set of transformations that the plug-in supports when configuring playback regions. These flags allow the host to determine whether e.g. the plug-in can be used as time-stretch engine. <br /></td></tr>
 <tr class="separator:ad86be852472fa25593b8801c4ade263a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a109051a3e886c9522ea4dd03ffc34fc3"><td class="memItemLeft" align="right" valign="top"><a id="a109051a3e886c9522ea4dd03ffc34fc3"></a>
+<a class="el" href="group___boolean__values.html#ga49ea321bed3e4843a38702d03cc4cff0">ARABool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___plug-_in___factory.html#a109051a3e886c9522ea4dd03ffc34fc3">supportsStoringAudioFileChunks</a></td></tr>
+<tr class="memdesc:a109051a3e886c9522ea4dd03ffc34fc3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag whether the plug-in supports exporting ARA audio file chunks via <a class="el" href="group___plug-_in___document___controller.html#a4759249602a579d2d561745eaa92182a" title="Create an archive of the internal state of the specified audio source suitable to be embedded into th...">ARADocumentControllerInterface::storeAudioSourceToAudioFileChunk()</a>. Note that reading such chunks is unaffected by this flag - as long as the documentArchiveID in the chunk is compatible, the plug-in must be able to read the data via <a class="el" href="group___plug-_in___document___controller.html#a6ad2b9f4070e12178057c3c9590f4c32" title="Unarchive the internal state of the specified objects. This call can be used both for unarchiving ent...">ARADocumentControllerInterface::restoreObjectsFromArchive()</a>. <br /></td></tr>
+<tr class="separator:a109051a3e886c9522ea4dd03ffc34fc3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 
 </div>

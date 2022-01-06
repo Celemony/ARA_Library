@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.0.0: Versioned Structs</title>
+<title>ARA SDK 2.1.0: Versioned Structs</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -105,7 +105,7 @@ $(document).ready(function(){initNavTree('group___versioned__structs.html',''); 
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
 <tr class="memitem:gaf6b7379bc16051c370b51127c32f555c"><td class="memItemLeft" align="right" valign="top"><a id="gaf6b7379bc16051c370b51127c32f555c"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___versioned__structs.html#gaf6b7379bc16051c370b51127c32f555c">ARA_IMPLEMENTED_STRUCT_SIZE</a>(StructType,  memberName)&#160;&#160;&#160;(offsetof(ARA::StructType, memberName) + sizeof((static_cast&lt;ARA::StructType *&gt; (nullptr))-&gt;memberName))</td></tr>
+#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___versioned__structs.html#gaf6b7379bc16051c370b51127c32f555c">ARA_IMPLEMENTED_STRUCT_SIZE</a>(StructType,  memberName)&#160;&#160;&#160;(offsetof(ARA::StructType, memberName) + sizeof(static_cast&lt;ARA::StructType *&gt; (nullptr)-&gt;memberName))</td></tr>
 <tr class="memdesc:gaf6b7379bc16051c370b51127c32f555c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Macro that calculates the proper value for the structSize field of a versioned struct based on which features are actually implemented by the code that provides the struct. This may be different from sizeof() whenever features are added in the API, but not yet implemented in the current code base. Only after adding that implementation, the <code>memberName</code> parameter provided to ARA_IMPLEMENTED_STRUCT_SIZE should be updated accordingly.  <br>                               The ARA library C++ dispatchers implement a similar feature via templates, see ARA::SizedStruct&lt;&gt;. <br /></td></tr>
 <tr class="separator:gaf6b7379bc16051c370b51127c32f555c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga1b9045f593489756800c20466f311a93"><td class="memItemLeft" align="right" valign="top"><a id="ga1b9045f593489756800c20466f311a93"></a>

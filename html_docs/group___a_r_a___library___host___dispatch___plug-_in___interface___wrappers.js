@@ -2,7 +2,7 @@ var group___a_r_a___library___host___dispatch___plug__in___interface___wrappers 
 [
     [ "DocumentController", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#class_a_r_a_1_1_host_1_1_document_controller", [
       [ "beginEditing", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a670dc98d997b4590bfa99b45de1d940d", null ],
-      [ "beginRestoringDocumentFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a756d4c511dea251b57cfecd95c9a54b5", null ],
+      [ "beginRestoringDocumentFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#af4e6c5249822ffb4c8ca539d34119dc1", null ],
       [ "cloneAudioModification", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#ab6612ef8703c909c3c078db79432ec27", null ],
       [ "createAudioModification", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#ac10f977dd65b4846fcb79fa5d2ea1819", null ],
       [ "createAudioModificationContentReader", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#ab4b7375d610daa56cfe11c1b1807587e", null ],
@@ -23,7 +23,7 @@ var group___a_r_a___library___host___dispatch___plug__in___interface___wrappers 
       [ "destroyRegionSequence", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a6ac0eb04ef99d61b04b02f7a07160380", null ],
       [ "enableAudioSourceSamplesAccess", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a03c19ecade2cc7e2a988166d2aaaebd1", null ],
       [ "endEditing", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a55e6e57a97e7b22de22736e94dcb86f2", null ],
-      [ "endRestoringDocumentFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#abe7aea0970835088e72704aaa008432d", null ],
+      [ "endRestoringDocumentFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a708cc77b4aa3e2be0f345ac44f12c415", null ],
       [ "getAudioModificationContentGrade", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a8de9d2b6403ccb493fb781c1748c4a66", null ],
       [ "getAudioSourceContentGrade", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a47aa68e7942aef99506242505a6beedc", null ],
       [ "getContentReaderDataForEvent", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#aff1b43aa18f8edb48fd7c7b0313374fa", null ],
@@ -42,11 +42,13 @@ var group___a_r_a___library___host___dispatch___plug__in___interface___wrappers 
       [ "notifyModelUpdates", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a7ff6d70cfebb258cda46c6f1552caf1b", null ],
       [ "requestAudioSourceContentAnalysis", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#aa9c1a3ae570ef45ac2bf3be9fe278f48", null ],
       [ "requestProcessingAlgorithmForAudioSource", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a6048390529bdb2890258525a3fa3210e", null ],
-      [ "restoreObjectsFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#aa19a5ca65a68a1a1283678ddcd174092", null ],
-      [ "storeDocumentToArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#af91e686293c1e98f984862fbdb157c43", null ],
-      [ "storeObjectsToArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a57dcdc5d931a33103d43cbb9b563e343", null ],
+      [ "restoreObjectsFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#ace0f268d1ddd6e93d31a81fc33f0df7f", null ],
+      [ "storeAudioSourceToAudioFileChunk", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a2a3ec356d85d9f6d9e07f899fcd0c1a7", null ],
+      [ "storeDocumentToArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a4141cc2d23ace7852d13a43e5fdf22c6", null ],
+      [ "storeObjectsToArchive", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a2a557619ff871357b9425213b8c387ce", null ],
       [ "supportsPartialPersistency", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#aa315e5ebf28c372d6b4ea89718876afd", null ],
       [ "supportsProcessingAlgorithms", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a0a9424fc79bfb6e8645f18b6e766b4cc", null ],
+      [ "supportsStoringAudioFileChunks", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a14dbcfc51067e6c7aa96fa337d10b457", null ],
       [ "updateAudioModificationProperties", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a89fe1b4debc9c6d5fc7f9f3aab1ee85c", null ],
       [ "updateAudioSourceContent", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#aa866e944374f5e635d9e39c2e471eeb5", null ],
       [ "updateAudioSourceProperties", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a65da8b9bb6d9b6717e071ecaaf4ce2d0", null ],
@@ -60,7 +62,7 @@ var group___a_r_a___library___host___dispatch___plug__in___interface___wrappers 
     [ "PlaybackRenderer", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#class_a_r_a_1_1_host_1_1_playback_renderer", null ],
     [ "EditorRenderer", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#class_a_r_a_1_1_host_1_1_editor_renderer", null ],
     [ "EditorView", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#class_a_r_a_1_1_host_1_1_editor_view", [
-      [ "notifyHideRegionSequences", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#accc315f9985be14249e041b6ebf3790d", null ],
+      [ "notifyHideRegionSequences", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#a53e6cb485b13979d02d2026b2f696e77", null ],
       [ "notifySelection", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#acc0fd0d1ef03b9b9be618716befa3af6", null ]
     ] ],
     [ "ContentReader", "group___a_r_a___library___host___dispatch___plug-_in___interface___wrappers.html#gae6ce3ae1ab5a421b12aae2cb53a3800d", null ]

@@ -39,8 +39,9 @@ var group___a_r_a___library___host___dispatch___plug__in___interfaces =
       [ "notifyModelUpdates", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#adbfe7b9261ae7834d4a315427a248867", null ],
       [ "requestAudioSourceContentAnalysis", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a7227828433c385f53d108c5021c1d310", null ],
       [ "requestProcessingAlgorithmForAudioSource", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a838c453c28cf96694e3002aedfec924b", null ],
-      [ "restoreObjectsFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a0efb9ca4976450d64efcb27830ede4ef", null ],
-      [ "storeObjectsToArchive", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ad2048538ac5cf6ac20bd2b3321a86e02", null ],
+      [ "restoreObjectsFromArchive", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a439a668fb1f0db06d06df534b13c9054", null ],
+      [ "storeAudioSourceToAudioFileChunk", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a91b6aac6ce3b6db7547058fe6a2e305f", null ],
+      [ "storeObjectsToArchive", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a8e0264b139236a7ea2b3959c49f594fe", null ],
       [ "updateAudioModificationProperties", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a92710846f657ab433d3b284d4395c08f", null ],
       [ "updateAudioSourceContent", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a0f90d2a38540e8b732b4120c5c28a4aa", null ],
       [ "updateAudioSourceProperties", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a2a21c60ee264dff98e6e43cb79d6a700", null ],
@@ -54,7 +55,7 @@ var group___a_r_a___library___host___dispatch___plug__in___interfaces =
     [ "PlaybackRendererInterface", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#class_a_r_a_1_1_plug_in_1_1_playback_renderer_interface", null ],
     [ "EditorRendererInterface", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#class_a_r_a_1_1_plug_in_1_1_editor_renderer_interface", null ],
     [ "EditorViewInterface", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#class_a_r_a_1_1_plug_in_1_1_editor_view_interface", [
-      [ "notifyHideRegionSequences", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a2a481d08c41ac9708ac00f2797c233a6", null ],
+      [ "notifyHideRegionSequences", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ab8502dd829adc46a1f6b88f6ea1a528d", null ],
       [ "notifySelection", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a9d3eab5fa47d18a9f42a6176357ae229", null ]
     ] ],
     [ "PlugInExtensionInstance", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#class_a_r_a_1_1_plug_in_1_1_plug_in_extension_instance", null ]

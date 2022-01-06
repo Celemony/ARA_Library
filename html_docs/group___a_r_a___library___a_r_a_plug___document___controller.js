@@ -63,6 +63,7 @@ var group___a_r_a___library___a_r_a_plug___document___controller =
       [ "doRequestProcessingAlgorithmForAudioSource", "group___a_r_a___library___a_r_a_plug___document___controller.html#a1af90ad24f5f59540d226c2cafc6356a", null ],
       [ "doRestoreObjectsFromArchive", "group___a_r_a___library___a_r_a_plug___document___controller.html#a29bc4bd54809151ebd31b4fdfe8068fb", null ],
       [ "doRunModalLicenseActivationForCapabilities", "group___a_r_a___library___a_r_a_plug___document___controller.html#a9c1517c5f26bb464b13b4deecda30d9e", null ],
+      [ "doStoreAudioSourceToAudioFileChunk", "group___a_r_a___library___a_r_a_plug___document___controller.html#aac009a97d827afe5d9680b05c4dfbb31", null ],
       [ "doStoreObjectsToArchive", "group___a_r_a___library___a_r_a_plug___document___controller.html#ab79fe3d7c992d46aa446680d803a9bd5", null ],
       [ "doUpdateAudioSourceContent", "group___a_r_a___library___a_r_a_plug___document___controller.html#a2a457b5be2644d6430d2bdac18bd74ff", null ],
       [ "doUpdateMusicalContextContent", "group___a_r_a___library___a_r_a_plug___document___controller.html#a5a1d4dffbf8751c20f154341e6a576c6", null ],
