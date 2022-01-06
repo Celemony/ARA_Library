@@ -275,13 +275,6 @@ namespace PlaybackControllerDispatcher
 // DocumentControllerHostInstance
 /*******************************************************************************/
 
-#if __cplusplus >= 201402L
-constexpr
-#endif
-          DocumentControllerHostInstance::DocumentControllerHostInstance () noexcept
-: BaseType {}
-{}
-
 DocumentControllerHostInstance::DocumentControllerHostInstance (AudioAccessControllerInterface* audioAccessController, ArchivingControllerInterface* archivingController,
                                                                 ContentAccessControllerInterface* contentAccessController, ModelUpdateControllerInterface* modelUpdateController,
                                                                 PlaybackControllerInterface* playbackController) noexcept

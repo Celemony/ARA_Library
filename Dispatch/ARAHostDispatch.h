@@ -237,7 +237,7 @@ public:
 #if __cplusplus >= 201402L
     constexpr
 #endif
-              DocumentControllerHostInstance () noexcept;
+              DocumentControllerHostInstance () noexcept : BaseType {} {}
     DocumentControllerHostInstance (AudioAccessControllerInterface* audioAccessController,
                                     ArchivingControllerInterface* archivingController,
                                     ContentAccessControllerInterface* contentAccessController = nullptr,
