@@ -910,6 +910,8 @@ DocumentController::DocumentController (const PlugInEntry* entry, const ARADocum
   _hostModelUpdateController { instance },
   _hostPlaybackController { instance }
 {
+    _analysisProgressIsSynced.test_and_set (std::memory_order_release);
+
 #if ARA_VALIDATE_API_CALLS
     _documentControllers.emplace (this, entry);
 #endif
