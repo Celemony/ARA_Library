@@ -2719,11 +2719,17 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
         ARA_INTERNAL_ASSERT (_factory.compatibleDocumentArchiveIDs == nullptr);
     else
         ARA_INTERNAL_ASSERT (_factory.compatibleDocumentArchiveIDs != nullptr);
+    for (auto i { 0U }; i < _factory.compatibleDocumentArchiveIDsCount; ++i)
+        ARA_INTERNAL_ASSERT (std::strlen (_factory.compatibleDocumentArchiveIDs[i]) > 5);
 
     if (_factory.analyzeableContentTypesCount == 0)
         ARA_INTERNAL_ASSERT (_factory.analyzeableContentTypes == nullptr);
     else
         ARA_INTERNAL_ASSERT (_factory.analyzeableContentTypes != nullptr);
+
+    // if content based fades are supported, they shall be supported on both ends
+    if ((_factory.supportedPlaybackTransformationFlags & kARAPlaybackTransformationContentBasedFades) != 0)
+        ARA_INTERNAL_ASSERT ((_factory.supportedPlaybackTransformationFlags & kARAPlaybackTransformationContentBasedFades) == kARAPlaybackTransformationContentBasedFades);
 }
 
 PlugInEntry::~PlugInEntry ()
