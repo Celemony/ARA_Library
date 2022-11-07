@@ -145,7 +145,7 @@ extern "C"
     // typically, some assertion technique will already be implemented in the code bases
     // using this library, any such implementation can be injected here.
     #if !defined(ARA_INTERNAL_ASSERT)
-        #define ARA_INTERNAL_ASSERT(condition) do { if (!(condition)) { ARA_HANDLE_ASSERT(__FILE__, __LINE__, #condition); } } while (0)
+        #define ARA_INTERNAL_ASSERT(condition) ((condition) ? ((void)0) : ARA_HANDLE_ASSERT(__FILE__, __LINE__, #condition))
     #endif
 
     // primitive macro for handling failed assertions
@@ -211,20 +211,20 @@ extern "C"
     // they are written so that their success can be used as a bool to gracefully handle asserts,
     // e.g. if (!ARA_VALIDATE_API_STATE(...)) return;
     #if defined(__cplusplus)
-        #define ARA_VALIDATE_API_STATE(condition)           ((condition) ? true : (ARA::ARAValidationFailure(ARA::kARAAssertInvalidState, nullptr, __FILE__, __LINE__, #condition), false))
-        #define ARA_VALIDATE_API_ARGUMENT(arg, condition)   ((condition) ? true : (ARA::ARAValidationFailure(ARA::kARAAssertInvalidArgument, arg, __FILE__, __LINE__, #condition), false))
-        #define ARA_VALIDATE_API_CONDITION(condition)       ((condition) ? true : (ARA::ARAValidationFailure(ARA::kARAAssertUnspecified, nullptr, __FILE__, __LINE__, #condition), false))
+        #define ARA_VALIDATE_API_STATE(condition)           ((condition) ? void() : (ARA::ARAValidationFailure(ARA::kARAAssertInvalidState, nullptr, __FILE__, __LINE__, #condition)))
+        #define ARA_VALIDATE_API_ARGUMENT(arg, condition)   ((condition) ? void() : (ARA::ARAValidationFailure(ARA::kARAAssertInvalidArgument, arg, __FILE__, __LINE__, #condition)))
+        #define ARA_VALIDATE_API_CONDITION(condition)       ((condition) ? void() : (ARA::ARAValidationFailure(ARA::kARAAssertUnspecified, nullptr, __FILE__, __LINE__, #condition)))
         #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) (ARA_VALIDATE_API_ARGUMENT(structInstance, (structInstance != nullptr) && (structInstance->structSize >= ARA::k##structType##MinSize)))
 //! \todo eventually we should switch to this definition which checks alignment as well - either for all structs,
 //!       or at least inside ARACheckFunctionPointersAreValid since it may have actual performance impact there.
 //      #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) (ARA_VALIDATE_API_ARGUMENT(structInstance, (structInstance != nullptr) && ((((intptr_t)(const ARA::structType *)structInstance) & (_Alignof(size_t) - 1)) == 0) && (structInstance->structSize >= ARA::k##structType##MinSize)))
-        #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) ((ARA_VALIDATE_API_STRUCT_PTR(interfacePointer, InterfaceType)) ? ARA_VALIDATE_API_ARGUMENT(interfacePointer, ARA::ARACheckFunctionPointersAreValid(interfacePointer)) : false)
+        #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) (ARA_VALIDATE_API_STRUCT_PTR(interfacePointer, InterfaceType), ARA_VALIDATE_API_ARGUMENT(interfacePointer, ARA::ARACheckFunctionPointersAreValid(interfacePointer)))
     #else
-        #define ARA_VALIDATE_API_STATE(condition)           ((condition) ? kARATrue : (ARAValidationFailure(kARAAssertInvalidState, NULL, __FILE__, __LINE__, #condition), kARAFalse))
-        #define ARA_VALIDATE_API_ARGUMENT(arg, condition)   ((condition) ? kARATrue : (ARAValidationFailure(kARAAssertInvalidArgument, arg, __FILE__, __LINE__, #condition), kARAFalse))
-        #define ARA_VALIDATE_API_CONDITION(condition)       ((condition) ? kARATrue : (ARAValidationFailure(kARAAssertUnspecified, NULL, __FILE__, __LINE__, #condition), kARAFalse))
+        #define ARA_VALIDATE_API_STATE(condition)           ((condition) ? ((void)0) : (ARAValidationFailure(kARAAssertInvalidState, NULL, __FILE__, __LINE__, #condition)))
+        #define ARA_VALIDATE_API_ARGUMENT(arg, condition)   ((condition) ? ((void)0) : (ARAValidationFailure(kARAAssertInvalidArgument, arg, __FILE__, __LINE__, #condition)))
+        #define ARA_VALIDATE_API_CONDITION(condition)       ((condition) ? ((void)0) : (ARAValidationFailure(kARAAssertUnspecified, NULL, __FILE__, __LINE__, #condition)))
         #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) (ARA_VALIDATE_API_ARGUMENT(structInstance, (structInstance != NULL) && (structInstance->structSize >= k##structType##MinSize)))
-        #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) ((ARA_VALIDATE_API_STRUCT_PTR(interfacePointer, InterfaceType)) ? ARA_VALIDATE_API_ARGUMENT(interfacePointer, ARACheckFunctionPointersAreValid(interfacePointer)) : kARAFalse)
+        #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) (ARA_VALIDATE_API_STRUCT_PTR(interfacePointer, InterfaceType), ARA_VALIDATE_API_ARGUMENT(interfacePointer, ARACheckFunctionPointersAreValid(interfacePointer)))
     #endif
 
     // internal helper functions for the macros above
@@ -232,19 +232,11 @@ extern "C"
     void ARAValidationFailure(ARAAssertCategory category, const void * problematicArgument, const char * file, int line, const char * diagnosis) ARA_ATTRIBUTE_ANALYZER_NORETURN;
     ARABool ARACheckFunctionPointersAreValid(const void * interfacePointer);
 #else
-    #if defined(__cplusplus)
-        #define ARA_VALIDATE_API_STATE(condition) true
-        #define ARA_VALIDATE_API_ARGUMENT(arg, condition) true
-        #define ARA_VALIDATE_API_CONDITION(condition) true
-        #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) true
-        #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) true
-    #else
-        #define ARA_VALIDATE_API_STATE(condition) kARATrue
-        #define ARA_VALIDATE_API_ARGUMENT(arg, condition) kARATrue
-        #define ARA_VALIDATE_API_CONDITION(condition) kARATrue
-        #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) kARATrue
-        #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) kARATrue
-    #endif
+    #define ARA_VALIDATE_API_STATE(condition) ((void)0)
+    #define ARA_VALIDATE_API_ARGUMENT(arg, condition) ((void)0)
+    #define ARA_VALIDATE_API_CONDITION(condition) ((void)0)
+    #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) ((void)0)
+    #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) ((void)0)
 #endif
 
 #if defined(__cplusplus)

@@ -163,7 +163,8 @@ public:
 
     inline void validateEvent (const DataType* dataPtr, ARAInt32 eventIndex)
     {
-        if (ARA_VALIDATE_API_CONDITION (dataPtr != nullptr))
+        ARA_VALIDATE_API_CONDITION (dataPtr != nullptr);
+        if (dataPtr != nullptr)
         {
             ContentReaderValidatorImplementation<contentType>::validateEvent (dataPtr);
 
