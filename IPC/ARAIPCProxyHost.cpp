@@ -585,6 +585,7 @@ using namespace ProxyHost;
 
 std::vector<const ARAFactory*> _factories {};
 ARAIPCMessageSender _plugInCallbacksSender {};
+ARAIPCBindingHandler _bindingHandler {};
 
 void ARAIPCProxyHostAddFactory (const ARAFactory* factory)
 {
@@ -599,19 +600,14 @@ void ARAIPCProxyHostSetPlugInCallbacksSender (ARAIPCMessageSender plugInCallback
     _plugInCallbacksSender = plugInCallbacksSender;
 }
 
-ARADocumentControllerRef ARAIPCProxyHostTranslateDocumentControllerRef (ARADocumentControllerRef remoteRef)
+void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler)
 {
-    return fromRef (remoteRef)->getRef ();
+    _bindingHandler = handler;
 }
 
-ARAPlugInExtensionRef ARAIPCProxyHostCreatePlugInExtension (const ARAPlugInExtensionInstance* instance)
+void ARAIPCProxyHostCleanupBinding (const ARA::ARAPlugInExtensionInstance* plugInExtensionInstance)
 {
-    return toRef (new PlugInExtension { instance });
-}
-
-void ARAIPCProxyHostDestroyPlugInExtension (ARAPlugInExtensionRef plugInExtensionRef)
-{
-    delete fromRef (plugInExtensionRef);
+    delete fromRef (plugInExtensionInstance->plugInExtensionRef);
 }
 
 void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
@@ -676,6 +672,16 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
             auto documentController { new DocumentController (hostInstance, documentControllerInstance) };
             return encodeReply (replyEncoder, ARADocumentControllerRef { toRef (documentController) });
         }
+    }
+    else if (messageID == kBindToDocumentControllerMessageID)
+    {
+        ARAIPCPlugInInstanceRef plugInInstanceRef;
+        ARADocumentControllerRef controllerRef;
+        ARAPlugInInstanceRoleFlags knownRoles;
+        ARAPlugInInstanceRoleFlags assignedRoles;
+        decodeArguments (decoder, plugInInstanceRef, controllerRef, knownRoles, assignedRoles);
+        const auto plugInExtensionInstance { _bindingHandler (plugInInstanceRef, fromRef (controllerRef)->getRef (), knownRoles, assignedRoles) };
+        return encodeReply (replyEncoder, ARAPlugInExtensionRef { toRef (new PlugInExtension { plugInExtensionInstance })});
     }
 
     //ARADocumentControllerInterface

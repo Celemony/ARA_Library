@@ -193,6 +193,17 @@ typedef struct ARAIPCMessageSender
 //! @}
 
 
+//! Companion API: opaque encapsulation
+//! @{
+//! to keep the IPC decoupled from the Companion API in use, the IPC code uses an opaque token to represent a plug-in instance
+typedef size_t ARAIPCPlugInInstanceRef;
+
+//! callback that the proxy uses to execute the binding of an opaque Companion API plug-in instance to the given document controller
+typedef const ARAPlugInExtensionInstance* (*ARAIPCBindingHandler) (ARAIPCPlugInInstanceRef plugInInstanceRef,
+                    ARADocumentControllerRef controllerRef, ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
+//! @}
+
+
 #if defined(__cplusplus)
 }   // extern "C"
 }   // namespace IPC
