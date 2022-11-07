@@ -133,7 +133,7 @@ struct ContentLogger
         {
             const std::array<const char*, 12> noteNames { "C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B" };
             ARA_LOG ("%s[%i] %.2f Hz (%i, %s), vol = %.3f, %.3f - %.3f - %.3f - %.3f", getTypeNameForContentType (kARAContentTypeNotes), idx,
-                noteData.frequency, noteData.pitchNumber, noteNames[noteData.pitchNumber % 12], noteData.volume,
+                noteData.frequency, noteData.pitchNumber, noteNames[static_cast<size_t> (noteData.pitchNumber % 12)], noteData.volume,
                 noteData.startPosition, noteData.startPosition + noteData.attackDuration,
                 noteData.startPosition + noteData.noteDuration, noteData.startPosition + noteData.signalDuration);
         }
