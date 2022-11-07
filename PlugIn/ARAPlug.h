@@ -452,7 +452,10 @@ public:
     ARATimeDuration getDuration () const noexcept { return timeAtSamplePosition (_sampleCount, _sampleRate); }  //!< The duration of the audio source in seconds; sampleRate / sampleCount.
     ARAChannelCount getChannelCount () const noexcept { return _channelCount; }                //!< See ARAAudioSourceProperties::channelCount.
     bool merits64BitSamples () const noexcept { return _merits64BitSamples; }                  //!< See ARAAudioSourceProperties::merits64BitSamples.
+//@}
 
+//! @name Host-controlled Audio Source State
+//@{
     bool isSampleAccessEnabled () const noexcept { return _sampleAccessEnabled; }              //!< See DocumentController::enableAudioSourceSamplesAccess.
     bool isDeactivatedForUndoHistory () const noexcept { return _deactivatedForUndoHistory; }  //!< See DocumentController::deactivateAudioSourceForUndoHistory.
 //@}
@@ -529,11 +532,14 @@ public:
     const OptionalProperty<ARAUtf8String>& getName () const noexcept { return _name; }         //!< See ARAAudioModificationProperties::name.
     const std::string& getPersistentID () const noexcept { return _persistentID; }             //!< See ARAAudioModificationProperties::persistentID.
 
-    bool isDeactivatedForUndoHistory () const noexcept { return _deactivatedForUndoHistory; }  //!< See DocumentController::deactivateAudioModificationForUndoHistory.
-
     //! Convenience function: if host did not provide name, this returns the audio source name -
     //! note that the fallback may still return nullptr!
     const OptionalProperty<ARAUtf8String>& getEffectiveName () const noexcept;
+//@}
+
+//! @name Host-controlled Audio Modification State
+//@{
+    bool isDeactivatedForUndoHistory () const noexcept { return _deactivatedForUndoHistory; }  //!< See DocumentController::deactivateAudioModificationForUndoHistory.
 //@}
 
 //! @name Audio Modification Relationships
@@ -947,9 +953,9 @@ protected:
     virtual void willDeactivateAudioModificationForUndoHistory (AudioModification* audioModification, bool deactivate) noexcept {}
     //! Override to customize behavior after deactivateAudioModificationForUndoHistory() changes \p audioModification's activated state.
     virtual void didDeactivateAudioModificationForUndoHistory (AudioModification* audioModification, bool deactivate) noexcept {}
-    //! Override to customize behavior after createPlaybackRegion() or updatePlaybackRegionProperties() adds \p playbackRegion to \p audioModification.
+    //! Override to customize behavior after createPlaybackRegion() adds \p playbackRegion to \p audioModification.
     virtual void didAddPlaybackRegionToAudioModification (AudioModification* audioModification, PlaybackRegion* playbackRegion) noexcept {}
-    //! Override to customize behavior before destroyPlaybackRegion() or updatePlaybackRegionProperties() removes \p playbackRegion from \p audioModification.
+    //! Override to customize behavior before destroyPlaybackRegion() removes \p playbackRegion from \p audioModification.
     virtual void willRemovePlaybackRegionFromAudioModification (AudioModification* audioModification, PlaybackRegion* playbackRegion) noexcept {}
     //! Override to customize behavior before \p audioModification is destroyed during destroyAudioModification().
     virtual void willDestroyAudioModification (AudioModification* audioModification) noexcept {}

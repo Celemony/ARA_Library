@@ -91,6 +91,14 @@ namespace DocumentControllerDispatcher
         return (fromRef (controllerRef)->storeObjectsToArchive (archiveWriterHostRef, filter)) ? kARATrue : kARAFalse;
     }
 
+    static ARABool ARA_CALL storeAudioSourceToAudioFileChunk (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef archiveWriterHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, ARABool* openAutomatically) noexcept
+    {
+        bool autoOpen { false };
+        const auto result {fromRef (controllerRef)->storeAudioSourceToAudioFileChunk (archiveWriterHostRef, audioSourceRef, documentArchiveID, &autoOpen) };
+        *openAutomatically = (autoOpen) ? kARATrue : kARAFalse;
+        return (result) ? kARATrue : kARAFalse;
+    }
+
     // Document Management
 
     static void ARA_CALL updateDocumentProperties (ARADocumentControllerRef controllerRef, const ARADocumentProperties* properties) noexcept
@@ -320,17 +328,11 @@ namespace DocumentControllerDispatcher
         fromRef (controllerRef)->requestProcessingAlgorithmForAudioSource (audioSourceRef, algorithmIndex);
     }
 
+    // License Management
+
     static ARABool ARA_CALL isLicensedForCapabilities (ARADocumentControllerRef controllerRef, ARABool runModalActivationDialogIfNeeded, ARASize contentTypesCount, const ARAContentType contentTypes[], ARAPlaybackTransformationFlags transformationFlags) noexcept
     {
         return (fromRef (controllerRef)->isLicensedForCapabilities ((runModalActivationDialogIfNeeded != kARAFalse), contentTypesCount, contentTypes, transformationFlags)) ? kARATrue : kARAFalse;
-    }
-
-    static ARABool ARA_CALL storeAudioSourceToAudioFileChunk (ARADocumentControllerRef controllerRef, ARAArchiveWriterHostRef archiveWriterHostRef, ARAAudioSourceRef audioSourceRef, ARAPersistentID* documentArchiveID, ARABool* openAutomatically) noexcept
-    {
-        bool autoOpen { false };
-        const auto result {fromRef (controllerRef)->storeAudioSourceToAudioFileChunk (archiveWriterHostRef, audioSourceRef, documentArchiveID, &autoOpen) };
-        *openAutomatically = (autoOpen) ? kARATrue : kARAFalse;
-        return (result) ? kARATrue : kARAFalse;
     }
 
     static const ARADocumentControllerInterface* getInterface () noexcept
