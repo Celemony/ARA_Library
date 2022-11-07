@@ -96,10 +96,14 @@ template <typename ControllerType, typename ModelObjectRefType> struct ContentRe
 /*******************************************************************************/
 
 template <typename ContentReader>
-class ContentReaderEventIterator : public std::iterator<std::random_access_iterator_tag, typename ContentReader::DataType, ARAInt32, typename ContentReader::DataType*, typename ContentReader::DataType>
+class ContentReaderEventIterator
 {
 public:
-    using DataType = typename ContentReader::DataType;
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = typename ContentReader::DataType;
+    using difference_type = ARAInt32;
+    using pointer = const value_type*;
+    using reference = const value_type&;
 
     ContentReaderEventIterator () = delete;
 
@@ -128,12 +132,12 @@ public:
     inline bool operator<= (const ContentReaderEventIterator& other) const noexcept { return this->_eventIndex <= other._eventIndex; }
     inline bool operator>= (const ContentReaderEventIterator& other) const noexcept { return this->_eventIndex >= other._eventIndex; }
 
-    inline const DataType& operator* () const noexcept { return *this->getCachedData (this->_eventIndex); }
-    inline const DataType* operator-> () const noexcept { return this->getCachedData (this->_eventIndex); }
-    inline const DataType& operator[] (ARAInt32 offset) const noexcept { return *this->getCachedData (this->_eventIndex + offset); }
+    inline reference operator* () const noexcept { return *this->getCachedData (this->_eventIndex); }
+    inline pointer operator-> () const noexcept { return this->getCachedData (this->_eventIndex); }
+    inline reference operator[] (ARAInt32 offset) const noexcept { return *this->getCachedData (this->_eventIndex + offset); }
 
 private:
-    inline const DataType* getCachedData (ARAInt32 index) const noexcept
+    inline pointer getCachedData (ARAInt32 index) const noexcept
     {
         if (this->_cachedEventIndex != index)
         {
@@ -147,7 +151,7 @@ private:
     const ContentReader* _contentReader;
     ARAInt32 _eventIndex;
     mutable ARAInt32 _cachedEventIndex;
-    mutable DataType _cachedData;
+    mutable value_type _cachedData;
 };
 
 /*******************************************************************************/

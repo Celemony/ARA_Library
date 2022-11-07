@@ -2,7 +2,7 @@ This is a development build of the ARA Library 2.2.
 === PRELIMINARY - DO NOT USE FOR SHIPPING PRODUCTS! ===
 
 Changes since previous releases:
-- no changes yet
+- minor tweaks for full compatibility with recent C++ compilers (e.g. std::iterator, warnings, etc.)
 
 
 === ARA SDK 2.1 release (aka 2.1.001) (2022/01/06) ===
