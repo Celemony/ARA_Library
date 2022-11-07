@@ -2,6 +2,7 @@ This is a development build of the ARA Library 2.2.
 === PRELIMINARY - DO NOT USE FOR SHIPPING PRODUCTS! ===
 
 Changes since previous releases:
+- initial draft of surround support for audio sources
 - implementation of assertion macros changed to be consistent void expressions
   Code like "if (ARA_SOME_ASSERT (someCall ()))" breaks when disabling asserts,
   so this change makes it impossible to write it.

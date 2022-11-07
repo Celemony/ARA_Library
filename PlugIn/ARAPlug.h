@@ -22,6 +22,7 @@
 #include "ARA_Library/Debug/ARADebug.h"
 #include "ARA_Library/Dispatch/ARAPlugInDispatch.h"
 #include "ARA_Library/Dispatch/ARAContentReader.h"
+#include "ARA_Library/Utilities/ARAChannelArrangement.h"
 #include "ARA_Library/Utilities/ARAStdVectorUtilities.h"
 #include "ARA_Library/Utilities/ARASamplePositionConversion.h"
 
@@ -458,6 +459,14 @@ public:
 //@{
     bool isSampleAccessEnabled () const noexcept { return _sampleAccessEnabled; }              //!< See DocumentController::enableAudioSourceSamplesAccess.
     bool isDeactivatedForUndoHistory () const noexcept { return _deactivatedForUndoHistory; }  //!< See DocumentController::deactivateAudioSourceForUndoHistory.
+
+protected:
+    //! Since the channel arrangement is expressed in terms of the Companion API and not
+    //! in some native ARA format, translating it into the plug-in's internal representation
+    //! is delegated by the library via this call for clients to override as necessary.
+    virtual void doUpdateChannelArrangement (const ChannelArrangement& channelArrangement) noexcept {}
+
+public:
 //@}
 
 //! @name Audio Source Relationships
@@ -1311,6 +1320,8 @@ private:
 
     void _willChangeMusicalContextOrder () noexcept;
     void _willChangeRegionSequenceOrder (MusicalContext* affectedMusicalContext) noexcept;
+
+    void _validateAudioSourceChannelArrangement (PropertiesPtr<ARAAudioSourceProperties> properties) noexcept;
 
     std::vector<ARAContentType> const _getValidatedAnalyzableContentTypes (ARASize contentTypesCount, const ARAContentType contentTypes[], bool mayBeEmpty) noexcept;
 
