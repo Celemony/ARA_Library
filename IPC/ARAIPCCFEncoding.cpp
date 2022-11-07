@@ -40,6 +40,9 @@ extern "C" {
 #endif
 
 
+// the message ID will be added to the underlying dictionary with a key that does not conflict with other message keys
+constexpr ARAIPCMessageKey messageIDKey { -1 };
+
 
 class _CFReleaser
 {
@@ -56,9 +59,11 @@ private:
 
 
 // wrap key value into CFString (no reference count transferred to caller)
-CFStringRef ARA_CALL ARAIPCCFMessageGetEncodedKey (ARAIPCMessageKey argKey)
+CFStringRef ARA_CALL ARAIPCCFMessageGetEncodedKey (ARAIPCMessageKey argKey, bool isInternalCall = false)
 {
-    ARA_INTERNAL_ASSERT (argKey >= 0);
+    if (!isInternalCall)
+        ARA_INTERNAL_ASSERT (argKey >= 0);
+
     // \todo All plist formats available for CFPropertyListCreateData () in createEncodedMessage () need CFString keys.
     //       Once we switch to the more modern (NS)XPC API we shall be able to use CFNumber keys directly...
     static std::map<ARAIPCMessageKey, _CFReleaser> cache;
@@ -164,6 +169,26 @@ ARAIPCMessageEncoder ARAIPCCFCreateMessageEncoder (void)
     };
 
     return { ARAIPCCFMessageToEncoderRef (CFDictionaryCreateMutable (kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks)), &encoderMethods };
+}
+
+__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionary (ARAIPCMessageEncoderRef messageEncoderRef)
+{
+    const auto dictionary { ARAIPCCFMessageFromEncoderRef (messageEncoderRef) };
+    ARA_INTERNAL_ASSERT (dictionary);
+    CFRetain (dictionary);
+    return dictionary;
+}
+
+__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageID messageIDValue)
+{
+    static_assert (std::is_same<ARAIPCMessageID, SInt32>::value, "encoding needs to be adopted here if key type is changed");
+    auto messageIDObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt32Type, &messageIDValue) };
+    auto dictionary { ARAIPCCFMessageFromEncoderRef (messageEncoderRef) };
+    ARA_INTERNAL_ASSERT (dictionary);
+    CFDictionarySetValue (dictionary, ARAIPCCFMessageGetEncodedKey (messageIDKey, true), messageIDObject);
+    CFRelease (messageIDObject);
+    CFRetain (dictionary);
+    return dictionary;
 }
 
 __attribute__((cf_returns_retained)) CFDataRef ARAIPCCFCreateMessageEncoderData (ARAIPCMessageEncoderRef messageEncoderRef)
@@ -334,7 +359,7 @@ ARAIPCMessageDecoderRef ARA_CALL ARAIPCCFMessageReadSubMessage (ARAIPCMessageDec
     return ARAIPCCFMessageToDecoderRef (dictionary);
 }
 
-ARAIPCMessageDecoder ARAIPCCFCreateMessageDecoder (CFDataRef messageData)
+ARAIPCMessageDecoder ARAIPCCFCreateMessageDecoderWithRetainedDictionary (CFDictionaryRef __attribute__((cf_consumed)) messageDictionary)
 {
     static const ARA::IPC::ARAIPCMessageDecoderInterface decoderMethods
     {
@@ -351,17 +376,39 @@ ARAIPCMessageDecoder ARAIPCCFCreateMessageDecoder (CFDataRef messageData)
         ARAIPCCFMessageReadSubMessage
     };
 
+    return { ARAIPCCFMessageToDecoderRef (messageDictionary), &decoderMethods };
+}
+
+ARAIPCMessageDecoder ARAIPCCFCreateMessageDecoderWithDictionary (CFDictionaryRef messageDictionary)
+{
+    if (messageDictionary)
+        CFRetain (messageDictionary);
+
+    return ARAIPCCFCreateMessageDecoderWithRetainedDictionary (messageDictionary);
+}
+
+ARAIPCMessageID ARAIPCCFGetMessageIDFromDictionary (ARAIPCMessageDecoderRef messageDecoderRef)
+{
+    const auto dictionary { ARAIPCCFMessageFromDecoderRef (messageDecoderRef) };
+    ARA_INTERNAL_ASSERT (dictionary != nullptr);
+    const auto number { (CFNumberRef) CFDictionaryGetValue (dictionary, ARAIPCCFMessageGetEncodedKey (messageIDKey, true)) };
+    ARA_INTERNAL_ASSERT (number != nullptr);
+    ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
+    static_assert (std::is_same<ARAIPCMessageID, SInt32>::value, "decoding needs to be adopted here if key type is changed");
+    ARAIPCMessageID result;
+    CFNumberGetValue (number, kCFNumberSInt32Type, &result);
+    return result;
+}
+
+ARAIPCMessageDecoder ARAIPCCFCreateMessageDecoder (CFDataRef messageData)
+{
     if (CFDataGetLength (messageData) == 0)
-        return { nullptr, &decoderMethods };
+        return ARAIPCCFCreateMessageDecoderWithRetainedDictionary (nullptr);
+
     auto dictionary { (CFDictionaryRef) CFPropertyListCreateWithData (kCFAllocatorDefault, messageData, kCFPropertyListImmutable, nullptr, nullptr) };
     ARA_INTERNAL_ASSERT (dictionary && (CFGetTypeID (dictionary) == CFDictionaryGetTypeID ()));
-#if defined (__clang_analyzer__)
-    // \todo hotfix to silence the analyzer: it does not know that ARAIPCMessageDecoder
-    //       is supposed to store the retained value and release upon destruction -
-    //       what would be the proper annotation here?
-    CFRelease (dictionary);
-#endif
-    return { ARAIPCCFMessageToDecoderRef (dictionary), &decoderMethods };
+    auto result { ARAIPCCFCreateMessageDecoderWithRetainedDictionary (dictionary) };
+    return result;
 }
 
 
