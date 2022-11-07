@@ -999,43 +999,78 @@ constexpr ARAIPCMessageID _getPlugInInterfaceID<ARAEditorRendererInterface> () {
 template<>
 constexpr ARAIPCMessageID _getPlugInInterfaceID<ARAEditorViewInterface> () { return 3; }
 
-template<ARAIPCMessageID interfaceID, size_t offset>
-constexpr ARAIPCMessageID _encodeMessageID ()
-{
-    static_assert (offset > 0, "offset 0 is never a valid function pointer");
-    static_assert ((interfaceID < 8), "currently using only 3 bits for interface ID");
-#if defined (__i386__) || defined (_M_IX86)
-    static_assert ((sizeof (void*) == 4), "compiler settings imply 32 bit pointers");
-    static_assert (((offset & 0x3FFFFFF4) == offset), "offset is misaligned or too large");
-    return (offset << 1) + interfaceID; // lower 2 bits of offset are 0 due to alignment, must shift 1 bit to store interface ID
-#else
-    static_assert ((sizeof (void*) == 8), "assuming 64 bit pointers per default");
-    static_assert (((offset & 0x7FFFFFF8) == offset), "offset is misaligned or too large");
-    return offset + interfaceID;        // lower 3 bits of offset are 0 due to alignment, can be used to store interface ID
-#endif
-}
-
 
 //------------------------------------------------------------------------------
 // actual client API
 //------------------------------------------------------------------------------
 
 
-// caller side: create a message ID for a given ARA method
-#define ARA_IPC_HOST_METHOD_ID(StructT, member) IPC::_encodeMessageID <IPC::_getHostInterfaceID<StructT> (), offsetof (StructT, member)> ()
-#define ARA_IPC_PLUGIN_METHOD_ID(StructT, member) IPC::_encodeMessageID <IPC::_getPlugInInterfaceID<StructT> (), offsetof (StructT, member)> ()
-
-
-// "global" messages that are not passed based on interface structs
-enum : ARA::IPC::ARAIPCMessageID
+// helper class wrapping ARAIPCMessageID to prevent implicit conversions to/from
+// ARAIPCMessageID, so that they can be identified reliably in call signatures
+// this is important e.g. for the various forms of RemoteCaller::remoteCall ().
+class MethodID
 {
-    kGetFactoriesCountMessageID = 1,
-    kGetFactoryMessageID = 2,
-    kInitializeARAMessageID = 3,
-    kCreateDocumentControllerMessageID = 4,
-    kBindToDocumentControllerMessageID = 5,
-    kUninitializeARAMessageID = 6
+private:
+    constexpr MethodID (ARAIPCMessageID messageID) : _id { messageID } {}
+
+public:
+    template<ARAIPCMessageID interfaceID, size_t offset>
+    static inline constexpr MethodID createWithARAInterfaceIDAndOffset ()
+    {
+        static_assert (offset > 0, "offset 0 is never a valid function pointer");
+        static_assert ((interfaceID < 8), "currently using only 3 bits for interface ID");
+    #if defined (__i386__) || defined (_M_IX86)
+        static_assert ((sizeof (void*) == 4), "compiler settings imply 32 bit pointers");
+        static_assert (((offset & 0x3FFFFFF4) == offset), "offset is misaligned or too large");
+        return (offset << 1) + interfaceID; // lower 2 bits of offset are 0 due to alignment, must shift 1 bit to store interface ID
+    #else
+        static_assert ((sizeof (void*) == 8), "assuming 64 bit pointers per default");
+        static_assert (((offset & 0x7FFFFFF8) == offset), "offset is misaligned or too large");
+        return offset + interfaceID;        // lower 3 bits of offset are 0 due to alignment, can be used to store interface ID
+    #endif
+    }
+
+    template<ARAIPCMessageID methodID>
+    static inline constexpr MethodID createWithARASetupMethodID ()
+    {
+        static_assert ((methodID >= kARAIPCMessageIDRangeStart) && (methodID < kARAIPCMessageIDRangeEnd), "must be in valid ARA message ID range");
+        return methodID;
+    }
+
+    template<ARAIPCMessageID methodID>
+    static inline constexpr MethodID createWithNonARAMethodID ()
+    {
+        static_assert ((methodID < kARAIPCMessageIDRangeStart) || (methodID >= kARAIPCMessageIDRangeStart), "must not be in valid ARA message range");
+        return methodID;
+    }
+
+    constexpr ARAIPCMessageID getMessageID () const { return _id; }
+private:
+    const ARAIPCMessageID _id;
 };
+
+inline bool operator== (const ARAIPCMessageID messageID, const MethodID methodID)
+{
+    return (messageID == methodID.getMessageID ());
+}
+inline bool operator== (const MethodID methodID, const ARAIPCMessageID messageID)
+{
+    return (messageID == methodID.getMessageID ());
+}
+
+
+// create a MethodID for a given host-side or plug-in-side ARA method
+#define ARA_IPC_HOST_METHOD_ID(StructT, member) MethodID::createWithARAInterfaceIDAndOffset <_getHostInterfaceID<StructT> (), offsetof (StructT, member)> ()
+#define ARA_IPC_PLUGIN_METHOD_ID(StructT, member) MethodID::createWithARAInterfaceIDAndOffset <_getPlugInInterfaceID<StructT> (), offsetof (StructT, member)> ()
+
+
+// "global" messages for startup and teardown that are not calculated based on interface structs
+constexpr auto kGetFactoriesCountMethodID { MethodID::createWithARASetupMethodID<1> () };
+constexpr auto kGetFactoryMethodID { MethodID::createWithARASetupMethodID<2> () };
+constexpr auto kInitializeARAMethodID { MethodID::createWithARASetupMethodID<3> () };
+constexpr auto kCreateDocumentControllerMethodID { MethodID::createWithARASetupMethodID<4> () };
+constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARASetupMethodID<5> () };
+constexpr auto kUninitializeARAMethodID { MethodID::createWithARASetupMethodID<6> () };
 
 
 // caller side: create a message with the specified arguments
@@ -1244,16 +1279,16 @@ public:
     RemoteCaller (ARAIPCMessageSender sender) noexcept : _sender { sender } {}
 
     template<typename... Args>
-    void remoteCallWithoutReply (const bool stackable, const ARAIPCMessageID messageID, const Args &... args)
+    void remoteCall (const bool stackable, const MethodID methodID, const Args &... args)
     {
         auto encoder { _sender.methods->createEncoder (_sender.ref) };
         encodeArguments (encoder, args...);
-        _sender.methods->sendMessage (stackable, _sender.ref, messageID, &encoder, nullptr, nullptr);
+        _sender.methods->sendMessage (stackable, _sender.ref, methodID.getMessageID (), &encoder, nullptr, nullptr);
         encoder.methods->destroyEncoder (encoder.ref);
     }
 
     template<typename RetT, typename... Args>
-    void remoteCallWithReply (RetT& result, const bool stackable, const ARAIPCMessageID messageID, const Args &... args)
+    void remoteCall (RetT& result, const bool stackable, const MethodID methodID, const Args &... args)
     {
         auto encoder { _sender.methods->createEncoder (_sender.ref) };
         encodeArguments (encoder, args...);
@@ -1262,11 +1297,11 @@ public:
                 ARA_INTERNAL_ASSERT (!decoder.methods->isEmpty (decoder.ref));
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
-        _sender.methods->sendMessage (stackable, _sender.ref, messageID, &encoder, &replyHandler, &result);
+        _sender.methods->sendMessage (stackable, _sender.ref, methodID.getMessageID (), &encoder, &replyHandler, &result);
         encoder.methods->destroyEncoder (encoder.ref);
     }
     template<typename... Args>
-    void remoteCallWithReply (CustomDecodeFunction& decodeFunction, const bool stackable, const ARAIPCMessageID messageID, const Args &... args)
+    void remoteCall (CustomDecodeFunction& decodeFunction, const bool stackable, const MethodID methodID, const Args &... args)
     {
         auto encoder { _sender.methods->createEncoder (_sender.ref) };
         encodeArguments (encoder, args...);
@@ -1275,7 +1310,7 @@ public:
                 ARA_INTERNAL_ASSERT (!decoder.methods->isEmpty (decoder.ref));
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
-        _sender.methods->sendMessage (stackable, _sender.ref, messageID, &encoder, &replyHandler, &decodeFunction);
+        _sender.methods->sendMessage (stackable, _sender.ref, methodID.getMessageID (), &encoder, &replyHandler, &decodeFunction);
         encoder.methods->destroyEncoder (encoder.ref);
     }
 

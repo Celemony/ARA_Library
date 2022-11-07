@@ -343,12 +343,12 @@ DocumentController::DocumentController (ARAIPCMessageSender sender, const ARAFac
     ARAContentAccessControllerHostRef contentAccessControllerHostRef { toHostRef (this) };
     ARAModelUpdateControllerHostRef modelUpdateControllerHostRef { toHostRef (this) };
     ARAPlaybackControllerHostRef playbackControllerHostRef { toHostRef (this) };
-    remoteCallWithReply (_remoteRef, false, kCreateDocumentControllerMessageID, _factory->factoryID,
-                          audioAccessControllerHostRef, archivingControllerHostRef,
-                          (_hostContentAccessController.isProvided ()) ? kARATrue : kARAFalse, contentAccessControllerHostRef,
-                          (_hostModelUpdateController.isProvided ()) ? kARATrue : kARAFalse, modelUpdateControllerHostRef,
-                          (_hostPlaybackController.isProvided ()) ? kARATrue : kARAFalse, playbackControllerHostRef,
-                          properties);
+    remoteCall (_remoteRef, false, kCreateDocumentControllerMethodID, _factory->factoryID,
+                audioAccessControllerHostRef, archivingControllerHostRef,
+                (_hostContentAccessController.isProvided ()) ? kARATrue : kARAFalse, contentAccessControllerHostRef,
+                (_hostModelUpdateController.isProvided ()) ? kARATrue : kARAFalse, modelUpdateControllerHostRef,
+                (_hostPlaybackController.isProvided ()) ? kARATrue : kARAFalse, playbackControllerHostRef,
+                properties);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create document controller", _remoteRef);
 }
@@ -359,7 +359,7 @@ void DocumentController::destroyDocumentController () noexcept
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy document controller", _remoteRef);
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyDocumentController), _remoteRef);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyDocumentController), _remoteRef);
 
     _hasBeenDestroyed = true;
 
@@ -396,7 +396,7 @@ void DocumentController::beginEditing () noexcept
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, beginEditing), _remoteRef);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, beginEditing), _remoteRef);
 }
 
 void DocumentController::endEditing () noexcept
@@ -404,7 +404,7 @@ void DocumentController::endEditing () noexcept
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, endEditing), _remoteRef);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, endEditing), _remoteRef);
 }
 
 void DocumentController::notifyModelUpdates () noexcept
@@ -424,7 +424,7 @@ void DocumentController::notifyModelUpdates () noexcept
     if (!_hostModelUpdateController.isProvided ())
         return;
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, notifyModelUpdates), _remoteRef);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, notifyModelUpdates), _remoteRef);
 }
 
 bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept
@@ -433,7 +433,7 @@ bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef arch
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARABool success;
-    remoteCallWithReply (success, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, restoreObjectsFromArchive), _remoteRef, archiveReaderHostRef, filter);
+    remoteCall (success, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, restoreObjectsFromArchive), _remoteRef, archiveReaderHostRef, filter);
     return (success != kARAFalse);
 }
 
@@ -456,7 +456,7 @@ bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef archiveW
     }
 
     ARABool success;
-    remoteCallWithReply (success, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, storeObjectsToArchive), _remoteRef, archiveWriterHostRef, filter);
+    remoteCall (success, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, storeObjectsToArchive), _remoteRef, archiveWriterHostRef, filter);
     return (success!= kARAFalse);
 }
 
@@ -497,8 +497,8 @@ bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostR
             *openAutomatically = (reply.openAutomatically != kARAFalse);
             success = (reply.result != kARAFalse);
         } };
-    remoteCallWithReply (customDecode, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk),
-                        _remoteRef, archiveWriterHostRef, audioSource->remoteRef);
+    remoteCall (customDecode, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk),
+                _remoteRef, archiveWriterHostRef, audioSource->remoteRef);
     return success;
 }
 
@@ -508,7 +508,7 @@ void DocumentController::updateDocumentProperties (PropertiesPtr<ARADocumentProp
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARADocumentProperties);
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateDocumentProperties), _remoteRef, *properties);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateDocumentProperties), _remoteRef, *properties);
 }
 
 /*******************************************************************************/
@@ -520,7 +520,7 @@ ARAMusicalContextRef DocumentController::createMusicalContext (ARAMusicalContext
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAMusicalContextProperties);
 
     ARAMusicalContextRef musicalContextRef;
-    remoteCallWithReply (musicalContextRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createMusicalContext), _remoteRef, hostRef, *properties);
+    remoteCall (musicalContextRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createMusicalContext), _remoteRef, hostRef, *properties);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create musical context", musicalContextRef);
     return musicalContextRef;
@@ -532,7 +532,7 @@ void DocumentController::updateMusicalContextProperties (ARAMusicalContextRef mu
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAMusicalContextProperties);
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateMusicalContextProperties), _remoteRef, musicalContextRef, *properties);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateMusicalContextProperties), _remoteRef, musicalContextRef, *properties);
 }
 
 void DocumentController::updateMusicalContextContent (ARAMusicalContextRef musicalContextRef, const ARAContentTimeRange* range, ContentUpdateScopes flags) noexcept
@@ -540,7 +540,7 @@ void DocumentController::updateMusicalContextContent (ARAMusicalContextRef music
     ARA_LOG_HOST_ENTRY (musicalContextRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateMusicalContextContent), _remoteRef, musicalContextRef, range, flags);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateMusicalContextContent), _remoteRef, musicalContextRef, range, flags);
 }
 
 void DocumentController::destroyMusicalContext (ARAMusicalContextRef musicalContextRef) noexcept
@@ -549,7 +549,7 @@ void DocumentController::destroyMusicalContext (ARAMusicalContextRef musicalCont
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy musical context", musicalContextRef);
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyMusicalContext), _remoteRef, musicalContextRef);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyMusicalContext), _remoteRef, musicalContextRef);
 }
 
 /*******************************************************************************/
@@ -561,7 +561,7 @@ ARARegionSequenceRef DocumentController::createRegionSequence (ARARegionSequence
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARARegionSequenceProperties);
 
     ARARegionSequenceRef regionSequenceRef;
-    remoteCallWithReply (regionSequenceRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createRegionSequence), _remoteRef, hostRef, *properties);
+    remoteCall (regionSequenceRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createRegionSequence), _remoteRef, hostRef, *properties);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create region sequence", regionSequenceRef);
     return regionSequenceRef;
@@ -573,7 +573,7 @@ void DocumentController::updateRegionSequenceProperties (ARARegionSequenceRef re
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARARegionSequenceProperties);
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateRegionSequenceProperties), _remoteRef, regionSequenceRef, *properties);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateRegionSequenceProperties), _remoteRef, regionSequenceRef, *properties);
 }
 
 void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept
@@ -582,7 +582,7 @@ void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSeque
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy region sequence", regionSequenceRef);
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyRegionSequence), _remoteRef, regionSequenceRef);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyRegionSequence), _remoteRef, regionSequenceRef);
 }
 
 /*******************************************************************************/
@@ -599,8 +599,8 @@ ARAAudioSourceRef DocumentController::createAudioSource (ARAAudioSourceHostRef h
 #endif
                                         } };
 
-    remoteCallWithReply (audioSource->remoteRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioSource),
-                        _remoteRef, ARAAudioSourceHostRef { toHostRef (audioSource) }, *properties);
+    remoteCall (audioSource->remoteRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioSource),
+                _remoteRef, ARAAudioSourceHostRef { toHostRef (audioSource) }, *properties);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create audio source", audioSourceRef);
     return toRef (audioSource);
@@ -614,7 +614,7 @@ void DocumentController::updateAudioSourceProperties (ARAAudioSourceRef audioSou
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAAudioSourceProperties);
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateAudioSourceProperties), _remoteRef, audioSource->remoteRef, *properties);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateAudioSourceProperties), _remoteRef, audioSource->remoteRef, *properties);
 }
 
 void DocumentController::updateAudioSourceContent (ARAAudioSourceRef audioSourceRef, const ARAContentTimeRange* range, ContentUpdateScopes flags) noexcept
@@ -624,7 +624,7 @@ void DocumentController::updateAudioSourceContent (ARAAudioSourceRef audioSource
     auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateAudioSourceContent), _remoteRef, audioSource->remoteRef, range, flags);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateAudioSourceContent), _remoteRef, audioSource->remoteRef, range, flags);
 }
 
 void DocumentController::enableAudioSourceSamplesAccess (ARAAudioSourceRef audioSourceRef, bool enable) noexcept
@@ -634,7 +634,7 @@ void DocumentController::enableAudioSourceSamplesAccess (ARAAudioSourceRef audio
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, enableAudioSourceSamplesAccess), _remoteRef, audioSource->remoteRef, (enable) ? kARATrue : kARAFalse);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, enableAudioSourceSamplesAccess), _remoteRef, audioSource->remoteRef, (enable) ? kARATrue : kARAFalse);
 }
 
 void DocumentController::deactivateAudioSourceForUndoHistory (ARAAudioSourceRef audioSourceRef, bool deactivate) noexcept
@@ -644,7 +644,7 @@ void DocumentController::deactivateAudioSourceForUndoHistory (ARAAudioSourceRef 
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, deactivateAudioSourceForUndoHistory), _remoteRef, audioSource->remoteRef, (deactivate) ? kARATrue : kARAFalse);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, deactivateAudioSourceForUndoHistory), _remoteRef, audioSource->remoteRef, (deactivate) ? kARATrue : kARAFalse);
 }
 
 void DocumentController::destroyAudioSource (ARAAudioSourceRef audioSourceRef) noexcept
@@ -655,7 +655,7 @@ void DocumentController::destroyAudioSource (ARAAudioSourceRef audioSourceRef) n
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy audio source", audioSource->remoteRef);
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyAudioSource), _remoteRef, audioSource->remoteRef);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyAudioSource), _remoteRef, audioSource->remoteRef);
     delete audioSource;
 }
 
@@ -670,8 +670,8 @@ ARAAudioModificationRef DocumentController::createAudioModification (ARAAudioSou
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAAudioModificationProperties);
 
     ARAAudioModificationRef audioModificationRef;
-    remoteCallWithReply (audioModificationRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioModification),
-                        _remoteRef, audioSource->remoteRef, hostRef, *properties);
+    remoteCall (audioModificationRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioModification),
+                _remoteRef, audioSource->remoteRef, hostRef, *properties);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create audio modification", audioModificationRef);
     return audioModificationRef;
@@ -684,8 +684,8 @@ ARAAudioModificationRef DocumentController::cloneAudioModification (ARAAudioModi
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAAudioModificationProperties);
 
     ARAAudioModificationRef clonedAudioModificationRef;
-    remoteCallWithReply (clonedAudioModificationRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, cloneAudioModification),
-                        _remoteRef, srcAudioModificationRef, hostRef, *properties);
+    remoteCall (clonedAudioModificationRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, cloneAudioModification),
+                _remoteRef, srcAudioModificationRef, hostRef, *properties);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create cloned audio modification", clonedAudioModificationRef);
     return clonedAudioModificationRef;
@@ -697,7 +697,7 @@ void DocumentController::updateAudioModificationProperties (ARAAudioModification
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAAudioModificationProperties);
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateAudioModificationProperties), _remoteRef, audioModificationRef, *properties);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateAudioModificationProperties), _remoteRef, audioModificationRef, *properties);
 }
 
 bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept
@@ -706,7 +706,7 @@ bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudi
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARABool result;
-    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal), _remoteRef, audioModificationRef);
+    remoteCall (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal), _remoteRef, audioModificationRef);
     return (result != kARAFalse);
 }
 
@@ -715,7 +715,7 @@ void DocumentController::deactivateAudioModificationForUndoHistory (ARAAudioModi
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, deactivateAudioModificationForUndoHistory), _remoteRef, audioModificationRef, (deactivate) ? kARATrue : kARAFalse);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, deactivateAudioModificationForUndoHistory), _remoteRef, audioModificationRef, (deactivate) ? kARATrue : kARAFalse);
 }
 
 void DocumentController::destroyAudioModification (ARAAudioModificationRef audioModificationRef) noexcept
@@ -724,7 +724,7 @@ void DocumentController::destroyAudioModification (ARAAudioModificationRef audio
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy audio modification", audioModification);
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyAudioModification), _remoteRef, audioModificationRef);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyAudioModification), _remoteRef, audioModificationRef);
 }
 
 /*******************************************************************************/
@@ -736,8 +736,8 @@ ARAPlaybackRegionRef DocumentController::createPlaybackRegion (ARAAudioModificat
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAPlaybackRegionProperties);
 
     ARAPlaybackRegionRef playbackRegionRef;
-    remoteCallWithReply (playbackRegionRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createPlaybackRegion),
-                        _remoteRef, audioModificationRef, hostRef, *properties);
+    remoteCall (playbackRegionRef, true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createPlaybackRegion),
+                _remoteRef, audioModificationRef, hostRef, *properties);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create playback region", playbackRegionRef);
     return playbackRegionRef;
@@ -749,7 +749,7 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAPlaybackRegionProperties);
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updatePlaybackRegionProperties), _remoteRef, playbackRegionRef, *properties);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updatePlaybackRegionProperties), _remoteRef, playbackRegionRef, *properties);
 }
 
 void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept
@@ -760,8 +760,8 @@ void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef 
     ARA_VALIDATE_API_ARGUMENT (tailTime, tailTime != nullptr);
 
     GetPlaybackRegionHeadAndTailTimeReply reply;
-    remoteCallWithReply (reply, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getPlaybackRegionHeadAndTailTime),
-                        _remoteRef, playbackRegionRef, (headTime != nullptr) ? kARATrue : kARAFalse, (tailTime != nullptr) ? kARATrue : kARAFalse);
+    remoteCall (reply, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getPlaybackRegionHeadAndTailTime),
+                _remoteRef, playbackRegionRef, (headTime != nullptr) ? kARATrue : kARAFalse, (tailTime != nullptr) ? kARATrue : kARAFalse);
     if (headTime != nullptr)
         *headTime = reply.headTime;
     if (tailTime != nullptr)
@@ -774,7 +774,7 @@ void DocumentController::destroyPlaybackRegion (ARAPlaybackRegionRef playbackReg
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy playback region", playbackRegionRef);
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyPlaybackRegion), _remoteRef, playbackRegionRef);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyPlaybackRegion), _remoteRef, playbackRegionRef);
 }
 
 /*******************************************************************************/
@@ -786,7 +786,7 @@ bool DocumentController::isAudioSourceContentAvailable (ARAAudioSourceRef audioS
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
     ARABool result;
-    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioSourceContentAvailable), _remoteRef, audioSource->remoteRef, type);
+    remoteCall (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioSourceContentAvailable), _remoteRef, audioSource->remoteRef, type);
     return (result != kARAFalse);
 }
 
@@ -798,7 +798,7 @@ ARAContentGrade DocumentController::getAudioSourceContentGrade (ARAAudioSourceRe
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
     ARAContentGrade grade;
-    remoteCallWithReply (grade, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getAudioSourceContentGrade), _remoteRef, audioSource->remoteRef, type);
+    remoteCall (grade, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getAudioSourceContentGrade), _remoteRef, audioSource->remoteRef, type);
     return grade;
 }
 
@@ -810,8 +810,8 @@ ARAContentReaderRef DocumentController::createAudioSourceContentReader (ARAAudio
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
     ARAContentReaderRef contentReaderRef;
-    remoteCallWithReply (contentReaderRef, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioSourceContentReader),
-                        _remoteRef, audioSource->remoteRef, type, range);
+    remoteCall (contentReaderRef, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioSourceContentReader),
+                _remoteRef, audioSource->remoteRef, type, range);
 
     auto contentReader { new ContentReader { contentReaderRef, type } };
 #if ARA_ENABLE_OBJECT_LIFETIME_LOG
@@ -828,7 +828,7 @@ bool DocumentController::isAudioModificationContentAvailable (ARAAudioModificati
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARABool result;
-    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationContentAvailable), _remoteRef, audioModificationRef, type);
+    remoteCall (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationContentAvailable), _remoteRef, audioModificationRef, type);
     return (result != kARAFalse);
 }
 
@@ -838,7 +838,7 @@ ARAContentGrade DocumentController::getAudioModificationContentGrade (ARAAudioMo
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARAContentGrade grade;
-    remoteCallWithReply (grade, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getAudioModificationContentGrade), _remoteRef, audioModificationRef, type);
+    remoteCall (grade, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getAudioModificationContentGrade), _remoteRef, audioModificationRef, type);
     return grade;
 }
 
@@ -848,8 +848,8 @@ ARAContentReaderRef DocumentController::createAudioModificationContentReader (AR
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARAContentReaderRef contentReaderRef;
-    remoteCallWithReply (contentReaderRef, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioModificationContentReader),
-                        _remoteRef, audioModificationRef, type, range);
+    remoteCall (contentReaderRef, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioModificationContentReader),
+                _remoteRef, audioModificationRef, type, range);
 
     auto contentReader { new ContentReader { contentReaderRef, type } };
 #if ARA_ENABLE_OBJECT_LIFETIME_LOG
@@ -866,7 +866,7 @@ bool DocumentController::isPlaybackRegionContentAvailable (ARAPlaybackRegionRef 
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARABool result;
-    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isPlaybackRegionContentAvailable), _remoteRef, playbackRegionRef, type);
+    remoteCall (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isPlaybackRegionContentAvailable), _remoteRef, playbackRegionRef, type);
     return (result != kARAFalse);
 }
 
@@ -876,7 +876,7 @@ ARAContentGrade DocumentController::getPlaybackRegionContentGrade (ARAPlaybackRe
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARAContentGrade grade;
-    remoteCallWithReply (grade, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getPlaybackRegionContentGrade), _remoteRef, playbackRegionRef, type);
+    remoteCall (grade, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getPlaybackRegionContentGrade), _remoteRef, playbackRegionRef, type);
     return grade;
 }
 
@@ -886,7 +886,7 @@ ARAContentReaderRef DocumentController::createPlaybackRegionContentReader (ARAPl
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARAContentReaderRef contentReaderRef;
-    remoteCallWithReply (contentReaderRef, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createPlaybackRegionContentReader),
+    remoteCall (contentReaderRef, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createPlaybackRegionContentReader),
                         _remoteRef, playbackRegionRef, type, range);
 
     auto contentReader { new ContentReader { contentReaderRef, type } };
@@ -906,7 +906,7 @@ ARAInt32 DocumentController::getContentReaderEventCount (ARAContentReaderRef con
     ARA_VALIDATE_API_ARGUMENT (contentReader, isValidInstance (contentReader));
 
     ARAInt32 count;
-    remoteCallWithReply (count, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getContentReaderEventCount), _remoteRef, contentReader->remoteRef);
+    remoteCall (count, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getContentReaderEventCount), _remoteRef, contentReader->remoteRef);
     return count;
 }
 
@@ -922,8 +922,8 @@ const void* DocumentController::getContentReaderDataForEvent (ARAContentReaderRe
         {
             result = contentReader->decoder.decode (decoder);
         } };
-    remoteCallWithReply (customDecode, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getContentReaderDataForEvent),
-                        _remoteRef, contentReader->remoteRef, eventIndex);
+    remoteCall (customDecode, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getContentReaderDataForEvent),
+                _remoteRef, contentReader->remoteRef, eventIndex);
     return result;
 }
 
@@ -935,7 +935,7 @@ void DocumentController::destroyContentReader (ARAContentReaderRef contentReader
     ARA_VALIDATE_API_ARGUMENT (contentReader, isValidInstance (contentReader));
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy content reader", contentReader->remoteRef);
-    remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyContentReader), _remoteRef, contentReader->remoteRef);
+    remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyContentReader), _remoteRef, contentReader->remoteRef);
 
     delete contentReader;
 }
@@ -950,8 +950,8 @@ bool DocumentController::isAudioSourceContentAnalysisIncomplete (ARAAudioSourceR
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
     ARABool result;
-    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioSourceContentAnalysisIncomplete),
-                        _remoteRef, audioSource->remoteRef, type);
+    remoteCall (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioSourceContentAnalysisIncomplete),
+                _remoteRef, audioSource->remoteRef, type);
     return (result != kARAFalse);
 }
 
@@ -963,7 +963,7 @@ void DocumentController::requestAudioSourceContentAnalysis (ARAAudioSourceRef au
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
     const ArrayArgument<const ARAContentType> types { contentTypes, contentTypesCount };
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, requestAudioSourceContentAnalysis), _remoteRef, audioSource->remoteRef, types);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, requestAudioSourceContentAnalysis), _remoteRef, audioSource->remoteRef, types);
 }
 
 ARAInt32 DocumentController::getProcessingAlgorithmsCount () noexcept
@@ -972,7 +972,7 @@ ARAInt32 DocumentController::getProcessingAlgorithmsCount () noexcept
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARAInt32 count;
-    remoteCallWithReply (count, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getProcessingAlgorithmsCount), _remoteRef);
+    remoteCall (count, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getProcessingAlgorithmsCount), _remoteRef);
     return count;
 }
 
@@ -991,7 +991,7 @@ const ARAProcessingAlgorithmProperties* DocumentController::getProcessingAlgorit
             _processingAlgorithmData.persistentID = _processingAlgorithmStrings.persistentID.c_str ();
             _processingAlgorithmData.name = _processingAlgorithmStrings.name.c_str ();
         } };
-    remoteCallWithReply (customDecode, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getProcessingAlgorithmProperties), _remoteRef, algorithmIndex);
+    remoteCall (customDecode, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getProcessingAlgorithmProperties), _remoteRef, algorithmIndex);
     return &_processingAlgorithmData;
 }
 
@@ -1003,7 +1003,7 @@ ARAInt32 DocumentController::getProcessingAlgorithmForAudioSource (ARAAudioSourc
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
     ARAInt32 result;
-    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getProcessingAlgorithmForAudioSource), _remoteRef, audioSource->remoteRef);
+    remoteCall (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getProcessingAlgorithmForAudioSource), _remoteRef, audioSource->remoteRef);
     return result;
 }
 
@@ -1014,7 +1014,7 @@ void DocumentController::requestProcessingAlgorithmForAudioSource (ARAAudioSourc
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSource, isValidInstance (audioSource));
 
-    remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, requestProcessingAlgorithmForAudioSource), _remoteRef, audioSource->remoteRef, algorithmIndex);
+    remoteCall (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, requestProcessingAlgorithmForAudioSource), _remoteRef, audioSource->remoteRef, algorithmIndex);
 }
 
 /*******************************************************************************/
@@ -1026,8 +1026,8 @@ bool DocumentController::isLicensedForCapabilities (bool runModalActivationDialo
 
     const ArrayArgument<const ARAContentType> types { contentTypes, contentTypesCount };
     ARABool result;
-    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isLicensedForCapabilities),
-                        _remoteRef, (runModalActivationDialogIfNeeded) ? kARATrue : kARAFalse, types, transformationFlags);
+    remoteCall (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isLicensedForCapabilities),
+                _remoteRef, (runModalActivationDialogIfNeeded) ? kARATrue : kARAFalse, types, transformationFlags);
     return (result != kARAFalse);
 }
 
@@ -1049,14 +1049,14 @@ public:
         ARA_LOG_HOST_ENTRY (this);
         ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-        remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARAPlaybackRendererInterface, addPlaybackRegion), _remoteRef, playbackRegionRef);
+        remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARAPlaybackRendererInterface, addPlaybackRegion), _remoteRef, playbackRegionRef);
     }
     void removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept override
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-        remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARAPlaybackRendererInterface, removePlaybackRegion), _remoteRef, playbackRegionRef);
+        remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARAPlaybackRendererInterface, removePlaybackRegion), _remoteRef, playbackRegionRef);
     }
 
 private:
@@ -1083,14 +1083,14 @@ public:
         ARA_LOG_HOST_ENTRY (this);
         ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-        remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, addPlaybackRegion), _remoteRef, playbackRegionRef);
+        remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, addPlaybackRegion), _remoteRef, playbackRegionRef);
     }
     void removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept override
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-        remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, removePlaybackRegion), _remoteRef, playbackRegionRef);
+        remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, removePlaybackRegion), _remoteRef, playbackRegionRef);
     }
 
     void addRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept override
@@ -1098,14 +1098,14 @@ public:
         ARA_LOG_HOST_ENTRY (this);
         ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-        remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, addRegionSequence), _remoteRef, regionSequenceRef);
+        remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, addRegionSequence), _remoteRef, regionSequenceRef);
     }
     void removeRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept override
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-        remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, removeRegionSequence), _remoteRef, regionSequenceRef);
+        remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, removeRegionSequence), _remoteRef, regionSequenceRef);
     }
 
 private:
@@ -1133,7 +1133,7 @@ public:
         ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
         ARA_VALIDATE_API_STRUCT_PTR (selection, ARAViewSelection);
 
-        remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorViewInterface, notifySelection), _remoteRef, *selection);
+        remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorViewInterface, notifySelection), _remoteRef, *selection);
     }
     void notifyHideRegionSequences (ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[]) noexcept override
     {
@@ -1141,7 +1141,7 @@ public:
         ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
         const ArrayArgument<const ARARegionSequenceRef> sequences { regionSequenceRefs, regionSequenceRefsCount };
-        remoteCallWithoutReply (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorViewInterface, notifyHideRegionSequences), _remoteRef, sequences);
+        remoteCall (false, ARA_IPC_PLUGIN_METHOD_ID (ARAEditorViewInterface, notifyHideRegionSequences), _remoteRef, sequences);
     }
 
 private:
@@ -1234,7 +1234,7 @@ using namespace ProxyPlugIn;
 size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCMessageSender hostCommandsSender)
 {
     size_t count;
-    RemoteCaller { hostCommandsSender }.remoteCallWithReply (count, false, kGetFactoriesCountMessageID);
+    RemoteCaller { hostCommandsSender }.remoteCall (count, false, kGetFactoriesCountMethodID);
     ARA_INTERNAL_ASSERT (count > 0);
     return count;
 }
@@ -1278,7 +1278,7 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageSender hostCo
             remoteFactory._factory.analyzeableContentTypes = remoteFactory._analyzableTypes.data ();
         } };
 
-    RemoteCaller { hostCommandsSender }.remoteCallWithReply (customDecode, false, kGetFactoryMessageID, index);
+    RemoteCaller { hostCommandsSender }.remoteCall (customDecode, false, kGetFactoryMethodID, index);
 
     const auto result { _factories.insert (std::make_pair (remoteFactory._strings.factoryID, remoteFactory)) };
     if (result.second)
@@ -1305,7 +1305,7 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageSender hostCo
 void ARAIPCProxyPlugInInitializeARA (ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration)
 {
     ARA_INTERNAL_ASSERT (desiredApiGeneration >= kARAAPIGeneration_2_0_Final);
-    RemoteCaller { hostCommandsSender }.remoteCallWithoutReply(false, kInitializeARAMessageID, factoryID, desiredApiGeneration);
+    RemoteCaller { hostCommandsSender }.remoteCall (false, kInitializeARAMethodID, factoryID, desiredApiGeneration);
 }
 
 const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWithDocument (
@@ -1331,7 +1331,7 @@ const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARA
         {
             decoder.methods->readSize (decoder.ref, 0, &remoteExtensionRef);
         } };
-    RemoteCaller { sender }.remoteCallWithReply (customDecode, false, kBindToDocumentControllerMessageID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
+    RemoteCaller { sender }.remoteCall (customDecode, false, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
 
     return new PlugInExtension { sender, documentControllerRef, knownRoles, assignedRoles, remoteExtensionRef };
 }
@@ -1343,7 +1343,7 @@ void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInEx
 
 void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID)
 {
-    RemoteCaller { hostCommandsSender }.remoteCallWithoutReply (false, kUninitializeARAMessageID, factoryID);
+    RemoteCaller { hostCommandsSender }.remoteCall (false, kUninitializeARAMethodID, factoryID);
 }
 
 void ARAIPCProxyPlugInCallbacksDispatcher (const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
