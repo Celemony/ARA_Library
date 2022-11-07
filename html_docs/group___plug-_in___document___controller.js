@@ -35,6 +35,7 @@ var group___plug__in___document___controller =
       [ "getProcessingAlgorithmProperties", "group___plug-_in___document___controller.html#a64c6597932fa935557ffa83dd50639c4", null ],
       [ "getProcessingAlgorithmsCount", "group___plug-_in___document___controller.html#a6d19d64209660d3238fe944d2127b960", null ],
       [ "isAudioModificationContentAvailable", "group___plug-_in___document___controller.html#a983a0f1b6c4d13cf7aed661c442d9759", null ],
+      [ "isAudioModificationPreservingAudioSourceSignal", "group___plug-_in___document___controller.html#a38cf3eaf666b74e653096145645aca95", null ],
       [ "isAudioSourceContentAnalysisIncomplete", "group___plug-_in___document___controller.html#a3e759196ba8cb5dfcdf2cb837c0578d3", null ],
       [ "isAudioSourceContentAvailable", "group___plug-_in___document___controller.html#a15500d908dfd692ff7d6b5a026a37e53", null ],
       [ "isLicensedForCapabilities", "group___plug-_in___document___controller.html#a44c84dfdd1a2646e6ceb4170c56ba987", null ],

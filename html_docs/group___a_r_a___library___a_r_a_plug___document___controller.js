@@ -54,6 +54,7 @@ var group___a_r_a___library___a_r_a_plug___document___controller =
       [ "doGetProcessingAlgorithmProperties", "group___a_r_a___library___a_r_a_plug___document___controller.html#a8b48120cbd43079fcbb36fa1937d1ea9", null ],
       [ "doGetProcessingAlgorithmsCount", "group___a_r_a___library___a_r_a_plug___document___controller.html#aaa24a657a6d1ad75a02669c000962066", null ],
       [ "doIsAudioModificationContentAvailable", "group___a_r_a___library___a_r_a_plug___document___controller.html#a604f4b8d12b0d43ff71086eef03ccebb", null ],
+      [ "doIsAudioModificationPreservingAudioSourceSignal", "group___a_r_a___library___a_r_a_plug___document___controller.html#a0a0845c4c37dcab98c53ed0d3df5f1a9", null ],
       [ "doIsAudioSourceContentAnalysisIncomplete", "group___a_r_a___library___a_r_a_plug___document___controller.html#a56b8fd15ef5429e3578c56cee56ebee8", null ],
       [ "doIsAudioSourceContentAvailable", "group___a_r_a___library___a_r_a_plug___document___controller.html#ab0f2386e56e036521eb48bb92b677e2b", null ],
       [ "doIsLicensedForContentAnalysisRequests", "group___a_r_a___library___a_r_a_plug___document___controller.html#a029edadad02356375ea8dab5e5ec4b48", null ],

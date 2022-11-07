@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.1.0: Sampled Audio Data</title>
+<title>ARA SDK 2.2.0: Sampled Audio Data</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -110,9 +110,37 @@ typedef double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" 
 <tr class="separator:gae253f3e6a31228d8e9969b2ab431033a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga0c79a2d1df7953f0e65f83ffb97e8fb7"><td class="memItemLeft" align="right" valign="top"><a id="ga0c79a2d1df7953f0e65f83ffb97e8fb7"></a>
 typedef <a class="el" href="group___fixed-size__integers.html#gae89c0d982d17edbe5bac0a55255f38d6">ARAInt32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___sampled__audio__data.html#ga0c79a2d1df7953f0e65f83ffb97e8fb7">ARAChannelCount</a></td></tr>
-<tr class="memdesc:ga0c79a2d1df7953f0e65f83ffb97e8fb7"><td class="mdescLeft">&#160;</td><td class="mdescRight">In the current version of ARA, no spatial positioning of the channels is defined. <br /></td></tr>
+<tr class="memdesc:ga0c79a2d1df7953f0e65f83ffb97e8fb7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Count of discrete channels of an audio signal. The spacial positioning of the channels may be provided via ARAChannelArrangementDataType. <br /></td></tr>
 <tr class="separator:ga0c79a2d1df7953f0e65f83ffb97e8fb7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Enumeration Type Documentation</h2>
+<a id="ga518788c837f45be600925e0899cdc7b7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga518788c837f45be600925e0899cdc7b7">&#9670;&nbsp;</a></span>ARAChannelArrangementDataType</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="group___sampled__audio__data.html#ga518788c837f45be600925e0899cdc7b7">ARAChannelArrangementDataType</a> : <a class="el" href="group___fixed-size__integers.html#gae89c0d982d17edbe5bac0a55255f38d6">ARAInt32</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>To avoid defining yet another abstraction of spacial layout information for the individual channels of an audio signal, ARA directly uses the respective Companion API's model of spacial arrangement. Since different Companion APIs are available, this enum specifies which abstraction is used. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7a0eee6dfbcb8f56a09eddb2d1ce3ecc34"></a>kARAChannelArrangementUndefined&#160;</td><td class="fielddoc"><p>Used to indicate the feature is not supported/used (e.g. mono or stereo). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7a58de1d574f840ba7e70c98f636c8e74d"></a>kARAChannelArrangementVST3SpeakerArrangement&#160;</td><td class="fielddoc"><p>For VST3, the channel arrangement is specified as Steinberg::Vst::SpeakerArrangement. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7a395cce0a0be446a61e4c1e71cf276081"></a>kARAChannelArrangementCoreAudioChannelLayout&#160;</td><td class="fielddoc"><p>For Audio Units, the channel arrangement is specified as the CoreAudio struct AudioChannelLayout. Note that according to Apple's documentation, "the kAudioChannelLayoutTag_UseChannelBitmap field is NOT used within the context
+ of the AudioUnit." If possible, kAudioChannelLayoutTag_UseChannelDescriptions should also be avoided to ease parsing the struct. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7ad150a5376a6e33757e2a147b74f89ec5"></a>kARAChannelArrangementAAXStemFormat&#160;</td><td class="fielddoc"><p>For AAX, the channel arrangement is specified as AAX_EStemFormat. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

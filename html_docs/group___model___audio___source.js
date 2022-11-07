@@ -1,6 +1,8 @@
 var group___model___audio___source =
 [
     [ "ARAAudioSourceProperties", "group___model___audio___source.html#struct_a_r_a_audio_source_properties", [
+      [ "channelArrangement", "group___model___audio___source.html#aa24cefea83fdb42f2dd1a3ce67a3b9d1", null ],
+      [ "channelArrangementDataType", "group___model___audio___source.html#a0bd2bc6dc0bf35e1f65933e06920d826", null ],
       [ "channelCount", "group___model___audio___source.html#a55abf0e4315bb7d49c2785a9c0564a2b", null ],
       [ "merits64BitSamples", "group___model___audio___source.html#ae882bdfc28b1a35f5460ec85ce50dbfd", null ],
       [ "name", "group___model___audio___source.html#ab530fa8ce9fc8b2640cfa7a5fcbfa30f", null ],

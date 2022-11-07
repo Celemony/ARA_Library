@@ -32,6 +32,7 @@ var group___a_r_a___library___host___dispatch___plug__in___interfaces =
       [ "getProcessingAlgorithmProperties", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ad9b3ae6c5b508ff1f84cee58b2a7d661", null ],
       [ "getProcessingAlgorithmsCount", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ad24ed42f1feab6d7f44cba062a4881eb", null ],
       [ "isAudioModificationContentAvailable", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a29380f8543b7017d8e86c78c66fd9659", null ],
+      [ "isAudioModificationPreservingAudioSourceSignal", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ad5c2222fa0743555fc3c2258ec8a0a51", null ],
       [ "isAudioSourceContentAnalysisIncomplete", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a39a8065750baed88c555dfeea75c49b8", null ],
       [ "isAudioSourceContentAvailable", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a3f6b668d86c92e6e3e2a2025d5e61782", null ],
       [ "isLicensedForCapabilities", "group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a4f64c3f76f2081c0354f8e3d791cd3ad", null ],

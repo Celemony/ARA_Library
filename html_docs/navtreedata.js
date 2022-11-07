@@ -24,7 +24,7 @@
 */
 var NAVTREE =
 [
-  [ "ARA SDK 2.1.0", "index.html", [
+  [ "ARA SDK 2.2.0", "index.html", [
     [ "Introduction", "intro.html", [
       [ "Welcome", "intro.html#sec_Welcome", null ],
       [ "About ARA", "intro.html#autotoc_md0", null ]
@@ -50,7 +50,7 @@ var NAVTREE =
       [ "Preparing Your Implementation: Studying SDK Examples And Existing Products", "implementing_a_r_a.html#sec_UtilizingExamples", [
         [ "Mini Host", "implementing_a_r_a.html#autotoc_md7", null ],
         [ "Test Host and Test Plug-In", "implementing_a_r_a.html#autotoc_md8", null ],
-        [ "JUCE_ARA", "implementing_a_r_a.html#autotoc_md9", null ],
+        [ "JUCE_ARA ARAPluginDemo", "implementing_a_r_a.html#autotoc_md9", null ],
         [ "Interaction With Existing Products", "implementing_a_r_a.html#autotoc_md10", null ]
       ] ],
       [ "Integrating The ARA SDK Into Your Products", "implementing_a_r_a.html#autotoc_md11", [
@@ -67,7 +67,7 @@ var NAVTREE =
       [ "Configuring The Rendering", "implementing_a_r_a.html#autotoc_md20", [
         [ "Setting Up An ARA Playback Renderer", "implementing_a_r_a.html#autotoc_md21", null ],
         [ "Preview Rendering", "implementing_a_r_a.html#autotoc_md22", null ],
-        [ "Conversion Between Audio Source and Song Sample Rate", "implementing_a_r_a.html#autotoc_md23", null ],
+        [ "Conversion Between Audio Source Format And Song Playback Configuration", "implementing_a_r_a.html#autotoc_md23", null ],
         [ "Playback Region Head And Tail Times", "implementing_a_r_a.html#autotoc_md24", null ],
         [ "Dealing With Denormals", "implementing_a_r_a.html#autotoc_md25", null ],
         [ "Caching Especially CPU-intense DSP", "implementing_a_r_a.html#autotoc_md26", null ]
@@ -125,10 +125,10 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "ara_design_overview.html",
-"group___a_r_a___library___a_r_a_plug___plug_in_entry.html#a232f7e41a55da306cd0e3f5299a0d393",
-"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a920d4417abbc218175253107f549a37f",
-"group___host___playback___controller___interface.html#struct_a_r_a_playback_controller_interface",
-"group___plug-_in___factory.html#adba299d1cc79314d518fb546375ce5db"
+"group___a_r_a___library___a_r_a_plug___plug_in_entry.html",
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a8e0264b139236a7ea2b3959c49f594fe",
+"group___host___model___update___controller___interface.html#a77eba535adcf86c0e0c83e4cc031ca89",
+"group___plug-_in___extension.html#ggadb888a1dc7f658281705411c7b4c253eac033ffe4d4ae6821fe05a418929cf093"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

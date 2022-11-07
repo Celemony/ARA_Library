@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.1.0: Plug-In Dispatch</title>
+<title>ARA SDK 2.2.0: Plug-In Dispatch</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -115,9 +115,6 @@ Subpages</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:ga352f9ee98fb9d4c538c90eb22a09d57d"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___plug_in___dispatch.html#ga352f9ee98fb9d4c538c90eb22a09d57d">ARA_SUPPORT_VERSION_1</a>&#160;&#160;&#160;0</td></tr>
-<tr class="memdesc:ga352f9ee98fb9d4c538c90eb22a09d57d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional ARA 1 backwards compatibility.  <a href="group___a_r_a___library___plug_in___dispatch.html#ga352f9ee98fb9d4c538c90eb22a09d57d">More...</a><br /></td></tr>
-<tr class="separator:ga352f9ee98fb9d4c538c90eb22a09d57d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaefbee4357714ebef742db428b40a3101"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___plug_in___dispatch.html#gaefbee4357714ebef742db428b40a3101">ARA_MAP_REF</a>(ClassType,  FirstRefType, ...)</td></tr>
 <tr class="memdesc:gaefbee4357714ebef742db428b40a3101"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type safe conversions to/from ref: toRef () and fromRef&lt;&gt; ().  <a href="group___a_r_a___library___plug_in___dispatch.html#gaefbee4357714ebef742db428b40a3101">More...</a><br /></td></tr>
 <tr class="separator:gaefbee4357714ebef742db428b40a3101"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -182,29 +179,9 @@ template&lt;typename StructType &gt; </td></tr>
 <div class="line"><span class="comment">// whenever the host passes a plug-in ref back to you, use fromRef&lt;&gt; ()</span></div>
 <div class="line"><a class="code" href="group___model___audio___source.html#ga6389a827a40ecfb56b44f4158a566a09">ARAAudioSourceRef</a> audioSourceRef;   <span class="comment">// usually provided as argument to a function call</span></div>
 <div class="line">MyAudioSource* audioSource = fromRef (audioSourceRef);</div>
-<div class="ttc" id="agroup___a_r_a___library___plug_in___dispatch_html_gaefbee4357714ebef742db428b40a3101"><div class="ttname"><a href="group___a_r_a___library___plug_in___dispatch.html#gaefbee4357714ebef742db428b40a3101">ARA_MAP_REF</a></div><div class="ttdeci">#define ARA_MAP_REF(ClassType, FirstRefType,...)</div><div class="ttdoc">Type safe conversions to/from ref: toRef () and fromRef&lt;&gt; ().</div><div class="ttdef"><b>Definition:</b> ARAPlugInDispatch.h:75</div></div>
-<div class="ttc" id="agroup___model___audio___source_html_ga6389a827a40ecfb56b44f4158a566a09"><div class="ttname"><a href="group___model___audio___source.html#ga6389a827a40ecfb56b44f4158a566a09">ARAAudioSourceRef</a></div><div class="ttdeci">struct ARAAudioSourceRefMarkupType * ARAAudioSourceRef</div><div class="ttdoc">Reference to the plug-in side representation of an audio source (opaque to the host).</div><div class="ttdef"><b>Definition:</b> ARAInterface.h:769</div></div>
+<div class="ttc" id="agroup___a_r_a___library___plug_in___dispatch_html_gaefbee4357714ebef742db428b40a3101"><div class="ttname"><a href="group___a_r_a___library___plug_in___dispatch.html#gaefbee4357714ebef742db428b40a3101">ARA_MAP_REF</a></div><div class="ttdeci">#define ARA_MAP_REF(ClassType, FirstRefType,...)</div><div class="ttdoc">Type safe conversions to/from ref: toRef () and fromRef&lt;&gt; ().</div><div class="ttdef"><b>Definition:</b> ARAPlugInDispatch.h:57</div></div>
+<div class="ttc" id="agroup___model___audio___source_html_ga6389a827a40ecfb56b44f4158a566a09"><div class="ttname"><a href="group___model___audio___source.html#ga6389a827a40ecfb56b44f4158a566a09">ARAAudioSourceRef</a></div><div class="ttdeci">struct ARAAudioSourceRefMarkupType * ARAAudioSourceRef</div><div class="ttdoc">Reference to the plug-in side representation of an audio source (opaque to the host).</div><div class="ttdef"><b>Definition:</b> ARAInterface.h:790</div></div>
 </div><!-- fragment --> 
-</div>
-</div>
-<a id="ga352f9ee98fb9d4c538c90eb22a09d57d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga352f9ee98fb9d4c538c90eb22a09d57d">&#9670;&nbsp;</a></span>ARA_SUPPORT_VERSION_1</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define ARA_SUPPORT_VERSION_1&#160;&#160;&#160;0</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Optional ARA 1 backwards compatibility. </p>
-<p>Plug-ins can choose support ARA 1 hosts in addition to ARA 2 hosts. Plug-ins will have to implement a lot of fallbacks in addition to the support provided by this implementation:</p><ul>
-<li>create dummy region sequences for the playback regions, utilizing the context information provided via the companion APIs</li>
-<li>implicitly derive ARA selection state from companion API actions </li>
-</ul>
-
 </div>
 </div>
 </div><!-- contents -->

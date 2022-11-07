@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.1.0: Content Readers And Content Events</title>
+<title>ARA SDK 2.2.0: Content Readers And Content Events</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -106,7 +106,7 @@ $(document).ready(function(){initNavTree('group___model___content___readers__and
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:struct_a_r_a_content_time_range"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___model___content___readers__and___content___events.html#struct_a_r_a_content_time_range">ARAContentTimeRange</a></td></tr>
-<tr class="memdesc:struct_a_r_a_content_time_range"><td class="mdescLeft">&#160;</td><td class="mdescRight">Content reader optional creation parameter: a range in time to filter content events. As an optimization hint, a content reader can be asked to restrict its data to only those events that intersect with the given time range. Reader implementations should strive to respect this request, but focus on overall performance - the events actually returned may exceed the specified range by any amount, and calling code must evaluate the returned event positions/event durations.  <a href="group___model___content___readers__and___content___events.html#struct_a_r_a_content_time_range">More...</a><br /></td></tr>
+<tr class="memdesc:struct_a_r_a_content_time_range"><td class="mdescLeft">&#160;</td><td class="mdescRight">Content reader optional creation parameter: a range in time to filter content events. As an optimization hint, a content reader can be asked to restrict its data to only those events that intersect with the given time range. Reader implementations should strive to respect this request, but focus on overall performance - the events actually returned may exceed the specified range by any amount, and calling code must evaluate the returned event positions/event durations.  <br>                               Note that when calls accept a pointer to a content time range, that pointer is only valid for the duration of the call - the data must be evaluated/copied inside the call, and the pointer must not be stored anywhere. Further, in most of these calls the pointer to a content range may be NULL, indicating that the entire content range of the object should be read.  <a href="group___model___content___readers__and___content___events.html#struct_a_r_a_content_time_range">More...</a><br /></td></tr>
 <tr class="separator:struct_a_r_a_content_time_range"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
@@ -132,8 +132,7 @@ typedef struct ARAContentReaderHostRefMarkupType *&#160;</td><td class="memItemR
         </tr>
       </table>
 </div><div class="memdoc">
-<div class="textblock"><p>Content reader optional creation parameter: a range in time to filter content events. As an optimization hint, a content reader can be asked to restrict its data to only those events that intersect with the given time range. Reader implementations should strive to respect this request, but focus on overall performance - the events actually returned may exceed the specified range by any amount, and calling code must evaluate the returned event positions/event durations. </p>
-<p>Note that when calls accept a pointer to a content time range, that pointer is only valid for the duration of the call - the data must be evaluated/copied inside the call, and the pointer must not be stored anywhere. Further, in most of these calls the pointer to a content range may be NULL, indicating that the entire content range of the object should be read. </p>
+<div class="textblock"><p>Content reader optional creation parameter: a range in time to filter content events. As an optimization hint, a content reader can be asked to restrict its data to only those events that intersect with the given time range. Reader implementations should strive to respect this request, but focus on overall performance - the events actually returned may exceed the specified range by any amount, and calling code must evaluate the returned event positions/event durations.  <br>                               Note that when calls accept a pointer to a content time range, that pointer is only valid for the duration of the call - the data must be evaluated/copied inside the call, and the pointer must not be stored anywhere. Further, in most of these calls the pointer to a content range may be NULL, indicating that the entire content range of the object should be read. </p>
 </div><table class="memberdecls">
 <tr><td colspan="2"><h3>Public Attributes</h3></td></tr>
 <tr class="memitem:acd198728a146da37a1762803d79ab77b"><td class="memItemLeft" align="right" valign="top"><a id="acd198728a146da37a1762803d79ab77b"></a>

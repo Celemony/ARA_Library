@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.1.0: Host Dispatch</title>
+<title>ARA SDK 2.2.0: Host Dispatch</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -122,9 +122,6 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:ga352f9ee98fb9d4c538c90eb22a09d57d"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___host___dispatch.html#ga352f9ee98fb9d4c538c90eb22a09d57d">ARA_SUPPORT_VERSION_1</a>&#160;&#160;&#160;0</td></tr>
-<tr class="memdesc:ga352f9ee98fb9d4c538c90eb22a09d57d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional ARA 1 backwards compatibility.  <a href="group___a_r_a___library___host___dispatch.html#ga352f9ee98fb9d4c538c90eb22a09d57d">More...</a><br /></td></tr>
-<tr class="separator:ga352f9ee98fb9d4c538c90eb22a09d57d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga789f9d9b21702965c3b5e697bc2c6f7e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___host___dispatch.html#ga789f9d9b21702965c3b5e697bc2c6f7e">ARA_MAP_HOST_REF</a>(HostClassType,  FirstHostRefType, ...)</td></tr>
 <tr class="memdesc:ga789f9d9b21702965c3b5e697bc2c6f7e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type safe conversions to/from host ref: toHostRef () and fromHostRef&lt;&gt; ().  <a href="group___a_r_a___library___host___dispatch.html#ga789f9d9b21702965c3b5e697bc2c6f7e">More...</a><br /></td></tr>
 <tr class="separator:ga789f9d9b21702965c3b5e697bc2c6f7e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -208,31 +205,9 @@ template&lt;auto member&gt; </td></tr>
 <div class="line"><span class="comment">// whenever the plug-in passes a host ref back to you, use fromHostRef&lt;&gt; ()</span></div>
 <div class="line"><a class="code" href="group___model___audio___source.html#gae2713ff3141693215d2b4da01b1ac445">ARAAudioSourceHostRef</a> audioSourceHostRef;   <span class="comment">// usually provided as argument to a function call</span></div>
 <div class="line">MyHostAudioSource* audioSource = fromHostRef (audioSourceHostRef);</div>
-<div class="ttc" id="agroup___a_r_a___library___host___dispatch_html_ga789f9d9b21702965c3b5e697bc2c6f7e"><div class="ttname"><a href="group___a_r_a___library___host___dispatch.html#ga789f9d9b21702965c3b5e697bc2c6f7e">ARA_MAP_HOST_REF</a></div><div class="ttdeci">#define ARA_MAP_HOST_REF(HostClassType, FirstHostRefType,...)</div><div class="ttdoc">Type safe conversions to/from host ref: toHostRef () and fromHostRef&lt;&gt; ().</div><div class="ttdef"><b>Definition:</b> ARAHostDispatch.h:80</div></div>
-<div class="ttc" id="agroup___model___audio___source_html_gae2713ff3141693215d2b4da01b1ac445"><div class="ttname"><a href="group___model___audio___source.html#gae2713ff3141693215d2b4da01b1ac445">ARAAudioSourceHostRef</a></div><div class="ttdeci">struct ARAAudioSourceHostRefMarkupType * ARAAudioSourceHostRef</div><div class="ttdoc">Reference to the host side representation of an audio source (opaque to the plug-in).</div><div class="ttdef"><b>Definition:</b> ARAInterface.h:771</div></div>
+<div class="ttc" id="agroup___a_r_a___library___host___dispatch_html_ga789f9d9b21702965c3b5e697bc2c6f7e"><div class="ttname"><a href="group___a_r_a___library___host___dispatch.html#ga789f9d9b21702965c3b5e697bc2c6f7e">ARA_MAP_HOST_REF</a></div><div class="ttdeci">#define ARA_MAP_HOST_REF(HostClassType, FirstHostRefType,...)</div><div class="ttdoc">Type safe conversions to/from host ref: toHostRef () and fromHostRef&lt;&gt; ().</div><div class="ttdef"><b>Definition:</b> ARAHostDispatch.h:61</div></div>
+<div class="ttc" id="agroup___model___audio___source_html_gae2713ff3141693215d2b4da01b1ac445"><div class="ttname"><a href="group___model___audio___source.html#gae2713ff3141693215d2b4da01b1ac445">ARAAudioSourceHostRef</a></div><div class="ttdeci">struct ARAAudioSourceHostRefMarkupType * ARAAudioSourceHostRef</div><div class="ttdoc">Reference to the host side representation of an audio source (opaque to the plug-in).</div><div class="ttdef"><b>Definition:</b> ARAInterface.h:792</div></div>
 </div><!-- fragment --> 
-</div>
-</div>
-<a id="ga352f9ee98fb9d4c538c90eb22a09d57d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga352f9ee98fb9d4c538c90eb22a09d57d">&#9670;&nbsp;</a></span>ARA_SUPPORT_VERSION_1</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define ARA_SUPPORT_VERSION_1&#160;&#160;&#160;0</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Optional ARA 1 backwards compatibility. </p>
-<p>Host can choose support ARA 1 plug-ins in addition to ARA 2 plug-ins. This results in several restrictions being implicitly imposed when using such plug-ins through the implementation provided here:</p><ul>
-<li>each plug-in instance assumes all possible roles (see ARAPlugInInstanceRoleFlags)</li>
-<li>each plug-in instance only is associated with at most one playback region at any time</li>
-<li>the ARA 1 API is mapped to PlaybackRenderer*, the other interfaces will not be provided</li>
-<li>archiving must use ARA 1 style monolithic persistency calls </li>
-</ul>
-
 </div>
 </div>
 </div><!-- contents -->

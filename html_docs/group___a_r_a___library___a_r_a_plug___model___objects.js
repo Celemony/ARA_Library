@@ -40,6 +40,7 @@ var group___a_r_a___library___a_r_a_plug___model___objects =
     ] ],
     [ "AudioSource", "group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_audio_source", [
       [ "AudioSource", "group___a_r_a___library___a_r_a_plug___model___objects.html#a639600eb84df1fd599a737740b36b6c6", null ],
+      [ "doUpdateChannelArrangement", "group___a_r_a___library___a_r_a_plug___model___objects.html#a27c4490d86aef1cc3345c45326dd2bb1", null ],
       [ "getAudioModifications", "group___a_r_a___library___a_r_a_plug___model___objects.html#a38f3e91dcf394f7be7cfb4d0dc0fa715", null ],
       [ "getChannelCount", "group___a_r_a___library___a_r_a_plug___model___objects.html#a809dfeead76b0f4598c39bb1706d0396", null ],
       [ "getDocument", "group___a_r_a___library___a_r_a_plug___model___objects.html#a804d8456243d10c2139e4f6a35882343", null ],

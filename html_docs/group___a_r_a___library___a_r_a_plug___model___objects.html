@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.1.0: Model Objects</title>
+<title>ARA SDK 2.2.0: Model Objects</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -374,6 +374,7 @@ const std::string &amp;&#160;</td><td class="memItemRight" valign="bottom"><a cl
 bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a2fc8ad7aedb8ecca606f8bb6251e9e02">merits64BitSamples</a> () const noexcept</td></tr>
 <tr class="memdesc:a2fc8ad7aedb8ecca606f8bb6251e9e02"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___model___audio___source.html#ae882bdfc28b1a35f5460ec85ce50dbfd" title="Flag to indicating that the data is available in a resolution that cannot be represented in 32 bit fl...">ARAAudioSourceProperties::merits64BitSamples</a>. <br /></td></tr>
 <tr class="separator:a2fc8ad7aedb8ecca606f8bb6251e9e02"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><h3>Host-controlled Audio Source State</h3></td></tr>
 <tr class="memitem:a9e91f7127d3ac04e2b09d27a98bc92bf"><td class="memItemLeft" align="right" valign="top"><a id="a9e91f7127d3ac04e2b09d27a98bc92bf"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a9e91f7127d3ac04e2b09d27a98bc92bf">isSampleAccessEnabled</a> () const noexcept</td></tr>
 <tr class="memdesc:a9e91f7127d3ac04e2b09d27a98bc92bf"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#ab05b440d0590981cf47c37171b0e0af7" title="Enable or disable access to a given audio source. This call allows the host to control the time when ...">DocumentController::enableAudioSourceSamplesAccess</a>. <br /></td></tr>
@@ -382,6 +383,10 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grou
 bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a4ff0878bffdc8e50d8875996fda91ad9">isDeactivatedForUndoHistory</a> () const noexcept</td></tr>
 <tr class="memdesc:a4ff0878bffdc8e50d8875996fda91ad9"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#aefe1e7f19bbfabc5c07e65f7011c166c" title="Deactivate the given audio source because it has become part of the undo history and is no longer use...">DocumentController::deactivateAudioSourceForUndoHistory</a>. <br /></td></tr>
 <tr class="separator:a4ff0878bffdc8e50d8875996fda91ad9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a27c4490d86aef1cc3345c45326dd2bb1"><td class="memItemLeft" align="right" valign="top"><a id="a27c4490d86aef1cc3345c45326dd2bb1"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a27c4490d86aef1cc3345c45326dd2bb1">doUpdateChannelArrangement</a> (const <a class="el" href="group___a_r_a___library___utility___channel___arrangement.html#class_a_r_a_1_1_channel_arrangement">ChannelArrangement</a> &amp;channelArrangement) noexcept</td></tr>
+<tr class="memdesc:a27c4490d86aef1cc3345c45326dd2bb1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Since the channel arrangement is expressed in terms of the Companion API and not in some native ARA format, translating it into the plug-in's internal representation is delegated by the library via this call for clients to override as necessary. <br /></td></tr>
+<tr class="separator:a27c4490d86aef1cc3345c45326dd2bb1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 
 </div>
@@ -437,14 +442,15 @@ const <a class="el" href="group___a_r_a___library___a_r_a_plug___utility___class
 const std::string &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a04910db8bb2a49e1ed767bd08b32f076">getPersistentID</a> () const noexcept</td></tr>
 <tr class="memdesc:a04910db8bb2a49e1ed767bd08b32f076"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___model___audio___modification.html#ab8555a3a444529f8aceb783e5604eb63" title="ID used to re-connect model graph when archiving/unarchiving. This ID must be unique for all audio mo...">ARAAudioModificationProperties::persistentID</a>. <br /></td></tr>
 <tr class="separator:a04910db8bb2a49e1ed767bd08b32f076"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a117d83cd5dd0a4f57515aab3cd583bec"><td class="memItemLeft" align="right" valign="top"><a id="a117d83cd5dd0a4f57515aab3cd583bec"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a117d83cd5dd0a4f57515aab3cd583bec">isDeactivatedForUndoHistory</a> () const noexcept</td></tr>
-<tr class="memdesc:a117d83cd5dd0a4f57515aab3cd583bec"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a0a04ee4787a1a8607062993121494a06" title="Deactivate the given audio modification because it has become part of the undo history and is no long...">DocumentController::deactivateAudioModificationForUndoHistory</a>. <br /></td></tr>
-<tr class="separator:a117d83cd5dd0a4f57515aab3cd583bec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a38a85351b922e16361bc6388864390e0"><td class="memItemLeft" align="right" valign="top"><a id="a38a85351b922e16361bc6388864390e0"></a>
 const <a class="el" href="group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_optional_property">OptionalProperty</a>&lt; <a class="el" href="group___strings.html#ga9bbb1b8bd26bc9b6db1bf960d5aadfc3">ARAUtf8String</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a38a85351b922e16361bc6388864390e0">getEffectiveName</a> () const noexcept</td></tr>
 <tr class="memdesc:a38a85351b922e16361bc6388864390e0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Convenience function: if host did not provide name, this returns the audio source name - note that the fallback may still return nullptr! <br /></td></tr>
 <tr class="separator:a38a85351b922e16361bc6388864390e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><h3>Host-controlled Audio Modification State</h3></td></tr>
+<tr class="memitem:a117d83cd5dd0a4f57515aab3cd583bec"><td class="memItemLeft" align="right" valign="top"><a id="a117d83cd5dd0a4f57515aab3cd583bec"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a117d83cd5dd0a4f57515aab3cd583bec">isDeactivatedForUndoHistory</a> () const noexcept</td></tr>
+<tr class="memdesc:a117d83cd5dd0a4f57515aab3cd583bec"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a0a04ee4787a1a8607062993121494a06" title="Deactivate the given audio modification because it has become part of the undo history and is no long...">DocumentController::deactivateAudioModificationForUndoHistory</a>. <br /></td></tr>
+<tr class="separator:a117d83cd5dd0a4f57515aab3cd583bec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 
 </div>

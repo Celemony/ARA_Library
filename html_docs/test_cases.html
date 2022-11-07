@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.1.0: Use Cases and Testing</title>
+<title>ARA SDK 2.2.0: Use Cases and Testing</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -132,7 +132,7 @@ Render Timing</h1>
 <h1><a class="anchor" id="autotoc_md47"></a>
 Musical Timing</h1>
 <ul>
-<li>If both host and plug-in use musical song timing (tempo and signatures), is it properly exchanged? This can be tested both with Melodyne or the experimental <a href="https://github.com/Celemony/JUCE_ARA/tree/develop/examples/Plugins/ARAPluginDemo">JUCE_ARA plug-in demo</a>.<ul>
+<li>If both host and plug-in use musical song timing (tempo and signatures), is it properly exchanged? This can be tested both with Melodyne or the experimental <a href="https://github.com/Celemony/JUCE_ARA/tree/develop/examples/Plugins/ARAPluginDemo.h">JUCE_ARA plug-in demo</a>.<ul>
 <li>Is the beat timeline drawn in the plug-in identical to the one drawn in the host?</li>
 <li>Does the plug-in follow edits in the host timeline properly?</li>
 <li>Does the grid align with the metronome/click track?</li>
@@ -257,7 +257,7 @@ General</h1>
 <li>Does the implementation scale well both in terms of CPU and memory usage when being used with many long audio files at the same time (e.g. a real-life test scenario with a 30 minutes life-recording of 20+ tracks)?</li>
 <li>When reading UTF8-encoded strings from the other side, are any normalization requirements (e.g. for the text layout engine) properly enforced?</li>
 <li>Does the plug-in scan as an ARA enabled plug-in in the host?<ul>
-<li>For AudioUnit plug-in developers, is the <a class="el" href="group___audio___unit.html#gad3b2fc71ec6c6b3c311eb504b56fad83">`</a>ARA"` tag" set in the <code>Info.plist</code> file? </li>
+<li>For AudioUnit plug-in developers, is the <a class="el" href="group___audio___unit__v3.html#gad3b2fc71ec6c6b3c311eb504b56fad83">`</a>ARA"` tag" set in the <code>Info.plist</code> file? </li>
 </ul>
 </li>
 </ul>
