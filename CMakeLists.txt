@@ -86,6 +86,19 @@ function(configure_ARA_Library_target target)
             PRIVATE
                 -DNOMINMAX=1
         )
+    elseif(APPLE)
+        if(XCODE)
+            set_target_properties(${target} PROPERTIES
+                XCODE_ATTRIBUTE_GCC_SYMBOLS_PRIVATE_EXTERN YES
+                XCODE_ATTRIBUTE_GCC_INLINES_ARE_PRIVATE_EXTERN YES
+            )
+        else()
+            set_target_properties(${target} PROPERTIES
+                C_VISIBILITY_PRESET hidden
+                CXX_VISIBILITY_PRESET hidden
+                VISIBILITY_INLINES_HIDDEN ON
+            )
+        endif()
     elseif(UNIX AND NOT APPLE)
         set_target_properties(${target} PROPERTIES
             POSITION_INDEPENDENT_CODE ON
@@ -99,7 +112,7 @@ endfunction()
 
 # ======================
 
-# files used in both targets
+# files used in both host and plug-in target
 set(ARA_Library_Common_Files
     "${CMAKE_CURRENT_SOURCE_DIR}/Debug/ARADebug.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/Debug/ARADebug.c"
@@ -150,4 +163,25 @@ add_library(ARA_PlugIn_Library ${ARA_LIBRARY_TARGET_TYPE}
     "${CMAKE_CURRENT_SOURCE_DIR}/PlugIn/ARAPlug.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/PlugIn/ARAPlug.cpp"
 )
+
 configure_ARA_Library_target(ARA_PlugIn_Library)
+
+# ======================
+
+add_library(ARA_IPC_Library ${ARA_LIBRARY_TARGET_TYPE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPC.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCEncoding.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyHost.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyHost.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyPlugIn.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyPlugIn.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyHost.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyHost.cpp"
+)
+
+target_link_libraries(ARA_IPC_Library PRIVATE
+    ARA_Host_Library
+    ARA_PlugIn_Library
+)
+
+configure_ARA_Library_target(ARA_IPC_Library)
