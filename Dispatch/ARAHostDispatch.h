@@ -382,9 +382,9 @@ public:
     //! \copydoc ARADocumentControllerInterface::updateAudioModificationProperties
     void updateAudioModificationProperties (ARAAudioModificationRef audioModificationRef, const ARAAudioModificationProperties* properties) noexcept;
     //! Test whether isAudioModificationPreservingAudioSourceSignal () is supported by the plug-in.
-    ARA_DRAFT bool supportsIsAudioModificationPreservingAudioSourceSignal () noexcept;
+    bool supportsIsAudioModificationPreservingAudioSourceSignal () noexcept;
     //! \copydoc ARADocumentControllerInterface::isAudioModificationPreservingAudioSourceSignal
-    ARA_DRAFT bool isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept;
+    bool isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept;
     //! \copydoc ARADocumentControllerInterface::deactivateAudioModificationForUndoHistory
     void deactivateAudioModificationForUndoHistory (ARAAudioModificationRef audioModificationRef, bool deactivate) noexcept;
     //! \copydoc ARADocumentControllerInterface::destroyAudioModification
