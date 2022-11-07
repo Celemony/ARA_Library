@@ -30,25 +30,6 @@ namespace Host {
 //! @addtogroup ARA_Library_Host_Dispatch
 //! @{
 
-/*******************************************************************************/
-/** Optional ARA 1 backwards compatibility.
-    Host can choose support ARA 1 plug-ins in addition to ARA 2 plug-ins.
-    This results in several restrictions being implicitly imposed when using such plug-ins
-    through the implementation provided here:
-    - each plug-in instance assumes all possible roles (see ARAPlugInInstanceRoleFlags)
-    - each plug-in instance only is associated with at most one playback region at any time
-    - the ARA 1 API is mapped to PlaybackRenderer*, the other interfaces will not be provided
-    - archiving must use ARA 1 style monolithic persistency calls
-*/
-/*******************************************************************************/
-
-#if !defined (ARA_SUPPORT_VERSION_1)
-    #define ARA_SUPPORT_VERSION_1 0
-#endif
-
-#if ARA_SUPPORT_VERSION_1 && ARA_CPU_ARM
-    #error "ARA v1 is not supported on ARM architecture"
-#endif
 
 /*******************************************************************************/
 /** Type safe conversions to/from host ref: toHostRef () and fromHostRef<> ().

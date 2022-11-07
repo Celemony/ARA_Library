@@ -31,6 +31,36 @@
 #include "ARA_API/ARAInterface.h"
 
 
+/*******************************************************************************/
+/** Optional ARA 1 backwards compatibility.
+    Hosts and plug-ins can choose support ARA 1 hosts in addition to ARA 2 hosts.
+    This feature is being phased out as all vendors move to ARA 2, and is not
+    available on architectures where ARA 1 was not available, such as ARM.
+
+    For hosts, using ARA 1 plug-ins through the implementation provided here
+    imposes several implicit restrictions:
+    - each plug-in instance assumes all possible roles (see ARAPlugInInstanceRoleFlags)
+    - each plug-in instance only is associated with at most one playback region at any time
+    - the ARA 1 API is mapped to PlaybackRenderer*, the other interfaces will not be provided
+    - archiving must use ARA 1 style monolithic persistency calls
+
+    Plug-ins will have to implement a several fallbacks in order to work in ARA 1 hosts,
+    in addition to the support provided by this implementation they need to:
+    - create dummy region sequences for the playback regions, utilizing the
+      context information provided via the companion APIs
+    - implicitly derive ARA selection state from companion API actions
+*/
+/*******************************************************************************/
+
+#if !defined (ARA_SUPPORT_VERSION_1)
+    #define ARA_SUPPORT_VERSION_1 0
+#endif
+
+#if ARA_SUPPORT_VERSION_1 && ARA_CPU_ARM
+    #error "ARA v1 is not supported on ARM architecture"
+#endif
+
+
 namespace ARA {
 
 /*******************************************************************************/

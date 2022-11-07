@@ -28,24 +28,6 @@ namespace PlugIn {
 //! @{
 
 /*******************************************************************************/
-/** Optional ARA 1 backwards compatibility.
-    Plug-ins can choose support ARA 1 hosts in addition to ARA 2 hosts.
-    Plug-ins will have to implement a lot of fallbacks in addition to the support
-    provided by this implementation:
-    - create dummy region sequences for the playback regions, utilizing the
-      context information provided via the companion APIs
-    - implicitly derive ARA selection state from companion API actions
-*/
-/*******************************************************************************/
-#if !defined (ARA_SUPPORT_VERSION_1)
-    #define ARA_SUPPORT_VERSION_1 0
-#endif
-
-#if ARA_SUPPORT_VERSION_1 && ARA_CPU_ARM
-    #error "ARA v1 is not supported on ARM architecture"
-#endif
-
-/*******************************************************************************/
 /** Type safe conversions to/from ref: toRef () and fromRef<> ().
     This macro defines custom overloads of the toRef () and fromRef<> () conversion functions
     which act as type safe casts between your implementation class pointers and the opaque refs
