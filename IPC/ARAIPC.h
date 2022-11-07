@@ -178,8 +178,8 @@ typedef struct ARAIPCMessageSenderInterface
     //! send function: send message create using the encoder, blocking until a reply has been received.
     //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
     //! A send function can be called from any thread, but not concurrently.
-    void (ARA_CALL *sendMessage) (ARAIPCMessageSenderRef messageSenderRef, ARAIPCMessageID messageID, const ARAIPCMessageEncoder * encoder,
-                                  ARAIPCReplyHandler * const replyHandler, void * replyHandlerUserData);
+    void (ARA_CALL *sendMessage) (const bool stackable, ARAIPCMessageSenderRef messageSenderRef, ARAIPCMessageID messageID,
+                                  const ARAIPCMessageEncoder * encoder, ARAIPCReplyHandler * const replyHandler, void * replyHandlerUserData);
 
     //! Test if the receiver runs on a different architecture with different endianess.
     bool (ARA_CALL *receiverEndianessMatches) (ARAIPCMessageSenderRef messageSenderRef);

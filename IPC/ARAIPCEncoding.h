@@ -1158,16 +1158,16 @@ public:
     RemoteCaller (ARAIPCMessageSender sender) noexcept : _sender { sender } {}
 
     template<typename... Args>
-    void remoteCallWithoutReply (const ARAIPCMessageID messageID, const Args &... args)
+    void remoteCallWithoutReply (const bool stackable, const ARAIPCMessageID messageID, const Args &... args)
     {
         auto encoder { _sender.methods->createEncoder (_sender.ref) };
         encodeArguments (encoder, args...);
-        _sender.methods->sendMessage (_sender.ref, messageID, &encoder, nullptr, nullptr);
+        _sender.methods->sendMessage (stackable, _sender.ref, messageID, &encoder, nullptr, nullptr);
         encoder.methods->destroyEncoder (encoder.ref);
     }
 
     template<typename RetT, typename... Args>
-    void remoteCallWithReply (RetT& result, const ARAIPCMessageID messageID, const Args &... args)
+    void remoteCallWithReply (RetT& result, const bool stackable, const ARAIPCMessageID messageID, const Args &... args)
     {
         auto encoder { _sender.methods->createEncoder (_sender.ref) };
         encodeArguments (encoder, args...);
@@ -1176,11 +1176,11 @@ public:
                 ARA_INTERNAL_ASSERT (!decoder.methods->isEmpty (decoder.ref));
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
-        _sender.methods->sendMessage (_sender.ref, messageID, &encoder, &replyHandler, &result);
+        _sender.methods->sendMessage (stackable, _sender.ref, messageID, &encoder, &replyHandler, &result);
         encoder.methods->destroyEncoder (encoder.ref);
     }
     template<typename... Args>
-    void remoteCallWithReply (CustomDecodeFunction& decodeFunction, const ARAIPCMessageID messageID, const Args &... args)
+    void remoteCallWithReply (CustomDecodeFunction& decodeFunction, const bool stackable, const ARAIPCMessageID messageID, const Args &... args)
     {
         auto encoder { _sender.methods->createEncoder (_sender.ref) };
         encodeArguments (encoder, args...);
@@ -1189,7 +1189,7 @@ public:
                 ARA_INTERNAL_ASSERT (!decoder.methods->isEmpty (decoder.ref));
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
-        _sender.methods->sendMessage (_sender.ref, messageID, &encoder, &replyHandler, &decodeFunction);
+        _sender.methods->sendMessage (stackable, _sender.ref, messageID, &encoder, &replyHandler, &decodeFunction);
         encoder.methods->destroyEncoder (encoder.ref);
     }
 
