@@ -974,11 +974,17 @@ constexpr ARAIPCMessageID _encodeMessageID ()
 #define ARA_IPC_HOST_METHOD_ID(StructT, member) IPC::_encodeMessageID <IPC::_getHostInterfaceID<StructT> (), offsetof (StructT, member)> ()
 #define ARA_IPC_PLUGIN_METHOD_ID(StructT, member) IPC::_encodeMessageID <IPC::_getPlugInInterfaceID<StructT> (), offsetof (StructT, member)> ()
 
+
 // "global" messages that are not passed based on interface structs
-constexpr ARAIPCMessageID kGetFactoriesCountMessageID { 1 };
-constexpr ARAIPCMessageID kGetFactoryMessageID { 2 };
-constexpr ARAIPCMessageID kCreateDocumentControllerMessageID { 3 };
-constexpr ARAIPCMessageID kBindToDocumentControllerMessageID { 4 };
+enum : ARA::IPC::ARAIPCMessageID
+{
+    kGetFactoriesCountMessageID = 1,
+    kGetFactoryMessageID = 2,
+    kInitializeARAMessageID = 3,
+    kCreateDocumentControllerMessageID = 4,
+    kBindToDocumentControllerMessageID = 5,
+    kUninitializeARAMessageID = 6
+};
 
 
 // caller side: create a message with the specified arguments

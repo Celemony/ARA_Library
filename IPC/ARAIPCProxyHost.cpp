@@ -610,6 +610,18 @@ void ARAIPCProxyHostCleanupBinding (const ARA::ARAPlugInExtensionInstance* plugI
     delete fromRef (plugInExtensionInstance->plugInExtensionRef);
 }
 
+const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
+{
+    for (const auto& factory : _factories)
+    {
+        if (0 == std::strcmp (factory->factoryID, factoryID))
+            return factory;
+    }
+
+    ARA_INTERNAL_ASSERT(false && "provided factory ID not previously registered via ARAIPCProxyHostAddFactory()");
+    return nullptr;
+}
+
 void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
 {
 //  ARA_LOG ("ARAIPCProxyHostCommandHandler received message %s", decodePlugInMessageID (messageID));
@@ -625,6 +637,16 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
         decodeArguments (decoder, index);
         ARA_INTERNAL_ASSERT (index < _factories.size ());
         return encodeReply (replyEncoder, *_factories[index]);
+    }
+    else if (messageID == kInitializeARAMessageID)
+    {
+        ARAPersistentID factoryID;
+        ARA::SizedStruct<ARA_STRUCT_MEMBER (ARAInterfaceConfiguration, assertFunctionAddress)> interfaceConfig = { kARAAPIGeneration_2_0_Final, nullptr };
+        decodeArguments (decoder, factoryID, interfaceConfig.desiredApiGeneration);
+        ARA_INTERNAL_ASSERT (interfaceConfig.desiredApiGeneration >= kARAAPIGeneration_2_0_Final);
+
+        if (const ARAFactory* const factory { getFactoryWithID (factoryID) })
+            factory->initializeARAWithConfiguration(&interfaceConfig);
     }
     else if (messageID == kCreateDocumentControllerMessageID)
     {
@@ -645,17 +667,7 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
                                 providePlaybackController, playbackControllerHostRef,
                                 properties);
 
-        const ARAFactory* factory {};
-        for (const auto& f : _factories)
-        {
-            if (0 == std::strcmp (f->factoryID, factoryID))
-            {
-                factory = f;
-                break;
-            }
-        }
-        ARA_INTERNAL_ASSERT (factory != nullptr);
-        if (factory != nullptr)
+        if (const ARAFactory* const factory { getFactoryWithID (factoryID) })
         {
             const auto audioAccessController { new AudioAccessController { _plugInCallbacksSender, audioAccessControllerHostRef } };
             const auto archivingController { new ArchivingController { _plugInCallbacksSender, archivingControllerHostRef } };
@@ -682,6 +694,14 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
         decodeArguments (decoder, plugInInstanceRef, controllerRef, knownRoles, assignedRoles);
         const auto plugInExtensionInstance { _bindingHandler (plugInInstanceRef, fromRef (controllerRef)->getRef (), knownRoles, assignedRoles) };
         return encodeReply (replyEncoder, ARAPlugInExtensionRef { toRef (new PlugInExtension { plugInExtensionInstance })});
+    }
+    else if (messageID == kUninitializeARAMessageID)
+    {
+        ARAPersistentID factoryID;
+        decodeArguments (decoder, factoryID);
+
+        if (const ARAFactory* const factory { getFactoryWithID (factoryID) })
+            factory->uninitializeARA();
     }
 
     //ARADocumentControllerInterface
@@ -1261,8 +1281,7 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
     }
 
     // all calls that create a reply return early from their respective if ().
-// it is valid to provide a dummy replyEncoder if no reply has been requested.
-//    ARA_INTERNAL_ASSERT (replyEncoder == nullptr);
+//    ARA_INTERNAL_ASSERT ((replyEncoder == nullptr) || replyEncoder->methods->isEmpty (replyEncoder->ref));
 }
 
 }   // namespace IPC
