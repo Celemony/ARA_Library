@@ -19,50 +19,54 @@
 #ifndef ARAIPCProxyPlugIn_h
 #define ARAIPCProxyPlugIn_h
 
-#include "ARAIPCEncoding.h"
 
+#include "ARA_Library/IPC/ARAIPC.h"
 
 #if ARA_ENABLE_IPC
 
 
+#if defined(__cplusplus)
 namespace ARA {
 namespace IPC {
-namespace ProxyPlugIn {
+extern "C" {
+#endif
 
 
-class Factory;
+typedef struct ARAIPCProxyPlugInFactory ARAIPCProxyPlugInFactory;
 
 
 //! static initialization
-size_t initializeFactories (Sender& hostCommandsSender);
+size_t ARAIPCProxyPlugInInitializeFactories(ARAIPCMessageSender hostCommandsSender);
 
 //! access proxies to the factories provided by the remote plug-in
-Factory* getFactoryAtIndex (size_t index);
+ARAIPCProxyPlugInFactory * ARAIPCProxyPlugInGetFactoryAtIndex(size_t index);
 
 //! get copy of the remote factory data, with all function calls removed
-const ARAFactory* getFactoryData (Factory* proxyFactory);
+const ARAFactory * ARAIPCProxyPlugInGetFactoryData(ARAIPCProxyPlugInFactory * proxyFactory);
 
-//! proxy document controller creation call, to be used instead of ARAFactory.createDocumentControllerWithDocument ()
-const ARADocumentControllerInstance* createDocumentControllerWithDocument (Factory* proxyFactory,
-                                                                           const ARADocumentControllerHostInstance* hostInstance,
-                                                                           const ARADocumentProperties* properties);
+//! proxy document controller creation call, to be used instead of ARAFactory.createDocumentControllerWithDocument()
+const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCProxyPlugInFactory * proxyFactory,
+                                                                                            const ARADocumentControllerHostInstance * hostInstance,
+                                                                                            const ARADocumentProperties * properties);
 
 //! static handler of received messages
-void plugInCallbacksDispatcher (const MessageID messageID, const MessageDecoder& decoder, MessageEncoder* const replyEncoder);
+void ARAIPCProxyPlugInCallbacksDispatcher(const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, ARAIPCMessageEncoder *  replyEncoder);
 
 //! \todo to perform the binding to the remote plug-in instance, the host needs access to this translation...
-ARADocumentControllerRef getDocumentControllerRemoteRef (ARADocumentControllerRef documentControllerRef);
+ARADocumentControllerRef ARAIPCProxyPlugInTranslateDocumentControllerRef(ARADocumentControllerRef documentControllerRef);
 
 //! create the plug-in extension when performing the binding to the remote plug-in instance
-const ARAPlugInExtensionInstance* createPlugInExtensionInstance (size_t remoteExtensionRef, Sender& sender, ARADocumentControllerRef documentControllerRef,
-                                                                 ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
+const ARAPlugInExtensionInstance * ARAIPCProxyPlugInCreatePlugInExtension(size_t remoteExtensionRef, ARAIPCMessageSender sender, ARADocumentControllerRef documentControllerRef,
+                                                                          ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
 //! destroy the plug-in extension when destroying the remote plug-in instance
-void destroyPlugInExtensionInstance (const ARAPlugInExtensionInstance* plugInExtension);
+void ARAIPCProxyPlugInDestroyPlugInExtension(const ARAPlugInExtensionInstance * plugInExtension);
 
 
-}   // namespace ProxyPlugIn
+#if defined(__cplusplus)
+}   // extern "C"
 }   // namespace IPC
 }   // namespace ARA
+#endif
 
 
 #endif // ARA_ENABLE_IPC

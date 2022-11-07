@@ -22,9 +22,11 @@
 #define ARAIPC_h
 
 
+#include "ARA_API/ARAInterface.h"
+
+
 //! @addtogroup ARA_Library_IPC
 //! @{
-
 
 //! switch to bypass all IPC code
 #if !defined (ARA_ENABLE_IPC)
@@ -39,121 +41,164 @@
 #if ARA_ENABLE_IPC
 
 
-#include <functional>
-
-
+#if defined(__cplusplus)
 namespace ARA {
 namespace IPC {
+extern "C" {
+#endif
 
 
-//! ID type for messages, IDs must be >= kMessageIDRangeStart and < kMessageIDRangeEnd
-using MessageID = int32_t;
-constexpr MessageID kMessageIDRangeStart { 1 };
-constexpr MessageID kMessageIDRangeEnd { 8*16*16 - 1 };
+//! ID type for messages, IDs must be >= kARAIPCMessageIDRangeStart and < kARAIPCMessageIDRangeEnd
+typedef ARAInt32 ARAIPCMessageID;
+#if defined(__cplusplus)
+    constexpr ARAIPCMessageID kARAIPCMessageIDRangeStart { 1 };
+    constexpr ARAIPCMessageID kARAIPCMessageIDRangeEnd { 8*16*16 - 1 };
+#else
+    #define kARAIPCMessageIDRangeStart  ((ARAIPCMessageID) 1)
+    #define kARAIPCMessageIDRangeEnd ((ARAIPCMessageID) 8*16*16 - 1)
+#endif
+
 
 //! key type for message dictionaries - negative keys are reserved for the implementation
-using MessageKey = int32_t;
+typedef ARAInt32 ARAIPCMessageKey;
 
 
-class MessageEncoder
+//! Message Encoder
+//! @{
+typedef struct ARAIPCMessageEncoderImplementation * ARAIPCMessageEncoderRef;
+
+typedef struct ARAIPCMessageEncoderInterface
 {
-public:
-    virtual ~MessageEncoder () = default;
+    //! destructor
+    void (ARA_CALL *destroyEncoder) (ARAIPCMessageEncoderRef encoderRef);
 
     //! number types
     //! The size variant will also be used for the pointer-sized ARA (host) refs.
     //@{
-    virtual void appendInt32 (const MessageKey argKey, const int32_t argValue) = 0;
-    virtual void appendInt64 (const MessageKey argKey, const int64_t argValue) = 0;
-    virtual void appendSize (const MessageKey argKey, const size_t argValue) = 0;
-    virtual void appendFloat (const MessageKey argKey, const float argValue) = 0;
-    virtual void appendDouble (const MessageKey argKey, const double argValue) = 0;
+    void (ARA_CALL *appendInt32) (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, int32_t argValue);
+    void (ARA_CALL *appendInt64) (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, int64_t argValue);
+    void (ARA_CALL *appendSize) (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, size_t argValue);
+    void (ARA_CALL *appendFloat) (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, float argValue);
+    void (ARA_CALL *appendDouble) (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, double argValue);
     //@}
 
     //! UTF8-encoded C strings
-    virtual void appendString (const MessageKey argKey, const char* const argValue) = 0;
+    void (ARA_CALL *appendString) (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, const char * argValue);
 
     //! raw bytes
     //! As optimization, disable copying if the memory containing the bytes stays
     //! alive&unchanged until the message has been sent.
-    virtual void appendBytes (const MessageKey argKey, const uint8_t* argValue, const size_t argSize, const bool copy = true) = 0;
+    void (ARA_CALL *appendBytes) (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, const uint8_t * argValue, size_t argSize, bool copy);
 
     //! sub-messages to encode compound types
     //! The caller is responsible for deleting the encoder after use.
-    virtual MessageEncoder* appendSubMessage (const MessageKey argKey) = 0;
-};
+    ARAIPCMessageEncoderRef (ARA_CALL *appendSubMessage) (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey);
+} ARAIPCMessageEncoderInterface;
 
-class MessageDecoder
+typedef struct ARAIPCMessageEncoder
 {
-public:
-    virtual ~MessageDecoder () = default;
+    ARAIPCMessageEncoderRef ref;
+    const ARAIPCMessageEncoderInterface * methods;  // this preferably would be called "interface", but there's a system-defined macro in Windows with that name...
+} ARAIPCMessageEncoder;
+//! @}
+
+
+//! Message Decoder
+//! @{
+typedef struct ARAIPCMessageDecoderImplementation * ARAIPCMessageDecoderRef;
+
+typedef struct ARAIPCMessageDecoderInterface
+{
+    //! destructor
+    void (ARA_CALL *destroyDecoder) (ARAIPCMessageDecoderRef messageDecoderRef);
 
     //! only for debugging/validation: test if the message contains any key/value pairs
-    virtual bool isEmpty () const = 0;
+    bool (ARA_CALL *isEmpty) (ARAIPCMessageDecoderRef messageDecoderRef);
 
     //! number types
     //! The size variant will also be used for the pointer-sized ARA (host) refs.
     //! Will return false and set argValue to 0 if key not found.
     //@{
-    virtual bool readInt32 (const MessageKey argKey, int32_t& argValue) const = 0;
-    virtual bool readInt64 (const MessageKey argKey, int64_t& argValue) const = 0;
-    virtual bool readSize (const MessageKey argKey, size_t& argValue) const = 0;
-    virtual bool readFloat (const MessageKey argKey, float& argValue) const = 0;
-    virtual bool readDouble (const MessageKey argKey, double& argValue) const = 0;
+    bool (ARA_CALL *readInt32) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, int32_t * argValue);
+    bool (ARA_CALL *readInt64) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, int64_t * argValue);
+    bool (ARA_CALL *readSize) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, size_t * argValue);
+    bool (ARA_CALL *readFloat) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, float * argValue);
+    bool (ARA_CALL *readDouble) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, double * argValue);
     //@}
 
     //! UTF8-encoded C strings
-    //! Will return false and set argValue to nullptr if key not found.
-    virtual bool readString (const MessageKey argKey, const char*& argValue) const = 0;
+    //! Will return false and set argValue to NULL if key not found.
+    bool (ARA_CALL *readString) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, const char ** argValue);
 
     //! raw bytes
     //! first query size, then provide a buffer large enough to copy the bytes to.
     //! readBytesSize () will return false and set argSize to 0 if key not found.
     //@{
-    virtual bool readBytesSize (const MessageKey argKey, size_t& argSize) const = 0;
-    virtual void readBytes (const MessageKey argKey, uint8_t* const argValue) const = 0;
+    bool (ARA_CALL *readBytesSize) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, size_t * argSize);
+    void (ARA_CALL *readBytes) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, uint8_t * argValue);
     //@}
 
     //! sub-messages to decode compound types
     //! returns nullptr if key not found or if the value for the key is not representing a sub-message
     //! The caller is responsible for deleting the encoder after use.
-    virtual MessageDecoder* readSubMessage (const MessageKey argKey) const = 0;
-};
+    ARAIPCMessageDecoderRef (ARA_CALL *readSubMessage) (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey);
+} ARAIPCMessageDecoderInterface;
 
-//! receive function: receives a message readable through the decoder, optionally creating a reply
+typedef struct ARAIPCMessageDecoder
+{
+    ARAIPCMessageDecoderRef ref;
+    const ARAIPCMessageDecoderInterface * methods;  // this preferably would be called "interface", but there's a system-defined macro in Windows with that name...
+} ARAIPCMessageDecoder;
+//! @}
+
+
+//! Message Receiver: a function that receives a message readable through the decoder, optionally creating a reply
 //! Not using the replyEncoder will return a valid empty message to the sender (useful for void calls).
 //! Depending on the underlying implementation, replyEncoder may be nullptr if no reply has been
 //! requested by the sender, but providing a dummy encoder in this case is valid too.
 //! The sender thread will be blocked until the (possibly empty) reply has been received.
 //! A receive function can be called from any thread, but not concurrently.
-using ReceiveFunction = void (const MessageID messageID, const MessageDecoder& decoder, MessageEncoder* const replyEncoder);
+typedef void (ARA_CALL *ARAIPCMessageReceiver) (const ARAIPCMessageID messageID, const ARAIPCMessageDecoder decoder, ARAIPCMessageEncoder * replyEncoder);
 
-//! gateway for sending messages
-class Sender
+//! Reply Handler: a function that is called to process the reply to a message
+typedef void (ARA_CALL *ARAIPCReplyHandler) (const ARAIPCMessageDecoder decoder, void * userData);
+
+//! Message Sender: gateway for sending messages
+//! @{
+typedef struct ARAIPCMessageSenderImplementation * ARAIPCMessageSenderRef;
+
+typedef struct ARAIPCMessageSenderInterface
 {
-public:
-    virtual ~Sender () = default;
-
-    using ReplyHandler = std::function<void (const MessageDecoder& decoder)>;
-
     //! generate an encoder to encode a new message
     //! An encoder can be reused if the same message is sent several times,
     //! but it must not be modified after sending.
     //! The caller is responsible for deleting the encoder after use.
-    virtual MessageEncoder* createEncoder () = 0;
+    ARAIPCMessageEncoder (ARA_CALL *createEncoder) (ARAIPCMessageSenderRef messageSenderRef);
 
     //! send function: send message create using the encoder, blocking until a reply has been received.
     //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
     //! A send function can be called from any thread, but not concurrently.
-    virtual void sendMessage (MessageID messageID, const MessageEncoder& encoder, ReplyHandler* const replyHandler) = 0;
+    void (ARA_CALL *sendMessage) (ARAIPCMessageSenderRef messageSenderRef, ARAIPCMessageID messageID, const ARAIPCMessageEncoder * encoder,
+                                  ARAIPCReplyHandler * const replyHandler, void * replyHandlerUserData);
 
     //! Test if the receiver runs on a different architecture with different endianess.
-    virtual bool receiverEndianessMatches () const { return true; }
-};
+    bool (ARA_CALL *receiverEndianessMatches) (ARAIPCMessageSenderRef messageSenderRef);
+} ARAIPCMessageSenderInterface;
+
+typedef struct ARAIPCMessageSender
+{
+    ARAIPCMessageSenderRef ref;
+    const ARAIPCMessageSenderInterface * methods;   // this preferably would be called "interface", but there's a system-defined macro in Windows with that name...
+} ARAIPCMessageSender;
+//! @}
 
 
+#if defined(__cplusplus)
+}   // extern "C"
 }   // namespace IPC
 }   // namespace ARA
+#endif
+
 
 #endif // ARA_ENABLE_IPC
 
