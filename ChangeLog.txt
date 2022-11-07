@@ -1,9 +1,6 @@
-This is a development build of the ARA Library 2.2.
-=== PRELIMINARY - DO NOT USE FOR SHIPPING PRODUCTS! ===
-
-Changes since previous releases:
-- initial draft of surround support for audio sources
-- initial draft of tracking whether an audio modification actually modifies the underlying audio source
+=== ARA SDK 2.2 release (aka 2.2.001) (2022/11/07) ===
+- added surround support for audio sources
+- added API to determine whether an audio modification actually modifies the underlying audio source
 - implementation of assertion macros changed to be consistent void expressions
   Code like "if (ARA_SOME_ASSERT (someCall ()))" breaks when disabling asserts,
   so this change makes it impossible to write it.
