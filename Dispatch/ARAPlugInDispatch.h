@@ -190,6 +190,8 @@ public:
     virtual ARAAudioModificationRef cloneAudioModification (ARAAudioModificationRef audioModificationRef, ARAAudioModificationHostRef hostRef, PropertiesPtr<ARAAudioModificationProperties> properties) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::updateAudioModificationProperties
     virtual void updateAudioModificationProperties (ARAAudioModificationRef audioModificationRef, PropertiesPtr<ARAAudioModificationProperties> properties) noexcept = 0;
+    //! \copydoc ARADocumentControllerInterface::isAudioModificationPreservingAudioSourceSignal
+    ARA_DRAFT virtual bool isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::deactivateAudioModificationForUndoHistory
     virtual void deactivateAudioModificationForUndoHistory (ARAAudioModificationRef audioModificationRef, bool deactivate) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::destroyAudioModification

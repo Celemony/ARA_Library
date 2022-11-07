@@ -530,6 +530,18 @@ void DocumentController::updateAudioModificationProperties (ARAAudioModification
     getInterface ()->updateAudioModificationProperties (getRef (), audioModificationRef, properties);
 }
 
+bool DocumentController::supportsIsAudioModificationPreservingAudioSourceSignal () noexcept
+{
+    return getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)> ();
+}
+
+bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept
+{
+    if (!supportsIsAudioModificationPreservingAudioSourceSignal ())
+        return false;
+    return (getInterface ()->isAudioModificationPreservingAudioSourceSignal (getRef (), audioModificationRef) != kARAFalse);
+}
+
 void DocumentController::deactivateAudioModificationForUndoHistory (ARAAudioModificationRef audioModificationRef, bool deactivate) noexcept
 {
     getInterface ()->deactivateAudioModificationForUndoHistory (getRef (), audioModificationRef, (deactivate) ? kARATrue : kARAFalse);

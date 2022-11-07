@@ -1618,6 +1618,16 @@ void DocumentController::updateAudioModificationProperties (ARAAudioModification
     ARA_LOG_PROPERTY_CHANGES ("did update properties of audio modification", audioModification);
 }
 
+bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept
+{
+    ARA_LOG_HOST_ENTRY (audioModificationRef);
+    ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+
+    auto audioModification { fromRef (audioModificationRef) };
+    ARA_VALIDATE_API_ARGUMENT (audioModificationRef, isValidAudioModification (audioModification));
+    return doIsAudioModificationPreservingAudioSourceSignal (audioModification);
+}
+
 void DocumentController::deactivateAudioModificationForUndoHistory (ARAAudioModificationRef audioModificationRef, bool deactivate) noexcept
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);

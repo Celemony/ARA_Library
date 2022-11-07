@@ -958,6 +958,8 @@ protected:
     virtual void willUpdateAudioModificationProperties (AudioModification* audioModification, PropertiesPtr<ARAAudioModificationProperties> newProperties) noexcept {}
     //! Override to customize post-update behavior of updateAudioModificationProperties().
     virtual void didUpdateAudioModificationProperties (AudioModification* audioModification) noexcept {}
+    //! Override to implement isAudioModificationPreservingAudioSourceSignal().
+    ARA_DRAFT virtual bool doIsAudioModificationPreservingAudioSourceSignal (AudioModification* audioModification) noexcept { return false; }
     //! Override to customize behavior before deactivateAudioModificationForUndoHistory() changes \p audioModification's activated state.
     virtual void willDeactivateAudioModificationForUndoHistory (AudioModification* audioModification, bool deactivate) noexcept {}
     //! Override to customize behavior after deactivateAudioModificationForUndoHistory() changes \p audioModification's activated state.
@@ -1168,6 +1170,7 @@ public:
     ARAAudioModificationRef createAudioModification (ARAAudioSourceRef audioSourceRef, ARAAudioModificationHostRef hostRef, PropertiesPtr<ARAAudioModificationProperties> properties) noexcept override;
     ARAAudioModificationRef cloneAudioModification (ARAAudioModificationRef audioModificationRef, ARAAudioModificationHostRef hostRef, PropertiesPtr<ARAAudioModificationProperties> properties) noexcept override;
     void updateAudioModificationProperties (ARAAudioModificationRef audioModificationRef, PropertiesPtr<ARAAudioModificationProperties> properties) noexcept override;
+    ARA_DRAFT bool isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept override;
     void deactivateAudioModificationForUndoHistory (ARAAudioModificationRef audioModificationRef, bool deactivate) noexcept override;
     void destroyAudioModification (ARAAudioModificationRef audioModificationRef) noexcept override;
 

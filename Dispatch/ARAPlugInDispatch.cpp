@@ -196,6 +196,11 @@ namespace DocumentControllerDispatcher
         fromRef (controllerRef)->updateAudioModificationProperties (audioModificationRef, properties);
     }
 
+    static ARABool ARA_CALL isAudioModificationPreservingAudioSourceSignal (ARADocumentControllerRef controllerRef, ARAAudioModificationRef audioModificationRef) noexcept
+    {
+        return fromRef (controllerRef)->isAudioModificationPreservingAudioSourceSignal (audioModificationRef) ? kARATrue : kARAFalse;
+    }
+
     static void ARA_CALL deactivateAudioModificationForUndoHistory (ARADocumentControllerRef controllerRef, ARAAudioModificationRef audioModificationRef, ARABool enable) noexcept
     {
         fromRef (controllerRef)->deactivateAudioModificationForUndoHistory (audioModificationRef, enable != kARAFalse);
@@ -337,7 +342,7 @@ namespace DocumentControllerDispatcher
 
     static const ARADocumentControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk)> ifc =
+        static const SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)> ifc =
         {
             DocumentControllerDispatcher::destroyDocumentController,
             DocumentControllerDispatcher::getFactory,
@@ -391,7 +396,8 @@ namespace DocumentControllerDispatcher
             DocumentControllerDispatcher::getProcessingAlgorithmForAudioSource,
             DocumentControllerDispatcher::requestProcessingAlgorithmForAudioSource,
             DocumentControllerDispatcher::isLicensedForCapabilities,
-            DocumentControllerDispatcher::storeAudioSourceToAudioFileChunk
+            DocumentControllerDispatcher::storeAudioSourceToAudioFileChunk,
+            DocumentControllerDispatcher::isAudioModificationPreservingAudioSourceSignal
         };
         return &ifc;
     }
