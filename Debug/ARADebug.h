@@ -69,7 +69,8 @@ extern "C"
         // logs to the debugger console and/or to the error output (e.g. stderr)
         void ARADebugMessage(ARADebugLevel level, const char * file, int line, const char * text, ...);
         // this logging can be prefixed by a custom static string if desired, which is useful e.g.
-        // if multiple plug-ins are build using the same compiled library, or in the IPC Demo example
+        // if multiple plug-ins are build using the same compiled library, or if using the IPC
+        // capabilities of the ARATestHost example
         // typically, this setup call is made once when loading the final binary and passes its name
         void ARASetupDebugMessagePrefix(const char * prefix);
         #if defined(__cplusplus)
