@@ -239,6 +239,7 @@ public:
     ARAAudioModificationRef createAudioModification (ARAAudioSourceRef audioSourceRef, ARAAudioModificationHostRef hostRef, PropertiesPtr<ARAAudioModificationProperties> properties) noexcept override;
     ARAAudioModificationRef cloneAudioModification (ARAAudioModificationRef audioModificationRef, ARAAudioModificationHostRef hostRef, PropertiesPtr<ARAAudioModificationProperties> properties) noexcept override;
     void updateAudioModificationProperties (ARAAudioModificationRef audioModificationRef, PropertiesPtr<ARAAudioModificationProperties> properties) noexcept override;
+    bool isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept override;
     void deactivateAudioModificationForUndoHistory (ARAAudioModificationRef audioModificationRef, bool deactivate) noexcept override;
     void destroyAudioModification (ARAAudioModificationRef audioModificationRef) noexcept override;
 
@@ -697,6 +698,16 @@ void DocumentController::updateAudioModificationProperties (ARAAudioModification
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAAudioModificationProperties);
 
     remoteCallWithoutReply (true, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateAudioModificationProperties), _remoteRef, audioModificationRef, *properties);
+}
+
+bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept
+{
+    ARA_LOG_HOST_ENTRY (audioModificationRef);
+    ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
+
+    ARABool result;
+    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal), _remoteRef, audioModificationRef);
+    return (result != kARAFalse);
 }
 
 void DocumentController::deactivateAudioModificationForUndoHistory (ARAAudioModificationRef audioModificationRef, bool deactivate) noexcept

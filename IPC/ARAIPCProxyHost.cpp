@@ -1008,6 +1008,14 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
 
         fromRef (controllerRef)->updateAudioModificationProperties (audioModificationRef, &properties);
     }
+    else if (messageID == ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal))
+    {
+        ARADocumentControllerRef controllerRef;
+        ARAAudioModificationRef audioModificationRef;
+        decodeArguments (decoder, controllerRef, audioModificationRef);
+
+        return encodeReply (replyEncoder, (fromRef (controllerRef)->isAudioModificationPreservingAudioSourceSignal (audioModificationRef)) ? kARATrue : kARAFalse);
+    }
     else if (messageID == ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, deactivateAudioModificationForUndoHistory))
     {
         ARADocumentControllerRef controllerRef;
