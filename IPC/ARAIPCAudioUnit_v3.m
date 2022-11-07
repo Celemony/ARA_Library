@@ -44,6 +44,9 @@ API_AVAILABLE_BEGIN(macos(13.0))
 // custom IPC message to read the remote instance ref
 const ARAIPCMessageID kARAIPCGetRemoteInstanceRef = -1;
 
+// custom IPC message to force synchronous IPC shutdown despite the OS shutting down asynchronously
+const ARAIPCMessageID kARAIPCDestroyRemoteInstance = -2;
+
 
 // "base class" layout used in plug-in and host
 typedef struct ARAIPCMessageSenderImplementation
@@ -258,7 +261,14 @@ void ARA_CALL ARAIPCAUProxyPlugInCleanupBinding(ARAIPCMessageSender messageSende
 {
     ARAIPCAUProxyPlugInExtensionMessageSenderImplementation * messageSenderRef = (ARAIPCAUProxyPlugInExtensionMessageSenderImplementation *)messageSender.ref;
     if (messageSenderRef->plugInExtensionInstance)
+    {
+        ARAIPCMessageEncoder encoder = messageSender.methods->createEncoder(messageSender.ref);
+        encoder.methods->appendSize(encoder.ref, 0, messageSenderRef->remoteInstanceRef);
+        messageSender.methods->sendMessage(false, messageSender.ref, kARAIPCDestroyRemoteInstance, &encoder, NULL, NULL);
+        encoder.methods->destroyEncoder(encoder.ref);
+        
         ARAIPCProxyPlugInCleanupBinding(messageSenderRef->plugInExtensionInstance);
+    }
 
     ARAIPCAUDestroyMessageSender(messageSender);
 }
@@ -279,6 +289,7 @@ void ARA_CALL ARAIPCAUProxyHostAddFactory(const ARAFactory * _Nonnull factory)
 }
 
 ARAIPCAUBindingHandler _bindingHandler = nil;
+ARAIPCAUDestructionHandler _destructionHandler = nil;
 
 const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandlerWrapper(ARAIPCPlugInInstanceRef plugInInstanceRef, ARADocumentControllerRef controllerRef,
                                                                           ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
@@ -287,7 +298,7 @@ const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandlerWrapper(ARAIPC
     return _bindingHandler (audioUnit, controllerRef, knownRoles, assignedRoles);
 }
 
-void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel, ARAIPCAUBindingHandler _Nonnull bindingHandler)
+void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel, ARAIPCAUBindingHandler _Nonnull bindingHandler, ARAIPCAUDestructionHandler _Nonnull destructionHandler)
 {
     _sharedPlugInLockingContextRef = ARAIPCCreateLockingContext();
 
@@ -297,8 +308,10 @@ void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull 
 
 #if __has_feature(objc_arc)
     _bindingHandler = bindingHandler;
+    _destructionHandler = destructionHandler;
 #else
     _bindingHandler = [bindingHandler retain];
+    _destructionHandler = [destructionHandler retain];
 #endif
     ARAIPCProxyHostSetBindingHandler(ARAIPCAUBindingHandlerWrapper);
 }
@@ -313,6 +326,16 @@ NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (AUAudioUnit * 
     if (messageID == kARAIPCGetRemoteInstanceRef)
     {
         replyEncoder.methods->appendSize(replyEncoder.ref, 0, (ARAIPCPlugInInstanceRef)audioUnit);
+    }
+    else if (messageID == kARAIPCDestroyRemoteInstance)
+    {
+        ARA_INTERNAL_ASSERT(!messageDecoder.methods->isEmpty(messageDecoder.ref));
+        ARAIPCPlugInInstanceRef plugInInstanceRef;
+        bool ARA_MAYBE_UNUSED_VAR(success) = messageDecoder.methods->readSize(messageDecoder.ref, 0, &plugInInstanceRef);
+        ARA_INTERNAL_ASSERT(success);
+
+        AUAudioUnit * audioUnit = (__bridge AUAudioUnit *)(void *)plugInInstanceRef;
+        _destructionHandler (audioUnit);
     }
     else
     {
@@ -337,8 +360,10 @@ void ARA_CALL ARAIPCAUProxyHostUninitalize(void)
 {
 #if __has_feature(objc_arc)
     _bindingHandler = nil;
+    _destructionHandler = nil;
 #else
     [_bindingHandler release];
+    [_destructionHandler release];
 #endif
     ARAIPCAUDestroyMessageSender(_sharedPlugInCallbacksSender);
     ARAIPCDestroyLockingContext(_sharedPlugInLockingContextRef);
