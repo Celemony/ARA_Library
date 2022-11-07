@@ -52,8 +52,8 @@ protected:
     ARAUtf8String getSharpSymbol () const noexcept;
 
 private:
-    bool _asciiSymbols { false };
-    bool _germanNoteNames { false };
+    bool _asciiSymbols;
+    bool _germanNoteNames;
 };
 
 //! Provides a user-readable name for an ARAContentChord based on its interval description.
