@@ -931,7 +931,7 @@ void DocumentController::initializeDocument (const ARADocumentProperties* proper
     ARA_LOG_MODELOBJECT_LIFETIME ("did create document", getDocument ());
 
     willUpdateDocumentProperties (_document, properties);
-    getDocument ()->updateProperties (properties);
+    _document->updateProperties (properties);
     didUpdateDocumentProperties (_document);
 }
 
