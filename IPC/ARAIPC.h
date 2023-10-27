@@ -156,13 +156,12 @@ public:
 
     virtual ~ARAIPCMessageSender() = default;
 
-    //! generate an encoder to encode a new message
-    //! An encoder can be reused if the same message is sent several times,
-    //! but it must not be modified after sending.
-    //! The caller is responsible for deleting the encoder after use.
+    //! generate an encoder to encode a new message, later passed to
+    //! sendMessage() which will destroy the encoder after sending
     virtual ARAIPCMessageEncoder* createEncoder () = 0;
 
     //! send an encoded messages to the receiving process
+    //! The encoder will be deleted after sending the message.
     //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
     //! This method can be called from any thread, concurrent calls will be serialized.
     //! The calling thread will be blocked until the receiver has processed the message and

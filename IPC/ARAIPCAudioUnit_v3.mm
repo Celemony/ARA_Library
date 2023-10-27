@@ -249,6 +249,7 @@ public:
             NSMutableDictionary * message { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionary (encoder)) };
             [message setObject:[NSNumber numberWithInt: messageID] forKey:_messageIDKey];
             _sendMessage (message);
+            delete encoder;
 
             do
             {

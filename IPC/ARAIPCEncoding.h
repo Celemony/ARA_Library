@@ -1275,7 +1275,6 @@ public:
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
         _sender->sendMessage (methodID.getMessageID (), encoder, nullptr, nullptr);
-        delete encoder;
     }
 
     template<typename RetT, typename... Args>
@@ -1289,7 +1288,6 @@ public:
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
         _sender->sendMessage (methodID.getMessageID (), encoder, replyHandler, &result);
-        delete encoder;
     }
 
     template<typename... Args>
@@ -1303,7 +1301,6 @@ public:
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
         _sender->sendMessage (methodID.getMessageID (), encoder, replyHandler, &decodeFunction);
-        delete encoder;
     }
 
     bool receiverEndianessMatches () const { return _sender->receiverEndianessMatches (); }
