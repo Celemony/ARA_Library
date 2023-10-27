@@ -564,17 +564,8 @@ public:
                                                                               ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
     {
         auto result { new ARAIPCAUPlugInExtensionMessageSender { messageChannel } };
-        auto encoder { result->createEncoder () };
-        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder * decoder, void * userData) {
-                ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
-                bool ARA_MAYBE_UNUSED_VAR (success) { decoder->readSize (0, static_cast<ARAIPCPlugInInstanceRef *> (userData)) };
-                ARA_INTERNAL_ASSERT (success);
-            } };
-        result->sendMessage (kARAIPCGetRemoteInstanceRef.getMessageID (), encoder, &replyHandler, &result->_remoteInstanceRef);
-        delete encoder;
-
+        ARA::IPC::RemoteCaller { result }.remoteCall (result->_remoteInstanceRef, kARAIPCGetRemoteInstanceRef);
         result->_plugInExtensionInstance = ARAIPCProxyPlugInBindToDocumentController (result->_remoteInstanceRef, result, documentControllerRef, knownRoles, assignedRoles);
-
         return result;
     }
 
