@@ -165,28 +165,26 @@ public:
     }
 
     // called on receive thread
-    void pushReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder, void* userData)
+    void pushReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
     {
         _messageID = messageID;
         _decoder = decoder;
-        _userData = userData;
         std::atomic_thread_fence (std::memory_order_release);
         dispatch_semaphore_signal (_semaphore);
     }
 
     // called on send thread
-    std::tuple<ARAIPCMessageID, const ARAIPCMessageDecoder *, void *> pullReceivedMessage ()
+    std::pair<ARAIPCMessageID, const ARAIPCMessageDecoder *> pullReceivedMessage ()
     {
         dispatch_semaphore_wait (_semaphore, DISPATCH_TIME_FOREVER);
         std::atomic_thread_fence (std::memory_order_acquire);
-        return { _messageID, _decoder, _userData };
+        return { _messageID, _decoder };
     }
 
 private:
     dispatch_semaphore_t _semaphore;
     ARAIPCMessageID _messageID { 0 };
     const ARAIPCMessageDecoder* _decoder { nullptr };
-    void* _userData { nullptr };
 };
 
 
@@ -253,7 +251,7 @@ public:
             do
             {
                 const auto receivedMessage { _sendThreadBridge.pullReceivedMessage () };
-                _processReceivedMessage (std::get<0> (receivedMessage), std::get<1> (receivedMessage), std::get<2> (receivedMessage));
+                _processReceivedMessage (receivedMessage.first, receivedMessage.second);
             } while (_pendingReply.load (std::memory_order_acquire) == &pendingReply);
 
             ARA_IPC_LOG ("received reply to message %i%s", messageID, (isNewTransaction) ? " (ending transaction)" : "");
@@ -265,7 +263,7 @@ public:
         }
     }
 
-    virtual NSDictionary * processReceivedMessage (NSDictionary * message, void * userData)
+    virtual NSDictionary * processReceivedMessage (NSDictionary * message)
     {
         const auto decoder { ARAIPCCFCreateMessageDecoderWithDictionary ((__bridge CFDictionaryRef) message) };
         const ARAIPCMessageID messageID { ARAIPCCFGetMessageIDFromDictionary (decoder) };
@@ -273,7 +271,7 @@ public:
         if (_pendingReply.load (std::memory_order_acquire) != nullptr)
         {
             //ARA_IPC_LOG ("processReceivedMessage enqueues for sending thread");
-            _sendThreadBridge.pushReceivedMessage (messageID, decoder, userData);
+            _sendThreadBridge.pushReceivedMessage (messageID, decoder);
         }
         else
         {
@@ -283,13 +281,13 @@ public:
                 dispatch_async (dispatchTarget,
                     ^{
                         //ARA_IPC_LOG ("processReceivedMessage processes dispatched");
-                        _processReceivedMessage (messageID, decoder, userData);
+                        _processReceivedMessage (messageID, decoder);
                     });
             }
             else
             {
                 //ARA_IPC_LOG ("processReceivedMessage processes directly");
-                _processReceivedMessage (messageID, decoder, userData);
+                _processReceivedMessage (messageID, decoder);
             }
         }
 
@@ -305,11 +303,10 @@ protected:
     virtual dispatch_queue_t _getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) = 0;
     virtual void _handleReceivedMessage (const ARAIPCMessageID messageID,
                                          const ARAIPCMessageDecoder * const decoder,
-                                         void * const userData,
                                          ARAIPCMessageEncoder * const replyEncoder) = 0;
 
 private:
-    void _processReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, void * userData)
+    void _processReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder)
     {
         const bool isAlreadyReceiving { _isReceivingOnThisThread };
         if (!isAlreadyReceiving)
@@ -320,7 +317,7 @@ private:
             ARA_IPC_LOG ("received message with ID %i%s", messageID, (_pendingReply.load (std::memory_order_relaxed) != nullptr) ? " (while awaiting reply)" : "");
 
             auto replyEncoder { createEncoder () };
-            _handleReceivedMessage (messageID, decoder, userData, replyEncoder);
+            _handleReceivedMessage (messageID, decoder, replyEncoder);
             NSDictionary * reply { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (replyEncoder, 0)) };
             delete replyEncoder;
 
@@ -377,11 +374,6 @@ public:
     }
 #endif
 
-    AUAudioUnit * _Nullable getAudioUnit ()
-    {
-        return _audioUnit;
-    }
-
 protected:
     NSDictionary * _sendMessage (NSDictionary * message) override
     {
@@ -407,13 +399,11 @@ protected:
 
     void _handleReceivedMessage (const ARAIPCMessageID messageID,
                                  const ARAIPCMessageDecoder * const decoder,
-                                 void * const userData,
                                  ARAIPCMessageEncoder * const replyEncoder) override
     {
         if (messageID == kARAIPCGetRemoteInstanceRef)
         {
-            ARA_INTERNAL_ASSERT (userData != nullptr);
-            ARA::IPC::encodeReply (replyEncoder, (ARAIPCPlugInInstanceRef) userData);
+            ARA::IPC::encodeReply (replyEncoder, (ARAIPCPlugInInstanceRef)(__bridge void *)_audioUnit);
         }
         else if (messageID == kARAIPCDestroyRemoteInstance)
         {
@@ -423,8 +413,9 @@ protected:
 
             // \todo as long as we're using a separate channel per AUAudioUnit, we don't need to
             //       send the remote instance - it's known in the channel and provided as arg here
-            ARA_INTERNAL_ASSERT ((void *) plugInInstanceRef == userData);
-            _destructionHandler ((__bridge AUAudioUnit *) (void *) plugInInstanceRef);
+            ARA_INTERNAL_ASSERT ((void *) plugInInstanceRef == (__bridge void *)_audioUnit);
+            if (_audioUnit)
+                _destructionHandler ((AUAudioUnit * _Nonnull)_audioUnit);
         }
         else
         {
@@ -478,7 +469,7 @@ public:
         getMessageChannel ().callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
             {
-                return processReceivedMessage (message, nullptr);
+                return processReceivedMessage (message);
             };
     }
 
@@ -508,7 +499,6 @@ protected:
 
     void _handleReceivedMessage (const ARAIPCMessageID messageID,
                                  const ARAIPCMessageDecoder * const decoder,
-                                 void * const /*userData*/,
                                  ARAIPCMessageEncoder * const replyEncoder) override
     {
         ARAIPCProxyPlugInCallbacksDispatcher (messageID, decoder, replyEncoder);
@@ -525,7 +515,7 @@ protected:
         dispatch_semaphore_signal (_transactionLock);
     }
 
-    NSDictionary * processReceivedMessage (NSDictionary * message, void * userData) override
+    NSDictionary * processReceivedMessage (NSDictionary * message) override
     {
         if (const auto transactionLockRequest { (NSNumber *) [message objectForKey:_transactionLockKey] })
         {
@@ -537,7 +527,7 @@ protected:
             return [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:result] forKey:_transactionLockKey];
         }
 
-        return ARAIPCAUMessageSender::processReceivedMessage (message, userData);
+        return ARAIPCAUMessageSender::processReceivedMessage (message);
     }
 
 private:
@@ -677,8 +667,7 @@ ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageSende
 
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageSender * _Nonnull messageSender, NSDictionary * _Nonnull message)
 {
-    auto sender { (ARAIPCAUHostMessageSender *)messageSender };
-    return sender->processReceivedMessage (message, (__bridge void *)sender->getAudioUnit ());
+    return ((ARAIPCAUHostMessageSender *)messageSender)->processReceivedMessage (message);
 }
 
 void ARA_CALL ARAIPCAUProxyHostCleanupBinding (const ARAPlugInExtensionInstance * _Nonnull plugInExtensionInstance)
