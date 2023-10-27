@@ -160,9 +160,9 @@ public:
         dispatch_release (_semaphore);
     }
 
-    void enqueueReceivedMessage (void * message, void * userData)
+    void enqueueReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, void * userData)
     {
-        auto newMessage { new ReceivedMessage { message, userData } };
+        auto newMessage { new ReceivedMessage { messageID, decoder, userData } };
         auto nextMessage { _receivedMessage.load (std::memory_order_relaxed) };
         while (true)
         {
@@ -175,7 +175,7 @@ public:
         }
     }
 
-    std::pair<void *, void *> dequeueReceivedMessage ()
+    std::tuple<ARAIPCMessageID, const ARAIPCMessageDecoder *, void *> dequeueReceivedMessage ()
     {
         dispatch_semaphore_wait (_semaphore, DISPATCH_TIME_FOREVER);
 
@@ -184,7 +184,7 @@ public:
         if (!currentMessage)
         {
             ARA_INTERNAL_ASSERT (false);    // semaphore was set, so there must be data
-            return { nullptr, nullptr };
+            return { 0, nullptr, nullptr };
         }
 
         while (true)
@@ -194,7 +194,7 @@ public:
             if (nextMessage == nullptr)
             {
                 current->store (nullptr, std::memory_order_release);
-                std::pair<void *, void *> result { currentMessage->_message, currentMessage->_userData };
+                std::tuple<ARAIPCMessageID, const ARAIPCMessageDecoder *, void *> result { currentMessage->_messageID, currentMessage->_decoder, currentMessage->_userData };
                 delete currentMessage;
                 return result;
             }
@@ -206,12 +206,14 @@ public:
 private:
     struct ReceivedMessage
     {
-        explicit ReceivedMessage (void * message, void * userData)
-        : _message { message },
+        explicit ReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, void * userData)
+        : _messageID { messageID },
+          _decoder { decoder },
           _userData { userData }
         {}
 
-        void * const _message;
+        const ARAIPCMessageID _messageID;
+        const ARAIPCMessageDecoder * const _decoder;
         void * const _userData;
         std::atomic<ReceivedMessage *> _nextMessage { nullptr };
     };
@@ -287,8 +289,7 @@ public:
             do
             {
                 const auto receivedMessage { _receiveQueue.dequeueReceivedMessage () };
-                _processReceivedMessage ((__bridge CFDictionaryRef) receivedMessage.first, receivedMessage.second);
-                CFRelease ((__bridge CFDictionaryRef) receivedMessage.first);
+                _processReceivedMessage (std::get<0> (receivedMessage), std::get<1> (receivedMessage), std::get<2> (receivedMessage));
             } while (_pendingReply.load (std::memory_order_acquire) == &pendingReply);
 
             ARA_IPC_LOG ("received reply to message %i%s", messageID, (isNewTransaction) ? " (ending transaction)" : "");
@@ -302,15 +303,13 @@ public:
 
     virtual NSDictionary * processReceivedMessage (NSDictionary * message, void * userData)
     {
+        const auto decoder { ARAIPCCFCreateMessageDecoderWithDictionary ((__bridge CFDictionaryRef) message) };
+        const ARAIPCMessageID messageID { ARAIPCCFGetMessageIDFromDictionary (decoder) };
+
         if (_pendingReply.load (std::memory_order_acquire) != nullptr)
         {
             //ARA_IPC_LOG ("processReceivedMessage enqueues for sending thread");
-#if __has_feature(objc_arc)
-            _receiveQueue.enqueueReceivedMessage ((__bridge_retained void *)message, userData);
-#else
-            [message retain];
-            _receiveQueue.enqueueReceivedMessage ((void *)message, userData);
-#endif
+            _receiveQueue.enqueueReceivedMessage (messageID, decoder, userData);
         }
         else
         {
@@ -320,15 +319,17 @@ public:
                 dispatch_async (dispatch_get_main_queue (),
                     ^{
                         //ARA_IPC_LOG ("processReceivedMessage processes dispatched");
-                        _processReceivedMessage ((__bridge CFDictionaryRef) message, userData);
+                        _processReceivedMessage (messageID, decoder, userData);
                     });
             }
             else
             {
                 //ARA_IPC_LOG ("processReceivedMessage processes directly");
-                _processReceivedMessage ((__bridge CFDictionaryRef) message, userData);
+                _processReceivedMessage (messageID, decoder, userData);
             }
         }
+
+        delete decoder;
 
         return [NSDictionary dictionary];  // \todo it would yield better performance if the callHostBlock would allow nil as return value
     }
@@ -343,14 +344,12 @@ protected:
                                          ARAIPCMessageEncoder * const replyEncoder) = 0;
 
 private:
-    void _processReceivedMessage (CFDictionaryRef message, void * userData)
+    void _processReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, void * userData)
     {
         const bool isAlreadyReceiving { _isReceivingOnThisThread };
         if (!isAlreadyReceiving)
             _isReceivingOnThisThread = true;
 
-        const auto decoder { ARAIPCCFCreateMessageDecoderWithDictionary (message) };
-        ARAIPCMessageID messageID { ARAIPCCFGetMessageIDFromDictionary (decoder) };
         if (messageID != 0)
         {
             ARA_IPC_LOG ("received message with ID %i%s", messageID, (_pendingReply.load (std::memory_order_relaxed) != nullptr) ? " (while awaiting reply)" : "");
@@ -368,17 +367,12 @@ private:
             const auto pendingReply { _pendingReply.load (std::memory_order_acquire) };
             ARA_INTERNAL_ASSERT (pendingReply != nullptr);
             if (pendingReply->replyHandler)
-            {
-                const auto replyDecoder { ARAIPCCFCreateMessageDecoderWithDictionary (message) };
-                (*pendingReply->replyHandler) (replyDecoder, pendingReply->replyHandlerUserData);
-                delete replyDecoder;
-            }
+                (*pendingReply->replyHandler) (decoder, pendingReply->replyHandlerUserData);
             else
-            {
-                ARA_INTERNAL_ASSERT (CFDictionaryGetCount (message) == 1);   // reply should only contain message ID 0
-            }
+                ARA_INTERNAL_ASSERT (decoder->isEmpty ());  // unused replies should be empty
             _pendingReply.store (pendingReply->previousPendingReply, std::memory_order_release);
         }
+ 
         delete decoder;
 
         if (!isAlreadyReceiving)
