@@ -147,80 +147,46 @@ constexpr NSString * _transactionLockKey { @"transactionLock" };
 // in which case it is part of a transaction stack, or it is a new transaction.
 
 
-// simple multi-producer, multi-consumer lockless concurrent queue for incoming
-// messages, based on a singly-linked list and a counting semaphore
-class ConcurrentQueue
+// simple thread bridge to move a single incoming message from a receiving to a sending thread
+class SendThreadBridge
 {
 public:
-    ConcurrentQueue ()
+    SendThreadBridge ()
     : _semaphore { dispatch_semaphore_create (0) }
-    {}
-
-    ~ConcurrentQueue ()
     {
+        ARA_INTERNAL_ASSERT (_semaphore != nullptr);
+    }
+
+    ~SendThreadBridge ()
+    {
+    #if !__has_feature(objc_arc)
         dispatch_release (_semaphore);
+    #endif
     }
 
-    void enqueueReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, void * userData)
+    // called on receive thread
+    void pushReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder, void* userData)
     {
-        auto newMessage { new ReceivedMessage { messageID, decoder, userData } };
-        auto nextMessage { _receivedMessage.load (std::memory_order_relaxed) };
-        while (true)
-        {
-            newMessage->_nextMessage.store (nextMessage, std::memory_order_relaxed);
-            if (_receivedMessage.compare_exchange_weak (nextMessage, newMessage, std::memory_order_release, std::memory_order_relaxed))
-            {
-                dispatch_semaphore_signal (_semaphore);
-                break;
-            }
-        }
+        _messageID = messageID;
+        _decoder = decoder;
+        _userData = userData;
+        std::atomic_thread_fence (std::memory_order_release);
+        dispatch_semaphore_signal (_semaphore);
     }
 
-    std::tuple<ARAIPCMessageID, const ARAIPCMessageDecoder *, void *> dequeueReceivedMessage ()
+    // called on send thread
+    std::tuple<ARAIPCMessageID, const ARAIPCMessageDecoder *, void *> pullReceivedMessage ()
     {
         dispatch_semaphore_wait (_semaphore, DISPATCH_TIME_FOREVER);
-
-        auto current { &_receivedMessage };
-        auto currentMessage { current->load (std::memory_order_consume) };
-        if (!currentMessage)
-        {
-            ARA_INTERNAL_ASSERT (false);    // semaphore was set, so there must be data
-            return { 0, nullptr, nullptr };
-        }
-
-        while (true)
-        {
-            auto next { &currentMessage->_nextMessage };
-            auto nextMessage { next->load (std::memory_order_consume) };
-            if (nextMessage == nullptr)
-            {
-                current->store (nullptr, std::memory_order_release);
-                std::tuple<ARAIPCMessageID, const ARAIPCMessageDecoder *, void *> result { currentMessage->_messageID, currentMessage->_decoder, currentMessage->_userData };
-                delete currentMessage;
-                return result;
-            }
-            current = next;
-            currentMessage = nextMessage;
-        }
+        std::atomic_thread_fence (std::memory_order_acquire);
+        return { _messageID, _decoder, _userData };
     }
 
 private:
-    struct ReceivedMessage
-    {
-        explicit ReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, void * userData)
-        : _messageID { messageID },
-          _decoder { decoder },
-          _userData { userData }
-        {}
-
-        const ARAIPCMessageID _messageID;
-        const ARAIPCMessageDecoder * const _decoder;
-        void * const _userData;
-        std::atomic<ReceivedMessage *> _nextMessage { nullptr };
-    };
-
-    std::atomic<ReceivedMessage *> _receivedMessage { nullptr };
     dispatch_semaphore_t _semaphore;
+    ARAIPCMessageID _messageID { 0 };
+    const ARAIPCMessageDecoder* _decoder { nullptr };
+    void* _userData { nullptr };
 };
 
 
@@ -286,7 +252,7 @@ public:
 
             do
             {
-                const auto receivedMessage { _receiveQueue.dequeueReceivedMessage () };
+                const auto receivedMessage { _sendThreadBridge.pullReceivedMessage () };
                 _processReceivedMessage (std::get<0> (receivedMessage), std::get<1> (receivedMessage), std::get<2> (receivedMessage));
             } while (_pendingReply.load (std::memory_order_acquire) == &pendingReply);
 
@@ -307,7 +273,7 @@ public:
         if (_pendingReply.load (std::memory_order_acquire) != nullptr)
         {
             //ARA_IPC_LOG ("processReceivedMessage enqueues for sending thread");
-            _receiveQueue.enqueueReceivedMessage (messageID, decoder, userData);
+            _sendThreadBridge.pushReceivedMessage (messageID, decoder, userData);
         }
         else
         {
@@ -387,7 +353,7 @@ private:
     };
 
     NSObject<AUMessageChannel> * __strong _messageChannel;
-    ConcurrentQueue _receiveQueue;
+    SendThreadBridge _sendThreadBridge;
     std::atomic <std::thread::id> _sendingThread {};
     std::atomic<PendingReply *> _pendingReply {};   // if set, the receive callback forward to that thread
 };
