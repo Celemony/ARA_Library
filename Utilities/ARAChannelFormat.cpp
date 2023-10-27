@@ -33,34 +33,39 @@
 
 namespace ARA {
 
-ChannelFormat::ChannelFormat (const ARAChannelCount channelCount,
-                              const ARAChannelArrangementDataType channelArrangementDataType,
-                              const void* const channelArrangement)
-: _channelCount {channelCount },
-  _channelArrangementDataType { channelArrangementDataType }
+void ChannelFormat::update (const ARAChannelCount channelCount,
+                            const ARAChannelArrangementDataType channelArrangementDataType,
+                            const void* const channelArrangement)
 {
-    const auto size { getChannelArrangementDataSize (channelCount, channelArrangementDataType, channelArrangement) };
-    if (size > 0)
-    {
-        if (size > sizeof (_arrangementStorage))
-            _channelArrangement = new ARAByte[size];
-        else
-            _channelArrangement = &_arrangementStorage;
+    const auto oldSize { getChannelArrangementDataSize (_channelCount, _channelArrangementDataType, _channelArrangement) };
+    const auto newSize { getChannelArrangementDataSize (channelCount, channelArrangementDataType, channelArrangement) };
+    const bool needsAllocatedStorage { newSize > sizeof (_arrangementStorage) };
 
-        std::memcpy (_channelArrangement, channelArrangement, size);
+    bool hasAllocatedStorage = (_channelArrangement != nullptr) && (_channelArrangement != _arrangementStorage);
+    if (hasAllocatedStorage)
+    {
+        if ((oldSize < newSize) || !needsAllocatedStorage)
+        {
+            delete[] static_cast<ARAByte *> (_channelArrangement);
+            hasAllocatedStorage = false;
+        }
+    }
+
+    _channelCount = channelCount;
+    _channelArrangementDataType = channelArrangementDataType;
+
+    if (newSize > 0)
+    {
+        if (!needsAllocatedStorage)
+            _channelArrangement = &_arrangementStorage;
+        else if (!hasAllocatedStorage)
+            _channelArrangement = new ARAByte[newSize];
+
+        std::memcpy (_channelArrangement, channelArrangement, newSize);
     }
     else
     {
         _channelArrangement = nullptr;
-    }
-}
-
-ChannelFormat::~ChannelFormat ()
-{
-    if ((_channelArrangement != nullptr) &&
-        (_channelArrangement != _arrangementStorage))
-    {
-        delete[] static_cast<ARAByte *> (_channelArrangement);
     }
 }
 

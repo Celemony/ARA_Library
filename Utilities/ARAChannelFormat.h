@@ -30,15 +30,25 @@ namespace ARA {
 class ChannelFormat
 {
 public:
-    //! Construct either as default, undefined format, or construct with explicit data.
-    ChannelFormat ()
-    : ChannelFormat { 0, kARAChannelArrangementUndefined, nullptr } {}
+    //! Construct with channel count (defaults to 0) and unspecified channel arrangement.
+    explicit ChannelFormat (const ARAChannelCount channelCount = 0)
+    : _channelCount { channelCount },
+      _channelArrangementDataType { kARAChannelArrangementUndefined },
+      _channelArrangement { nullptr }
+    {}
 
+    //! Construct with channel count and explicit channel arrangement.
     ChannelFormat (const ARAChannelCount channelCount,
                    const ARAChannelArrangementDataType channelArrangementDataType,
-                   const void* const channelArrangement);
+                   const void* const channelArrangement)
+    : ChannelFormat { channelCount } { update (channelCount, channelArrangementDataType, channelArrangement); }
 
-    ~ChannelFormat ();
+    ~ChannelFormat () { update (_channelCount, kARAChannelArrangementUndefined, nullptr); }
+
+    //! Assign new state.
+    void update (const ARAChannelCount channelCount,
+                 const ARAChannelArrangementDataType channelArrangementDataType,
+                 const void* const channelArrangement);
 
     //! Validation helper for use at API boundary.
     bool isValid () const noexcept;
@@ -68,8 +78,8 @@ private:
                                                     const void* const channelArrangement) noexcept;
 
 private:
-    const ARAChannelCount _channelCount;
-    const ARAChannelArrangementDataType _channelArrangementDataType;
+    ARAChannelCount _channelCount;
+    ARAChannelArrangementDataType _channelArrangementDataType;
     void* _channelArrangement;
     ARAByte _arrangementStorage[24];
 };
