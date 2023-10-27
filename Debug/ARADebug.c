@@ -204,15 +204,24 @@ void ARADebugMessage(ARADebugLevel level, const char * file, int line, const cha
     }
 
 #if defined(_WIN32)
-    OutputDebugStringA(output);
-    OutputDebugStringA("\n");
+    if (IsDebuggerAttached())
+    {
+        OutputDebugStringA(output);
+        OutputDebugStringA("\n");
+    }
+    else
 #endif
 #if defined(__APPLE__)
-    os_log(OS_LOG_DEFAULT, "%{public}s\n", output);
-#else
-    fprintf(stderr, "%s\n", output);
-    fflush(stderr);
+    if (!IsDebuggerAttached())
+    {
+        os_log(OS_LOG_DEFAULT, "%{public}s\n", output);
+    }
+    else
 #endif
+    {
+        fprintf(stderr, "%s\n", output);
+        fflush(stderr);
+    }
 }
 #endif    // ARA_ENABLE_DEBUG_OUTPUT
 
