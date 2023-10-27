@@ -242,21 +242,31 @@ void MultiThreadedChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessage
 
     _sendingThread.store (thisThread, std::memory_order_release);
 
-    PendingReply pendingReply { replyHandler, replyHandlerUserData, _pendingReply.load (std::memory_order_acquire) };
-    _pendingReply.store (&pendingReply, std::memory_order_release);
-
     ARA_IPC_LOG ("sends message %i%s", messageID, (isNewTransaction) ? " (starting new transaction)" : "");
-
     _sendMessage (messageID, encoder);
     delete encoder;
 
+    bool didReceiveReply { false };
     do
     {
         ARAIPCMessageID receivedMessageID;
         const ARAIPCMessageDecoder* receivedDecoder;
         _sendThreadBridge->pullReceivedMessage (receivedMessageID, receivedDecoder);
-        _handleReceivedMessage (receivedMessageID, receivedDecoder);
-    } while (_pendingReply.load (std::memory_order_acquire) == &pendingReply);
+        if (receivedMessageID != 0)
+        {
+            _handleReceivedMessage (receivedMessageID, receivedDecoder);    // will also delete decoder
+        }
+        else
+        {
+            if (replyHandler)
+                (replyHandler) (receivedDecoder, replyHandlerUserData);
+            else
+                ARA_INTERNAL_ASSERT (!receivedDecoder);                     // replies should be empty when not handled (i.e. void)
+            delete receivedDecoder;
+            didReceiveReply = true;
+        }
+    }
+    while (!didReceiveReply);
 
     ARA_IPC_LOG ("received reply to message %i%s", messageID, (isNewTransaction) ? " (ending transaction)" : "");
 
@@ -268,7 +278,7 @@ void MultiThreadedChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessage
 
 void MultiThreadedChannel::routeReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
 {
-    if (_pendingReply.load (std::memory_order_acquire) != nullptr)
+    if (_sendingThread.load (std::memory_order_acquire) != std::thread::id {})
     {
         if (messageID != 0)
             ARA_IPC_LOG ("dispatches received message with ID %i to sending thread", messageID);
@@ -297,37 +307,21 @@ void MultiThreadedChannel::routeReceivedMessage (ARAIPCMessageID messageID, cons
 
 void MultiThreadedChannel::_handleReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
 {
+    ARA_INTERNAL_ASSERT (messageID != 0);
+
     const bool isAlreadyReceiving { _isReceivingOnThisThread };
     if (!isAlreadyReceiving)
         _isReceivingOnThisThread = true;
 
-    if (messageID != 0)
-    {
-        auto replyEncoder { createEncoder () };
-//      ARA_IPC_LOG ("handles message with ID %i%s", messageID,
+    auto replyEncoder { createEncoder () };
+//  ARA_IPC_LOG ("handles message with ID %i%s", messageID,
 //                      (_sendingThread.load (std::memory_order_acquire) != std::thread::id {}) ? " (while awaiting reply)" : "");
-        _handler->handleReceivedMessage (this, messageID, decoder, replyEncoder);
-        delete decoder;
+    _handler->handleReceivedMessage (this, messageID, decoder, replyEncoder);
+    delete decoder;
 
-        ARA_IPC_LOG ("replies to message with ID %i", messageID);
-        _sendMessage (0, replyEncoder);
-        delete replyEncoder;
-    }
-    else
-    {
-        const auto pendingReply { _pendingReply.load (std::memory_order_acquire) };
-        ARA_INTERNAL_ASSERT (pendingReply != nullptr);
-        if (pendingReply->replyHandler)
-        {
-            ARA_INTERNAL_ASSERT (decoder);
-            (*pendingReply->replyHandler) (decoder, pendingReply->replyHandlerUserData);
-        }
-        else
-        {
-            ARA_INTERNAL_ASSERT (!decoder);
-        }
-        _pendingReply.store (pendingReply->previousPendingReply, std::memory_order_release);
-    }
+    ARA_IPC_LOG ("replies to message with ID %i", messageID);
+    _sendMessage (0, replyEncoder);
+    delete replyEncoder;
 
     if (!isAlreadyReceiving)
         _isReceivingOnThisThread = false;

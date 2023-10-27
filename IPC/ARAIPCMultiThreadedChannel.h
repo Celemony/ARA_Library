@@ -122,14 +122,6 @@ private:
 private:
     ARAIPCMessageHandler* const _handler;
 
-    struct PendingReply
-    {
-        ReplyHandler replyHandler;
-        void * replyHandlerUserData;
-        PendingReply * previousPendingReply;
-    };
-    std::atomic<PendingReply *> _pendingReply {};   // if set, the receive callback forward to that thread
-
     std::atomic<std::thread::id> _sendingThread {}; // if != {}, a currently sending thread is waiting for a reply (or stacked callback)
     class SendThreadBridge* _sendThreadBridge;      // in that case, this bridge transfers the incoming data from the receive to the send thread
 };
