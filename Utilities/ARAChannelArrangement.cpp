@@ -64,9 +64,9 @@ ARASize ChannelArrangement::getDataSize () const noexcept
 #if defined (__APPLE__)
             const auto audioChannelLayout { static_cast<const AudioChannelLayout*> (_channelArrangement) };
             return offsetof (AudioChannelLayout, mChannelDescriptions) +
-                                sizeof (AudioChannelDescription) * audioChannelLayout->mNumberChannelDescriptions;
+                   sizeof (AudioChannelDescription) * audioChannelLayout->mNumberChannelDescriptions;
 #else
-            ARA_INTERNAL_ASSERT (false && "Audio Unit data can only be used on Apple platforms");
+            ARA_INTERNAL_ASSERT (false && "Core Audio data types can only be used on Apple platforms");
             return 0;
 #endif
         }
@@ -97,7 +97,7 @@ ARAChannelCount ChannelArrangement::getImpliedChannelCount () const noexcept
             ARAChannelCount arrangementChannelCount { 0 };
             while (speakerArrangement)
             {
-                if (speakerArrangement & 1UL)
+                if ((speakerArrangement & 1UL) != 0)
                     ++arrangementChannelCount;
                 speakerArrangement >>= 1;
             }
@@ -133,21 +133,24 @@ bool ChannelArrangement::isValidForChannelCount (ARAChannelCount requiredChannel
 {
     if (_channelArrangementDataType == kARAChannelArrangementUndefined)
     {
-        // for more than stereo, a valid arrangement must be provided
-        if (requiredChannelCount > 2)
-            return false;
-        
         // for undefined arrangement, the data pointer must be NULL
         if (_channelArrangement != nullptr)
+            return false;
+
+        // for more than stereo, a valid arrangement must be provided
+        if (requiredChannelCount > 2)
             return false;
     }
     else
     {
+        if (_channelArrangement == nullptr)
+            return false;
+
         const auto impliedChannelCount { getImpliedChannelCount () };
         if ((impliedChannelCount != 0) &&
             (impliedChannelCount != requiredChannelCount))
             return false;
-            
+
         if (_channelArrangementDataType == kARAChannelArrangementCoreAudioChannelLayout)
         {
 #if defined (__APPLE__)
@@ -155,8 +158,13 @@ bool ChannelArrangement::isValidForChannelCount (ARAChannelCount requiredChannel
             const auto audioChannelLayout { static_cast<const AudioChannelLayout*> (_channelArrangement) };
             if (audioChannelLayout->mChannelLayoutTag == kAudioChannelLayoutTag_UseChannelBitmap)
                 return false;
+            // kAudioChannelLayoutTag_UseChannelDescriptions requires a description for each channel
+            if (audioChannelLayout->mChannelLayoutTag == kAudioChannelLayoutTag_UseChannelDescriptions)
+                return audioChannelLayout->mNumberChannelDescriptions == static_cast<UInt32> (requiredChannelCount);
+            else
+                return audioChannelLayout->mNumberChannelDescriptions == 0;
 #else
-            ARA_INTERNAL_ASSERT (false && "Audio Unit data can only be used on Apple platforms");
+            ARA_INTERNAL_ASSERT (false && "Core Audio data types can only be used on Apple platforms");
             return false;
 #endif
         }
