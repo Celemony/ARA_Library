@@ -32,11 +32,9 @@
 #endif
 
 
-#if defined(__cplusplus)
 namespace ARA {
 namespace IPC {
 extern "C" {
-#endif
 
 
 _Pragma ("GCC diagnostic push")
@@ -44,6 +42,13 @@ _Pragma ("GCC diagnostic ignored \"-Wold-style-cast\"") // __bridge casts can on
 
 
 API_AVAILABLE_BEGIN(macos(13.0))
+
+
+#if 0
+    #define ARA_IPC_LOG(...) ARA_LOG ("AUv3 IPC " __VA_ARGS__)
+#else
+    #define ARA_IPC_LOG(...) ((void) 0)
+#endif
 
 
 // custom IPC message to read the remote instance ref
@@ -57,6 +62,91 @@ ARAIPCAUBindingHandler _bindingHandler { nil };
 ARAIPCAUDestructionHandler _destructionHandler { nil };
 
 
+// key for transaction locking through the IPC channel
+constexpr NSString * _transactionLockKey { @"transactionLock" };
+
+
+// key for thread local dictionary
+constexpr NSString * _isReceivingKey { @"org.ara-audio.auv3ipc.is_receiving" };
+
+
+// ARA AUv3 IPC design overview
+//
+// ARA API calls can be stacked multiple times.
+// For example, when the plug-in has completed analyzing an audio source, it will
+// inform the host about the updated content information the next time the host
+// calls notifyModelUpdates() by invoking notifyAudioSourceContentChanged().
+// From that method, the host now test which content types are available and
+// eventually call createAudioSourceContentReader() to read the content data.
+// In the code below, such a stack of messages is referred to as a "transaction".
+//
+// However, like many other IPC APIs, Audio Unit message channels cannot be stacked,
+// i.e. each message has to completely be processed before the next one can be sent.
+// Therefore, each ARA API calls is split into two IPC messages:
+// the actual call message that does not return any result just yet, and a matching
+// reply message that returns the result (even if it is void, because the original
+// caller needs to know when the call has completed).
+// After sending the actual call, the sender loops while listening for incoming
+// messages, which might either be a stacked callback that is then processed
+// accordingly, or the result of the original call.
+//
+// In this loop, extra efforts must be done to handle threading:
+// Audio Unit message channels are using Grand Central Dispatch to deliver the
+// incoming IPC messages, so in order to transfer them to the sending thread for
+// proper handling, a concurrent queue must be used.
+//
+// While most ARA communication is happening on the main thread, there are
+// some calls that may be made from other threads. This poses several challenges
+// when tunneling everything through a single IPC channel.
+// First of all, there needs to be a global lock to handle access to the channel
+// from either some thread in the host or in the plug-in. This lock must be
+// recursive to allow the stacking of messages as an atomic "transaction" as
+// described above. It is implemented as a regular lock in the host, which the
+// plug-in can access it by injecting special tryLock/unlock messages into the
+// IPC communication.
+// So, if in the above content reading example there is a additional concurrent
+// access from the plug-in to the host because analysis of another audio source
+// is still going on in the background, the message sequence might look like this:
+//   - host takes transaction lock locally
+//   - host sends notifyAudioSourceContentChanged message
+//     - plug-in sends notifyAudioSourceContentChanged message
+//       - host sends isAudioSourceContentAvailable message
+//       - plug-in sends reply to isAudioSourceContentAvailable message
+//       - ... more content reading here ...
+//     - host sends reply to notifyAudioSourceContentChanged message
+//   - plug-in sends reply to notifyAudioSourceContentChanged message
+//   - host releases transaction lock locally
+//   - plug-in takes transaction lock in host via remote message
+//     - plug-in sends readAudioSamples message
+//     - host sends reply to readAudioSamples message
+//   - plug-in releases transaction lock in host via remote message
+//
+// Another challenge when using IPC between host and plug-in is that for each
+// new transaction that comes in, an appropriate thread has to be selected to
+// process the transaction. Fortunately, the current threading restrictions of
+// ARA allow for a fairly simple pattern to address this:
+// All transactions that the host initiates are processed on the plug-in's main
+// thread because the vast majority of calls is restricted to the main thread
+// anyways, and the few calls that may be made on other threads (such as
+// getPlaybackRegionHeadAndTailTime()) are all allowed on the main thread too.
+// All transactions started from the plug-in (readAudioSamples() and the
+// functions in ARAPlaybackControllerInterface) are calls that can come from
+// any thread and thus are directly processed on the IPC thread in the host.
+// (Remember, the side that started a transaction will see all calls on the
+// thread that started it.)
+//
+// Finally, the actual ARA code is agnostic to IPC being used, so when any API
+// call is made on any thread, the IPC implementation needs to figure out whether
+// this call is part of a potentially ongoing transaction, or starting a new one
+// (in which case the thread must wait for the transaction lock).
+// It does so by using thread local storage to indicate when a thread is currently
+// processing a received message and is thus necessarily part of an ongoing
+// transaction.
+// Further, it checks if the same thread is already the currently sending thread,
+// in which case it is part of a transaction stack, or it is a new transaction.
+
+
+// wrapper for incoming messages in a singly-linked list, forming as concurrent queue
 struct ReceivedMessage
 {
     explicit ReceivedMessage (NSDictionary * message, void * userData)
@@ -74,18 +164,20 @@ struct ReceivedMessage
     }
 #endif
 
-    NSDictionary * _message;
+    NSDictionary * __strong _message;
     void * _userData;
     std::atomic<ReceivedMessage *> _nextMessage { nullptr };
 };
 
 
+// base class for both proxy implementations
 class ARAIPCAUMessageSender : public ARAIPCMessageSender
 {
 public:
-    ARAIPCAUMessageSender (NSObject<AUMessageChannel>* _Nonnull messageChannel)
+    ARAIPCAUMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel, bool dispatchRemoteTransactions)
     : _messageChannel { messageChannel },
-      _receiveSemaphore { dispatch_semaphore_create (0) }
+      _dispatchRemoteTransactions { dispatchRemoteTransactions },
+      _queueSemaphore { dispatch_semaphore_create (0) }
     {
 #if !__has_feature(objc_arc)
         [_messageChannel retain];
@@ -96,10 +188,16 @@ public:
     ~ARAIPCAUMessageSender () override
     {
         [_messageChannel release];
+        dispatch_release (_queueSemaphore);
     }
 #endif
 
-    ARAIPCMessageEncoder* createEncoder () override
+    NSObject<AUMessageChannel> * _Nonnull getMessageChannel ()
+    {
+        return _messageChannel;
+    }
+
+    ARAIPCMessageEncoder * createEncoder () override
     {
         return ARAIPCCFCreateMessageEncoder ();
     }
@@ -113,125 +211,99 @@ public:
     void sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder * encoder,
                       ARAIPCReplyHandler * replyHandler, void * replyHandlerUserData) override
     {
-        if (![NSThread isMainThread])
-        {
-            dispatch_sync (dispatch_get_main_queue (),
-            ^{
-                sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
-            });
-            return;
-        }
-
         @autoreleasepool
         {
-//          ARA_LOG ("AUv3 IPC sends message %i%s", messageID, (_callbackLevel == 0) ? " starting new transaction" : " while handling message");
+            const auto currentThread { [NSThread currentThread] };
+            const bool isReceivingThread { [[currentThread threadDictionary] objectForKey:_isReceivingKey] != nil };
+            const auto previousSendingThread { _sendingThread.load (std::memory_order_acquire) };
+            const bool isNewTransaction { (currentThread != previousSendingThread) && !isReceivingThread };
+
+            // \todo can we do better here than spinning/sleeping here? And for how long?
+            if (isNewTransaction)
+                while (!_tryLockTransaction ())
+                    [NSThread sleepForTimeInterval:0.0001];
+
+#if __has_feature(objc_arc)
+            _sendingThread.store ((__bridge void *)currentThread, std::memory_order_release);
+#else
+            _sendingThread.store (currentThread, std::memory_order_release);
+#endif
+
+            PendingReply pendingReply { replyHandler, replyHandlerUserData, _pendingReply.load (std::memory_order_acquire) };
+            _pendingReply.store (&pendingReply, std::memory_order_release);
+
+            ARA_IPC_LOG ("sends message %i%s", messageID, (isNewTransaction) ? " (starting new transaction)" : "");
+
             NSDictionary * message { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (encoder, messageID)) };
             _sendMessage (message);
 
-            const auto previousAwaitsReply { _awaitsReply.load (std::memory_order_relaxed) };
-            const auto previousReplyHandler { _replyHandler };
-            const auto previousReplyHandlerUserData { _replyHandlerUserData };
-            _replyHandler = replyHandler;
-            _replyHandlerUserData = replyHandlerUserData;
-            _awaitsReply.store (true, std::memory_order_release);
             do
             {
-                if (_dequeueReceivedMessages () == 0)
-                    dispatch_semaphore_wait (_receiveSemaphore, dispatch_time (DISPATCH_WALLTIME_NOW, 10*1000*1000));
-            } while (_awaitsReply);
-            _replyHandler = previousReplyHandler;
-            _replyHandlerUserData = previousReplyHandlerUserData;
-            _awaitsReply.store (previousAwaitsReply, std::memory_order_release);
-//          ARA_LOG ("AUv3 IPC received reply to message %i%s", messageID, (_callbackLevel == 0) ? " ending transaction" : "");
+                auto receivedMessage { _dequeueReceivedMessage () };
+                ARA_INTERNAL_ASSERT (receivedMessage != nullptr);
+                if (!receivedMessage)
+                    continue;
+                _processReceivedMessage ((__bridge CFDictionaryRef) receivedMessage->_message, receivedMessage->_userData);
+                delete receivedMessage;
+            } while (_pendingReply.load (std::memory_order_acquire) == &pendingReply);
+
+            ARA_IPC_LOG ("received reply to message %i%s", messageID, (isNewTransaction) ? " (ending transaction)" : "");
+
+            _sendingThread.store (previousSendingThread, std::memory_order_release);
+
+            if (isNewTransaction)
+                _unlockTransaction ();
         }
     }
 
-    void enqueueReceivedMessage (NSDictionary * message, void * userData)
+    virtual NSDictionary * processReceivedMessage (NSDictionary * message, void * userData)
     {
-        ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
-
-        _enqueueReceivedMessage (message, userData);
-
-        if (!_awaitsReply.load (std::memory_order_acquire))
+        if (_pendingReply.load (std::memory_order_acquire) != nullptr)
         {
-            dispatch_async (dispatch_get_main_queue (),
-            ^{
-                int32_t ARA_MAYBE_UNUSED_VAR (count) { _dequeueReceivedMessages () };
-                ARA_INTERNAL_ASSERT (count > 0);
-            });
+            //ARA_IPC_LOG ("processReceivedMessage enqueues for sending thread");
+            _enqueueReceivedMessage (message, userData);
         }
+        else
+        {
+            if (_dispatchRemoteTransactions)
+            {
+                //ARA_IPC_LOG ("processReceivedMessage dispatches");
+                dispatch_async (dispatch_get_main_queue (),
+                    ^{
+                        //ARA_IPC_LOG ("processReceivedMessage processes dispatched");
+                        _processReceivedMessage ((__bridge CFDictionaryRef) message, userData);
+                    });
+            }
+            else
+            {
+                //ARA_IPC_LOG ("processReceivedMessage processes directly");
+                _processReceivedMessage ((__bridge CFDictionaryRef) message, userData);
+            }
+        }
+
+        return [NSDictionary dictionary];  // \todo it would yield better performance if the callHostBlock would allow nil as return value
     }
 
 protected:
-    virtual void _sendMessage (NSDictionary * message) = 0;
+    virtual bool _tryLockTransaction () = 0;
+    virtual void _unlockTransaction () = 0;
+    virtual NSDictionary * _sendMessage (NSDictionary * message) = 0;
     virtual void _handleReceivedMessage (const ARAIPCMessageID messageID,
                                          const ARAIPCMessageDecoder * const decoder,
                                          void * const userData,
                                          ARAIPCMessageEncoder * const replyEncoder) = 0;
 
 private:
-    int32_t _dequeueReceivedMessages ()
-    {
-        int32_t count { 0 };
-        @autoreleasepool
-        {
-            while (auto receivedMessage { _dequeueReceivedMessage () })
-            {
-                ++count;
-                _processReceivedMessage ((__bridge CFDictionaryRef)receivedMessage->_message, receivedMessage->_userData);
-                delete receivedMessage;
-            }
-        }
-        return count;
-    }
-
-    void _processReceivedMessage (CFDictionaryRef message, void * userData)
-    {
-        auto messageDecoder { ARAIPCCFCreateMessageDecoderWithDictionary (message) };
-        ARAIPCMessageID messageID { ARAIPCCFGetMessageIDFromDictionary (messageDecoder) };
-        if (messageID != 0)
-        {
-            ++_callbackLevel;
-//          ARA_LOG ("AUv3 IPC received message with ID %i%s", messageID, (_awaitsReply.load (std::memory_order_relaxed)) ? " while awaiting reply" : "");
-
-            auto replyEncoder { createEncoder () };
-            _handleReceivedMessage (messageID, messageDecoder, userData, replyEncoder);
-            NSDictionary * reply { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (replyEncoder, 0)) };
-            delete replyEncoder;
-
-//           ARA_LOG ("AUv3 IPC replies to message with ID %i", messageID);
-            _sendMessage (reply);
-
-            --_callbackLevel;
-        }
-        else
-        {
-            ARA_INTERNAL_ASSERT (_awaitsReply);
-            if (_replyHandler)
-            {
-                auto replyDecoder { ARAIPCCFCreateMessageDecoderWithDictionary (message) };
-                (*_replyHandler) (replyDecoder, _replyHandlerUserData);
-                delete replyDecoder;
-            }
-            else
-            {
-                ARA_INTERNAL_ASSERT (CFDictionaryGetCount (message) == 1);   // reply should only contain message ID 0
-            }
-            _awaitsReply.store (false, std::memory_order_release);
-        }
-        delete messageDecoder;
-    }
-
     void _enqueueReceivedMessage (NSDictionary * message, void * userData)
     {
         auto newMessage { new ReceivedMessage { message, userData } };
         auto nextMessage { _receivedMessage.load (std::memory_order_relaxed) };
         while (true)
         {
-            newMessage->_nextMessage.store (nextMessage);
+            newMessage->_nextMessage.store (nextMessage, std::memory_order_relaxed);
             if (_receivedMessage.compare_exchange_weak (nextMessage, newMessage, std::memory_order_release, std::memory_order_relaxed))
             {
-                dispatch_semaphore_signal (_receiveSemaphore);
+                dispatch_semaphore_signal (_queueSemaphore);
                 break;
             }
         }
@@ -239,12 +311,15 @@ private:
 
     ReceivedMessage * _dequeueReceivedMessage ()
     {
-        ARA_INTERNAL_ASSERT ([NSThread isMainThread]);
+        dispatch_semaphore_wait (_queueSemaphore, DISPATCH_TIME_FOREVER);
 
         auto current { &_receivedMessage };
         auto currentMessage { current->load (std::memory_order_consume) };
         if (!currentMessage)
+        {
+            ARA_INTERNAL_ASSERT (false);    // semaphore was set, so there must be data
             return nullptr;
+        }
 
         while (true)
         {
@@ -260,37 +335,101 @@ private:
         }
     }
 
-protected:
-    NSObject<AUMessageChannel> * __strong _messageChannel {};
+    void _processReceivedMessage (CFDictionaryRef message, void * userData)
+    {
+        const auto currentThread { [NSThread currentThread] };
+        const bool isAlreadyReceiving { [[currentThread threadDictionary] objectForKey:_isReceivingKey] != nil };
+        if (!isAlreadyReceiving)
+            [[currentThread threadDictionary] setObject:_isReceivingKey forKey:_isReceivingKey];
+
+        const auto decoder { ARAIPCCFCreateMessageDecoderWithDictionary (message) };
+        ARAIPCMessageID messageID { ARAIPCCFGetMessageIDFromDictionary (decoder) };
+        if (messageID != 0)
+        {
+            ARA_IPC_LOG ("received message with ID %i%s", messageID, (_pendingReply.load (std::memory_order_relaxed) != nullptr) ? " (while awaiting reply)" : "");
+
+            auto replyEncoder { createEncoder () };
+            _handleReceivedMessage (messageID, decoder, userData, replyEncoder);
+            NSDictionary * reply { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (replyEncoder, 0)) };
+            delete replyEncoder;
+
+            ARA_IPC_LOG ("replies to message with ID %i", messageID);
+            _sendMessage (reply);
+        }
+        else
+        {
+            const auto pendingReply { _pendingReply.load (std::memory_order_acquire) };
+            ARA_INTERNAL_ASSERT (pendingReply != nullptr);
+            if (pendingReply->replyHandler)
+            {
+                const auto replyDecoder { ARAIPCCFCreateMessageDecoderWithDictionary (message) };
+                (*pendingReply->replyHandler) (replyDecoder, pendingReply->replyHandlerUserData);
+                delete replyDecoder;
+            }
+            else
+            {
+                ARA_INTERNAL_ASSERT (CFDictionaryGetCount (message) == 1);   // reply should only contain message ID 0
+            }
+            _pendingReply.store (pendingReply->previousPendingReply, std::memory_order_release);
+        }
+        delete decoder;
+
+        if (!isAlreadyReceiving)
+            [[currentThread threadDictionary] removeObjectForKey:_isReceivingKey];
+    }
 
 private:
-    dispatch_semaphore_t _receiveSemaphore;
-    std::atomic<ReceivedMessage *> _receivedMessage {};    // simple multi-producer, single-consumer lockless queue
-    int32_t _callbackLevel { 0 };
-    std::atomic<bool> _awaitsReply {};
-    ARAIPCReplyHandler * _replyHandler;
-    void * _replyHandlerUserData;
+    struct PendingReply
+    {
+        ARAIPCReplyHandler * replyHandler;
+        void * replyHandlerUserData;
+        PendingReply * previousPendingReply;
+    };
+
+    NSObject<AUMessageChannel> * __strong _messageChannel;
+    const bool _dispatchRemoteTransactions;
+    std::atomic<ReceivedMessage *> _receivedMessage {};             // simple multi-producer, single-consumer lockless queue
+    dispatch_semaphore_t _queueSemaphore;                           // semaphore signaled when pushing to _receivedMessage queue
+#if __has_feature(objc_arc)
+    std::atomic<void *> _sendingThread {};                          // \todo why does the declaration below fail? __unsafe_unretained should be trivially copyable...
+#else
+    std::atomic<NSThread * __unsafe_unretained> _sendingThread {};
+#endif
+    std::atomic<PendingReply *> _pendingReply {};                   // if set, the receive callback forward to that thread
 };
 
 
+// plug-in side: proxy host implementation
 class ARAIPCAUHostMessageSender : public ARAIPCAUMessageSender
 {
 public:
-    using ARAIPCAUMessageSender::ARAIPCAUMessageSender;
+    ARAIPCAUHostMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel)
+    : ARAIPCAUMessageSender { messageChannel, true },
+      _sendLock { dispatch_semaphore_create (1) }
+    {}
+
+#if !__has_feature(objc_arc)
+    ~ARAIPCAUHostMessageSender () override
+    {
+        dispatch_release (_sendLock);
+    }
+#endif
 
 protected:
-    void _sendMessage (NSDictionary * message) override
+    NSDictionary * _sendMessage (NSDictionary * message) override
     {
-        ARA_INTERNAL_ASSERT ([NSThread isMainThread]);
-
-        if (auto callHostBlock { _messageChannel.callHostBlock })
+        if (const auto callHostBlock { getMessageChannel ().callHostBlock })
         {
+            dispatch_semaphore_wait (_sendLock, DISPATCH_TIME_FOREVER);
             NSDictionary * reply { callHostBlock (message) };
-            ARA_INTERNAL_ASSERT ([reply count] == 0);
+            dispatch_semaphore_signal (_sendLock);
+            ARA_INTERNAL_ASSERT (([reply count] == 0) || (([reply count] == 1) && [message objectForKey:_transactionLockKey]));
+            return reply;
         }
         else
         {
             ARA_INTERNAL_ASSERT (false && "trying to send IPC message while host has not set callHostBlock");
+            return nil;
         }
     }
 
@@ -302,56 +441,78 @@ protected:
         if (messageID == kARAIPCGetRemoteInstanceRef)
         {
             ARA_INTERNAL_ASSERT (userData != nullptr);
-            replyEncoder->appendSize (0, (ARAIPCPlugInInstanceRef)userData);
+            ARA::IPC::encodeReply (replyEncoder, (ARAIPCPlugInInstanceRef) userData);
         }
         else if (messageID == kARAIPCDestroyRemoteInstance)
         {
             ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
             ARAIPCPlugInInstanceRef plugInInstanceRef;
-            bool ARA_MAYBE_UNUSED_VAR (success) { decoder->readSize (0, &plugInInstanceRef) };
-            ARA_INTERNAL_ASSERT (success);
+            decodeArguments (decoder, plugInInstanceRef);
 
             // \todo as long as we're using a separate channel per AUAudioUnit, we don't need to
             //       send the remote instance - it's known in the channel and provided as arg here
-            ARA_INTERNAL_ASSERT ((void *)plugInInstanceRef == userData);
-            _destructionHandler ((__bridge AUAudioUnit *)(void *)plugInInstanceRef);
+            ARA_INTERNAL_ASSERT ((void *) plugInInstanceRef == userData);
+            _destructionHandler ((__bridge AUAudioUnit *) (void *) plugInInstanceRef);
         }
         else
         {
             ARAIPCProxyHostCommandHandler (messageID, decoder, replyEncoder);
         }
     }
+    
+    bool _tryLockTransaction () override
+    {
+        const auto message { [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:true] forKey:_transactionLockKey] };
+        const auto reply { _sendMessage (message) };
+        ARA_INTERNAL_ASSERT ([reply objectForKey:_transactionLockKey] != nil);
+        return [(NSNumber *) [reply objectForKey:_transactionLockKey] boolValue];
+    }
+
+    void _unlockTransaction () override
+    {
+        const auto message { [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:false] forKey:_transactionLockKey] };
+        const auto reply { _sendMessage (message) };
+        ARA_INTERNAL_ASSERT ([reply objectForKey:_transactionLockKey] != nil);
+        ARA_INTERNAL_ASSERT ([(NSNumber *) [reply objectForKey:_transactionLockKey] boolValue]);
+    }
+
+private:
+    dispatch_semaphore_t _sendLock;     // needed because we're injecting messages from any thread in order to access the transaction lock
 };
 
 
+// host side: proxy plug-in implementation
 class ARAIPCAUPlugInMessageSender : public ARAIPCAUMessageSender
 {
 public:
-    ARAIPCAUPlugInMessageSender (NSObject<AUMessageChannel>* _Nonnull messageChannel)
-    : ARAIPCAUMessageSender (messageChannel)
+    ARAIPCAUPlugInMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel)
+    : ARAIPCAUMessageSender { messageChannel, false },
+      _transactionLock { dispatch_semaphore_create (1) }
     {
         // \todo we happen to use the same message block for both the ARA_AUDIOUNIT_FACTORY_CUSTOM_MESSAGES_UTI
         //       and all ARA_AUDIOUNIT_PLUGINEXTENSION_CUSTOM_MESSAGES_UTI uses, but it is generally unclear
         //       how to set the correct message block if the channel is shared.
-        _messageChannel.callHostBlock = ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
-        {
-            enqueueReceivedMessage (message, nullptr);
-            return [NSDictionary dictionary];   // \todo it would yield better performance if the callHostBlock would allow nil as return value
-        };
+        getMessageChannel ().callHostBlock =
+            ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
+            {
+                return processReceivedMessage (message, nullptr);
+            };
     }
 
     ~ARAIPCAUPlugInMessageSender () override
     {
-        _messageChannel.callHostBlock = nil;
+        getMessageChannel ().callHostBlock = nil;
+#if !__has_feature(objc_arc)
+        dispatch_release (_transactionLock);
+#endif
     }
 
 protected:
-    void _sendMessage (NSDictionary * message) override
+    NSDictionary * _sendMessage (NSDictionary * message) override
     {
-        ARA_INTERNAL_ASSERT ([NSThread isMainThread]);
-
-        NSDictionary * reply { [_messageChannel callAudioUnit:message] };
-        ARA_INTERNAL_ASSERT ([reply count] == 0);
+        NSDictionary * reply { [getMessageChannel () callAudioUnit:message] };
+        ARA_INTERNAL_ASSERT (([reply count] == 0) || (([reply count] == 1) && [message objectForKey:_transactionLockKey]));
+        return reply;
     }
 
     void _handleReceivedMessage (const ARAIPCMessageID messageID,
@@ -361,24 +522,52 @@ protected:
     {
         ARAIPCProxyPlugInCallbacksDispatcher (messageID, decoder, replyEncoder);
     }
+
+    bool _tryLockTransaction () override
+    {
+        return (dispatch_semaphore_wait (_transactionLock, DISPATCH_TIME_NOW) == 0);
+    }
+
+    void _unlockTransaction () override
+    {
+        dispatch_semaphore_signal (_transactionLock);
+    }
+
+    NSDictionary * processReceivedMessage (NSDictionary * message, void * userData) override
+    {
+        if (const auto transactionLockRequest { (NSNumber *) [message objectForKey:_transactionLockKey] })
+        {
+            bool result { true };
+            if ([transactionLockRequest boolValue])
+                result = _tryLockTransaction ();
+            else
+                _unlockTransaction ();
+            return [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:result] forKey:_transactionLockKey];
+        }
+
+        return ARAIPCAUMessageSender::processReceivedMessage (message, userData);
+    }
+
+private:
+    dispatch_semaphore_t _transactionLock;
 };
 
 
+// host side: proxy plug-in specialization for plug-in extension messages
 class ARAIPCAUPlugInExtensionMessageSender : public ARAIPCAUPlugInMessageSender
 {
     using ARAIPCAUPlugInMessageSender::ARAIPCAUPlugInMessageSender;
 
 public:
-    static ARAIPCAUPlugInExtensionMessageSender * bindAndCreateMessageSender (
-                                                    NSObject<AUMessageChannel>* _Nonnull messageChannel,
-                                                    ARADocumentControllerRef _Nonnull documentControllerRef,
-                                                    ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
+    static ARAIPCAUPlugInExtensionMessageSender * bindAndCreateMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel,
+                                                                              ARADocumentControllerRef _Nonnull documentControllerRef,
+                                                                              ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
     {
         auto result { new ARAIPCAUPlugInExtensionMessageSender { messageChannel } };
         auto encoder { result->createEncoder () };
-        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) {
+        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder * decoder, void * userData) {
                 ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
-                bool ARA_MAYBE_UNUSED_VAR (success) = decoder->readSize (0, (ARAIPCPlugInInstanceRef*)userData);
+                bool ARA_MAYBE_UNUSED_VAR (success) { decoder->readSize (0, static_cast<ARAIPCPlugInInstanceRef *> (userData)) };
                 ARA_INTERNAL_ASSERT (success);
             } };
         result->sendMessage (kARAIPCGetRemoteInstanceRef.getMessageID (), encoder, &replyHandler, &result->_remoteInstanceRef);
@@ -393,57 +582,54 @@ public:
     {
         if (_plugInExtensionInstance)
         {
-            auto encoder { createEncoder () };
-            encoder->appendSize (0, _remoteInstanceRef);
-            sendMessage (kARAIPCDestroyRemoteInstance.getMessageID (), encoder, nullptr, nullptr);
-            delete encoder;
-
+            RemoteCaller { this }.remoteCall (kARAIPCDestroyRemoteInstance, _remoteInstanceRef);
             ARAIPCProxyPlugInCleanupBinding (_plugInExtensionInstance);
         }
     }
 
-    const ARAPlugInExtensionInstance* getPlugInExtensionInstance () const
+    const ARAPlugInExtensionInstance * getPlugInExtensionInstance () const
     {
         return _plugInExtensionInstance;
     }
 
 private:
     ARAIPCPlugInInstanceRef _remoteInstanceRef {};                  // stores the remote AUAudioUnit<ARAAudioUnit> instance
-    const ARAPlugInExtensionInstance* _plugInExtensionInstance {};
+    const ARAPlugInExtensionInstance * _plugInExtensionInstance {};
 };
 
 
 
-NSObject<AUMessageChannel>* _Nullable ARA_CALL ARAIPCAUGetMessageChannel (AUAudioUnit* _Nonnull audioUnit, NSString* _Nonnull identifier)
+// host side: proxy plug-in C adapter to ARAIPCAUPlugInMessageSender (or ARAIPCAUPlugInExtensionMessageSender subclass)
+NSObject<AUMessageChannel> * _Nullable ARAIPCAUGetMessageChannel (AUAudioUnit * _Nonnull audioUnit, NSString * _Nonnull identifier)
 {
     // AUAudioUnits created before macOS 13 will not know about this API yet
     if (![audioUnit respondsToSelector:@selector(messageChannelFor:)])
         return nil;
 
-    return (NSObject<AUMessageChannel>*)[(AUAudioUnit<ARAAudioUnit>*) audioUnit messageChannelFor:identifier];
+    return (NSObject<AUMessageChannel> *) [(AUAudioUnit<ARAAudioUnit> *) audioUnit messageChannelFor:identifier];
 }
 
-ARAIPCMessageSender* _Nullable ARA_CALL ARAIPCAUProxyPlugInInitializeFactoryMessageSender (AUAudioUnit* _Nonnull audioUnit)
+ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyPlugInInitializeFactoryMessageSender (AUAudioUnit * _Nonnull audioUnit)
 {
     auto messageChannel { ARAIPCAUGetMessageChannel (audioUnit, ARA_AUDIOUNIT_FACTORY_CUSTOM_MESSAGES_UTI) };
     if (!messageChannel)
         return nullptr;
 
-    return new ARAIPCAUPlugInMessageSender { messageChannel };
+    return new ARAIPCAUPlugInMessageSender { (NSObject<AUMessageChannel> * _Nonnull) messageChannel };
 }
 
-const ARAFactory* _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory (ARAIPCMessageSender * _Nonnull messageSender)
+const ARAFactory * _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory (ARAIPCMessageSender * _Nonnull messageSender)
 {
     ARA_VALIDATE_API_CONDITION (ARAIPCProxyPlugInGetFactoriesCount (messageSender) == 1);
-    const ARAFactory* result = ARAIPCProxyPlugInGetFactoryAtIndex (messageSender, 0);
+    const ARAFactory * result { ARAIPCProxyPlugInGetFactoryAtIndex (messageSender, 0) };
     ARA_VALIDATE_API_CONDITION (result != nullptr);
     return result;
 }
 
-const ARAPlugInExtensionInstance* _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit* _Nonnull audioUnit,
-                                                                                                  ARADocumentControllerRef _Nonnull documentControllerRef,
-                                                                                                  ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles,
-                                                                                                  ARAIPCMessageSender * _Nullable * _Nonnull messageSender)
+const ARAPlugInExtensionInstance * _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,
+                                                                                                   ARADocumentControllerRef _Nonnull documentControllerRef,
+                                                                                                   ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles,
+                                                                                                   ARAIPCMessageSender * _Nullable * _Nonnull messageSender)
 {
     auto messageChannel { ARAIPCAUGetMessageChannel (audioUnit, ARA_AUDIOUNIT_PLUGINEXTENSION_CUSTOM_MESSAGES_UTI) };
     if (!messageChannel)
@@ -452,9 +638,9 @@ const ARAPlugInExtensionInstance* _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToDo
         return nullptr;
     }
 
-    *messageSender = ARAIPCAUPlugInExtensionMessageSender::bindAndCreateMessageSender (messageChannel,
+    *messageSender = ARAIPCAUPlugInExtensionMessageSender::bindAndCreateMessageSender ((NSObject<AUMessageChannel> * _Nonnull) messageChannel,
                                                                                        documentControllerRef, knownRoles, assignedRoles);
-    return static_cast<ARAIPCAUPlugInExtensionMessageSender*>(*messageSender)->getPlugInExtensionInstance ();
+    return static_cast<ARAIPCAUPlugInExtensionMessageSender *> (*messageSender)->getPlugInExtensionInstance ();
 }
 
 void ARA_CALL ARAIPCAUProxyPlugInCleanupBinding (ARAIPCMessageSender * messageSender)
@@ -462,31 +648,32 @@ void ARA_CALL ARAIPCAUProxyPlugInCleanupBinding (ARAIPCMessageSender * messageSe
     delete messageSender;
 }
 
-void ARA_CALL ARAIPCAUProxyPlugInUninitializeFactoryMessageSender (ARAIPCMessageSender* _Nonnull messageSender)
+void ARA_CALL ARAIPCAUProxyPlugInUninitializeFactoryMessageSender (ARAIPCMessageSender * _Nonnull messageSender)
 {
     delete messageSender;
 }
 
 
 
-ARAIPCAUHostMessageSender * _sharedPlugInCallbacksSender {};
+// plug-in side: proxy host C adapter to ARAIPCAUHostMessageSender
+ARAIPCAUHostMessageSender * _sharedProxyHostCallbacksSender {};
 
-void ARA_CALL ARAIPCAUProxyHostAddFactory (const ARAFactory* _Nonnull factory)
+void ARA_CALL ARAIPCAUProxyHostAddFactory (const ARAFactory * _Nonnull factory)
 {
     ARAIPCProxyHostAddFactory (factory);
 }
 
-const ARAPlugInExtensionInstance* ARA_CALL ARAIPCAUBindingHandlerWrapper (ARAIPCPlugInInstanceRef plugInInstanceRef, ARADocumentControllerRef controllerRef,
-                                                                          ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
+const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandlerWrapper (ARAIPCPlugInInstanceRef plugInInstanceRef, ARADocumentControllerRef controllerRef,
+                                                                           ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
 {
-    AUAudioUnit* audioUnit = (__bridge AUAudioUnit*)(void*)plugInInstanceRef;
+    auto audioUnit { (__bridge AUAudioUnit *) (void *) plugInInstanceRef };
     return _bindingHandler (audioUnit, controllerRef, knownRoles, assignedRoles);
 }
 
-void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel>* _Nonnull factoryMessageChannel, ARAIPCAUBindingHandler _Nonnull bindingHandler, ARAIPCAUDestructionHandler _Nonnull destructionHandler)
+void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel, ARAIPCAUBindingHandler _Nonnull bindingHandler, ARAIPCAUDestructionHandler _Nonnull destructionHandler)
 {
-    _sharedPlugInCallbacksSender = new ARAIPCAUHostMessageSender (factoryMessageChannel);
-    ARAIPCProxyHostSetPlugInCallbacksSender (_sharedPlugInCallbacksSender);
+    _sharedProxyHostCallbacksSender = new ARAIPCAUHostMessageSender { factoryMessageChannel };
+    ARAIPCProxyHostSetPlugInCallbacksSender (_sharedProxyHostCallbacksSender);
 
 #if __has_feature(objc_arc)
     _bindingHandler = bindingHandler;
@@ -498,18 +685,17 @@ void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel>* _Nonnull 
     ARAIPCProxyHostSetBindingHandler (ARAIPCAUBindingHandlerWrapper);
 }
 
-NSDictionary* _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (AUAudioUnit* _Nullable audioUnit, NSDictionary* _Nonnull message)
+NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (AUAudioUnit * _Nullable audioUnit, NSDictionary * _Nonnull message)
 {
-    _sharedPlugInCallbacksSender->enqueueReceivedMessage (message, audioUnit);
-    return [NSDictionary dictionary];   // \todo it would yield better performance if the AUMessageChannel would accept nil as return value
+    return _sharedProxyHostCallbacksSender->processReceivedMessage (message, (__bridge void *)audioUnit);
 }
 
-void ARA_CALL ARAIPCAUProxyHostCleanupBinding (const ARAPlugInExtensionInstance* _Nonnull plugInExtensionInstance)
+void ARA_CALL ARAIPCAUProxyHostCleanupBinding (const ARAPlugInExtensionInstance * _Nonnull plugInExtensionInstance)
 {
     ARAIPCProxyHostCleanupBinding (plugInExtensionInstance);
 }
 
-void ARA_CALL ARAIPCAUProxyHostUninitalize (void)
+void ARA_CALL ARAIPCAUProxyHostUninitialize (void)
 {
 #if __has_feature(objc_arc)
     _bindingHandler = nil;
@@ -518,9 +704,8 @@ void ARA_CALL ARAIPCAUProxyHostUninitalize (void)
     [_bindingHandler release];
     [_destructionHandler release];
 #endif
-    delete _sharedPlugInCallbacksSender;
+    delete _sharedProxyHostCallbacksSender;
 }
-
 
 
 API_AVAILABLE_END
@@ -529,11 +714,9 @@ API_AVAILABLE_END
 _Pragma ("GCC diagnostic pop")
 
 
-#if defined(__cplusplus)
 }   // extern "C"
 }   // namespace IPC
 }   // namespace ARA
-#endif
 
 
 #endif // ARA_AUDIOUNITV3_IPC_IS_AVAILABLE

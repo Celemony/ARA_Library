@@ -58,7 +58,7 @@ const ARAFactory * _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory(ARAIPCMessage
 //! also initializes the messageSender which remains valid until ARAIPCAUProxyPlugInCleanupBinding() is called
 //! the document controller must be created through a factory obtained through ARAIPCAUProxyPlugInGetFactory()
 //! will return NULL if the Audio Unit does not implement ARAAudioUnit or [AUAudioUnit messageChannelFor:],
-//! leaving messageSender uninitalized in that case
+//! leaving messageSender uninitialized in that case
 const ARAPlugInExtensionInstance * _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController(AUAudioUnit * _Nonnull audioUnit,
                                                                                                   ARADocumentControllerRef _Nonnull documentControllerRef,
                                                                                                   ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles,
@@ -89,13 +89,13 @@ void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull 
                                           ARAIPCAUBindingHandler _Nonnull bindingHandler, ARAIPCAUDestructionHandler _Nonnull destructionHandler);
 
 //! plug-in side: implementation for AUMessageChannel<NSObject> -callAudioUnit:
-NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (AUAudioUnit * _Nullable audioUnit, NSDictionary * _Nonnull wrappedMessage);
+NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (AUAudioUnit * _Nullable audioUnit, NSDictionary * _Nonnull message);
 
 //! plug-in side: trigger proper teardown of proxy plug-in extension when Companion API instance is destroyed
 void ARA_CALL ARAIPCAUProxyHostCleanupBinding(const ARAPlugInExtensionInstance * _Nonnull plugInExtensionInstance);
 
 //! plug-in side: static cleanup upon shutdown
-void ARA_CALL ARAIPCAUProxyHostUninitalize(void);
+void ARA_CALL ARAIPCAUProxyHostUninitialize(void);
 
 
 API_AVAILABLE_END
