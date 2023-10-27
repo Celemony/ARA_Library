@@ -144,17 +144,17 @@ typedef struct ARAIPCMessageDecoder ARAIPCMessageDecoder;
 
 
 
-//! Message Sender: gateway for sending messages
+//! Message Channel: gateway for sending messages
 //! @{
 #if defined(__cplusplus)
-class ARAIPCMessageSender
+class ARAIPCMessageChannel
 {
 public:
     //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
     //! decoder will be nullptr if incoming message was empty
     typedef void (ARA_CALL *ReplyHandler) (const ARAIPCMessageDecoder* decoder, void* userData);
 
-    virtual ~ARAIPCMessageSender() = default;
+    virtual ~ARAIPCMessageChannel () = default;
 
     //! generate an encoder to encode a new message, later passed to
     //! sendMessage() which will destroy the encoder after sending
@@ -173,7 +173,7 @@ public:
     virtual bool receiverEndianessMatches () = 0;
 };
 #else
-typedef struct ARAIPCMessageSender ARAIPCMessageSender;
+typedef struct ARAIPCMessageChannel ARAIPCMessageChannel;
 #endif
 //! @}
 

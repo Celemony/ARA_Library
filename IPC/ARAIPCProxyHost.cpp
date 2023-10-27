@@ -95,8 +95,8 @@ ARA_MAP_HOST_REF (RemoteHostContentReader, ARAContentReaderHostRef)
 class AudioAccessController : public Host::AudioAccessControllerInterface, protected RemoteCaller
 {
 public:
-    AudioAccessController (ARAIPCMessageSender* sender, ARAAudioAccessControllerHostRef remoteHostRef) noexcept
-    : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
+    AudioAccessController (ARAIPCMessageChannel* messageChannel, ARAAudioAccessControllerHostRef remoteHostRef) noexcept
+    : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     ARAAudioReaderHostRef createAudioReaderForSource (ARAAudioSourceHostRef audioSourceHostRef, bool use64BitSamples) noexcept override;
     bool readAudioSamples (ARAAudioReaderHostRef audioReaderHostRef, ARASamplePosition samplePosition, ARASampleCount samplesPerChannel, void* const buffers[]) noexcept override;
@@ -236,8 +236,8 @@ void AudioAccessController::destroyAudioReader (ARAAudioReaderHostRef audioReade
 class ArchivingController : public Host::ArchivingControllerInterface, protected RemoteCaller
 {
 public:
-    ArchivingController (ARAIPCMessageSender* sender, ARAArchivingControllerHostRef remoteHostRef) noexcept
-    : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
+    ArchivingController (ARAIPCMessageChannel* messageChannel, ARAArchivingControllerHostRef remoteHostRef) noexcept
+    : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     ARASize getArchiveSize (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept override;
     bool readBytesFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, ARASize position, ARASize length, ARAByte buffer[]) noexcept override;
@@ -347,8 +347,8 @@ ARAPersistentID ArchivingController::getDocumentArchiveID (ARAArchiveReaderHostR
 class ContentAccessController : public Host::ContentAccessControllerInterface, protected RemoteCaller
 {
 public:
-    ContentAccessController (ARAIPCMessageSender* sender, ARAContentAccessControllerHostRef remoteHostRef) noexcept
-    : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
+    ContentAccessController (ARAIPCMessageChannel* messageChannel, ARAContentAccessControllerHostRef remoteHostRef) noexcept
+    : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     bool isMusicalContextContentAvailable (ARAMusicalContextHostRef musicalContextHostRef, ARAContentType type) noexcept override;
     ARAContentGrade getMusicalContextContentGrade (ARAMusicalContextHostRef musicalContextHostRef, ARAContentType type) noexcept override;
@@ -452,8 +452,8 @@ void ContentAccessController::destroyContentReader (ARAContentReaderHostRef cont
 class ModelUpdateController : public Host::ModelUpdateControllerInterface, protected RemoteCaller
 {
 public:
-    ModelUpdateController (ARAIPCMessageSender* sender, ARAModelUpdateControllerHostRef remoteHostRef) noexcept
-    : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
+    ModelUpdateController (ARAIPCMessageChannel* messageChannel, ARAModelUpdateControllerHostRef remoteHostRef) noexcept
+    : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     void notifyAudioSourceAnalysisProgress (ARAAudioSourceHostRef audioSourceHostRef, ARAAnalysisProgressState state, float value) noexcept override;
     void notifyAudioSourceContentChanged (ARAAudioSourceHostRef audioSourceHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept override;
@@ -496,8 +496,8 @@ void ModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackRegio
 class PlaybackController : public Host::PlaybackControllerInterface, protected RemoteCaller
 {
 public:
-    PlaybackController (ARAIPCMessageSender* sender, ARAPlaybackControllerHostRef remoteHostRef) noexcept
-    : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
+    PlaybackController (ARAIPCMessageChannel* messageChannel, ARAPlaybackControllerHostRef remoteHostRef) noexcept
+    : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     void requestStartPlayback () noexcept override;
     void requestStopPlayback () noexcept override;
@@ -588,7 +588,7 @@ using namespace ProxyHost;
 
 
 std::vector<const ARAFactory*> _factories {};
-ARAIPCMessageSender* _plugInCallbacksSender {};
+ARAIPCMessageChannel* _plugInCallbacksChannel {};
 ARAIPCBindingHandler _bindingHandler {};
 
 void ARAIPCProxyHostAddFactory (const ARAFactory* factory)
@@ -599,9 +599,9 @@ void ARAIPCProxyHostAddFactory (const ARAFactory* factory)
     _factories.emplace_back (factory);
 }
 
-void ARAIPCProxyHostSetPlugInCallbacksSender (ARAIPCMessageSender* plugInCallbacksSender)
+void ARAIPCProxyHostSetPlugInCallbacksChannel (ARAIPCMessageChannel* messageChannel)
 {
-    _plugInCallbacksSender = plugInCallbacksSender;
+    _plugInCallbacksChannel = messageChannel;
 }
 
 void ARAIPCProxyHostSetBindingHandler (ARAIPCBindingHandler handler)
@@ -668,11 +668,11 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
 
         if (const ARAFactory* const factory { getFactoryWithID (factoryID) })
         {
-            const auto audioAccessController { new AudioAccessController { _plugInCallbacksSender, audioAccessControllerHostRef } };
-            const auto archivingController { new ArchivingController { _plugInCallbacksSender, archivingControllerHostRef } };
-            const auto contentAccessController { (provideContentAccessController != kARAFalse) ? new ContentAccessController { _plugInCallbacksSender, contentAccessControllerHostRef } : nullptr };
-            const auto modelUpdateController { (provideModelUpdateController != kARAFalse) ? new ModelUpdateController { _plugInCallbacksSender, modelUpdateControllerHostRef } : nullptr };
-            const auto playbackController { (providePlaybackController != kARAFalse) ? new PlaybackController { _plugInCallbacksSender, playbackControllerHostRef } : nullptr };
+            const auto audioAccessController { new AudioAccessController { _plugInCallbacksChannel, audioAccessControllerHostRef } };
+            const auto archivingController { new ArchivingController { _plugInCallbacksChannel, archivingControllerHostRef } };
+            const auto contentAccessController { (provideContentAccessController != kARAFalse) ? new ContentAccessController { _plugInCallbacksChannel, contentAccessControllerHostRef } : nullptr };
+            const auto modelUpdateController { (provideModelUpdateController != kARAFalse) ? new ModelUpdateController { _plugInCallbacksChannel, modelUpdateControllerHostRef } : nullptr };
+            const auto playbackController { (providePlaybackController != kARAFalse) ? new PlaybackController { _plugInCallbacksChannel, playbackControllerHostRef } : nullptr };
 
             const auto hostInstance { new Host::DocumentControllerHostInstance { audioAccessController, archivingController,
                                                                                     contentAccessController, modelUpdateController, playbackController } };

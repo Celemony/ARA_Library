@@ -1268,48 +1268,50 @@ class RemoteCaller
 public:
     using CustomDecodeFunction = std::function<void (const ARAIPCMessageDecoder* decoder)>;
 
-    RemoteCaller (ARAIPCMessageSender* sender) noexcept : _sender { sender } {}
+    RemoteCaller (ARAIPCMessageChannel* messageChannel) noexcept
+    : _messageChannel { messageChannel }
+    {}
 
     template<typename... Args>
     void remoteCall (const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _sender->createEncoder () };
+        auto encoder { _messageChannel->createEncoder () };
         encodeArguments (encoder, args...);
-        _sender->sendMessage (methodID.getMessageID (), encoder, nullptr, nullptr);
+        _messageChannel->sendMessage (methodID.getMessageID (), encoder, nullptr, nullptr);
     }
 
     template<typename RetT, typename... Args>
     void remoteCall (RetT& result, const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _sender->createEncoder () };
+        auto encoder { _messageChannel->createEncoder () };
         encodeArguments (encoder, args...);
         const auto replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
             {
                 ARA_INTERNAL_ASSERT (decoder);
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
-        _sender->sendMessage (methodID.getMessageID (), encoder, replyHandler, &result);
+        _messageChannel->sendMessage (methodID.getMessageID (), encoder, replyHandler, &result);
     }
 
     template<typename... Args>
     void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _sender->createEncoder () };
+        auto encoder { _messageChannel->createEncoder () };
         encodeArguments (encoder, args...);
         const auto replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
             {
                 ARA_INTERNAL_ASSERT (decoder);
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
-        _sender->sendMessage (methodID.getMessageID (), encoder, replyHandler, &decodeFunction);
+        _messageChannel->sendMessage (methodID.getMessageID (), encoder, replyHandler, &decodeFunction);
     }
 
-    bool receiverEndianessMatches () const { return _sender->receiverEndianessMatches (); }
+    bool receiverEndianessMatches () const { return _messageChannel->receiverEndianessMatches (); }
 
-    ARAIPCMessageSender* getMessageSender () const { return _sender; }
+    ARAIPCMessageChannel* getMessageChannel () const { return _messageChannel; }
 
 private:
-    ARAIPCMessageSender* const _sender;
+    ARAIPCMessageChannel* const _messageChannel;
 };
 
 }   // namespace IPC
