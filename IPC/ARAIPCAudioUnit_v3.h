@@ -76,13 +76,8 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitializeFactoryMessageSender(ARAIPCMessageS
 //! plug-in side: static configuration: add the ARA factories that the IPC shall handle
 void ARA_CALL ARAIPCAUProxyHostAddFactory(const ARAFactory * _Nonnull factory);
 
-//! callback that the proxy uses to execute the binding of an AUAudioUnit to the given document controller
-typedef const ARAPlugInExtensionInstance * _Nonnull (^ARAIPCAUBindingHandler)(AUAudioUnit * _Nonnull audioUnit, ARADocumentControllerRef _Nonnull controllerRef,
-                                                                              ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
-
 //! plug-in side: static configuration: after adding all factories, initialize the IPC (before allocating any instances)
-void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel,
-                                          ARAIPCAUBindingHandler _Nonnull bindingHandler);
+void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel);
 
 //! plug-in side:implementation for AUMessageChannel<NSObject> -init...
 ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageSender(AUAudioUnit * _Nonnull audioUnit,

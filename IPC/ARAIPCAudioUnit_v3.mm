@@ -59,9 +59,6 @@ API_AVAILABLE_BEGIN(macos(13.0))
 // custom IPC message to read the remote instance ref
 constexpr auto kARAIPCGetRemoteInstanceRef { MethodID::createWithNonARAMethodID<-1> () };
 
-// proxy host static handlers
-ARAIPCAUBindingHandler _bindingHandler { nil };
-
 
 // key for transaction locking through the IPC channel
 constexpr NSString * _messageIDKey { @"msgID" };
@@ -630,24 +627,19 @@ void ARA_CALL ARAIPCAUProxyHostAddFactory (const ARAFactory * _Nonnull factory)
     ARAIPCProxyHostAddFactory (factory);
 }
 
-const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandlerWrapper (ARAIPCPlugInInstanceRef plugInInstanceRef, ARADocumentControllerRef controllerRef,
-                                                                           ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
+const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandler (ARAIPCPlugInInstanceRef plugInInstanceRef, ARADocumentControllerRef controllerRef,
+                                                                    ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
 {
-    auto audioUnit { (__bridge AUAudioUnit *) (void *) plugInInstanceRef };
-    return _bindingHandler (audioUnit, controllerRef, knownRoles, assignedRoles);
+    auto audioUnit { (__bridge AUAudioUnit<ARAAudioUnit> *) (void *) plugInInstanceRef };
+    return [audioUnit bindToDocumentController:controllerRef withRoles:assignedRoles knownRoles:knownRoles];
 }
 
-void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel, ARAIPCAUBindingHandler _Nonnull bindingHandler)
+void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel)
 {
     _factoryMessageSender = new ARAIPCAUHostMessageSender { factoryMessageChannel, nil };
     ARAIPCProxyHostSetPlugInCallbacksSender (_factoryMessageSender);
 
-#if __has_feature(objc_arc)
-    _bindingHandler = bindingHandler;
-#else
-    _bindingHandler = [bindingHandler retain];
-#endif
-    ARAIPCProxyHostSetBindingHandler (ARAIPCAUBindingHandlerWrapper);
+    ARAIPCProxyHostSetBindingHandler (ARAIPCAUBindingHandler);
 }
 
 ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageSender(AUAudioUnit * _Nonnull audioUnit,
@@ -668,11 +660,6 @@ void ARA_CALL ARAIPCAUProxyHostUninitializeMessageSender (ARAIPCMessageSender * 
 
 void ARA_CALL ARAIPCAUProxyHostUninitialize (void)
 {
-#if __has_feature(objc_arc)
-    _bindingHandler = nil;
-#else
-    [_bindingHandler release];
-#endif
     delete _factoryMessageSender;
 }
 
