@@ -33,6 +33,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <thread>
 #include <cstring>
 #include <atomic>
 #include <stdlib.h>     // workaround, see OptionalProperty::operator=
@@ -1291,6 +1292,8 @@ public:
     bool isValidPlaybackRenderer (const PlaybackRenderer* ptr) const noexcept;
     bool isValidEditorRenderer (const EditorRenderer* ptr) const noexcept;
     bool isValidEditorView (const EditorView* ptr) const noexcept;
+
+    bool wasCreatedOnCurrentThread () const noexcept;
 #endif
 
 #if !ARA_DOXYGEN_BUILD
@@ -1355,6 +1358,8 @@ private:
 
 #if ARA_VALIDATE_API_CALLS
     std::vector<ContentReader*> _contentReaders;
+
+    std::thread::id _creationThreadID;
 #endif
 
     std::vector<PlaybackRenderer*> _playbackRenderers;

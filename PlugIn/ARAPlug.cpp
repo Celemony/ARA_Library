@@ -904,6 +904,11 @@ bool DocumentController::isValidEditorView (const EditorView* editorView) const 
     return contains (_editorViews, editorView);
 }
 
+bool DocumentController::wasCreatedOnCurrentThread () const noexcept
+{
+    return _creationThreadID == std::this_thread::get_id ();
+}
+
 #endif    // ARA_VALIDATE_API_CALLS
 
 /*******************************************************************************/
@@ -921,6 +926,8 @@ DocumentController::DocumentController (const PlugInEntry* entry, const ARADocum
 
 #if ARA_VALIDATE_API_CALLS
     _documentControllers.emplace (this, entry);
+
+    _creationThreadID = std::this_thread::get_id ();
 #endif
 }
 
@@ -939,6 +946,7 @@ void DocumentController::destroyDocumentController () noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 // \todo this is currently not required by the api - we shall discuss whether or not it should be.
 //  ARA_VALIDATE_API_STATE (!isHostEditingDocument ());
 
@@ -1011,6 +1019,7 @@ const ARAFactory* DocumentController::getFactory () const noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     return getPlugInEntry ()->getFactory ();
 }
 
@@ -1025,6 +1034,7 @@ void DocumentController::beginEditing () noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (!isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1037,6 +1047,7 @@ void DocumentController::endEditing () noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1081,6 +1092,7 @@ void DocumentController::notifyModelUpdates () noexcept
     }
 #endif
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
     auto hostModelUpdateController { getHostModelUpdateController () };
@@ -1112,6 +1124,7 @@ bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef arch
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1140,6 +1153,7 @@ bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef archiveW
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (!isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1164,6 +1178,7 @@ bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostR
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSourceRef, isValidAudioSource (audioSource));
@@ -1206,6 +1221,7 @@ void DocumentController::updateDocumentProperties (PropertiesPtr<ARADocumentProp
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARADocumentProperties);
@@ -1232,6 +1248,7 @@ ARAMusicalContextRef DocumentController::createMusicalContext (ARAMusicalContext
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAMusicalContextProperties);
@@ -1255,6 +1272,7 @@ void DocumentController::updateMusicalContextProperties (ARAMusicalContextRef mu
 {
     ARA_LOG_HOST_ENTRY (musicalContextRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1282,6 +1300,7 @@ void DocumentController::updateMusicalContextContent (ARAMusicalContextRef music
 {
     ARA_LOG_HOST_ENTRY (musicalContextRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1294,6 +1313,7 @@ void DocumentController::destroyMusicalContext (ARAMusicalContextRef musicalCont
 {
     ARA_LOG_HOST_ENTRY (musicalContextRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1333,6 +1353,7 @@ ARARegionSequenceRef DocumentController::createRegionSequence (ARARegionSequence
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARARegionSequenceProperties);
@@ -1361,6 +1382,7 @@ void DocumentController::updateRegionSequenceProperties (ARARegionSequenceRef re
 {
     ARA_LOG_HOST_ENTRY (regionSequenceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARARegionSequenceProperties);
@@ -1397,6 +1419,7 @@ void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSeque
 {
     ARA_LOG_HOST_ENTRY (regionSequenceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1427,6 +1450,7 @@ ARAAudioSourceRef DocumentController::createAudioSource (ARAAudioSourceHostRef h
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAAudioSourceProperties);
@@ -1448,6 +1472,7 @@ void DocumentController::updateAudioSourceProperties (ARAAudioSourceRef audioSou
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1474,6 +1499,7 @@ void DocumentController::updateAudioSourceContent (ARAAudioSourceRef audioSource
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1486,6 +1512,7 @@ void DocumentController::enableAudioSourceSamplesAccess (ARAAudioSourceRef audio
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSourceRef, isValidAudioSource (audioSource));
@@ -1501,6 +1528,7 @@ void DocumentController::deactivateAudioSourceForUndoHistory (ARAAudioSourceRef 
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1518,6 +1546,7 @@ void DocumentController::destroyAudioSource (ARAAudioSourceRef audioSourceRef) n
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1541,6 +1570,7 @@ ARAAudioModificationRef DocumentController::createAudioModification (ARAAudioSou
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1565,6 +1595,7 @@ ARAAudioModificationRef DocumentController::cloneAudioModification (ARAAudioModi
 {
     ARA_LOG_HOST_ENTRY (srcAudioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1585,6 +1616,7 @@ void DocumentController::updateAudioModificationProperties (ARAAudioModification
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1603,6 +1635,7 @@ bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudi
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     auto audioModification { fromRef (audioModificationRef) };
     ARA_VALIDATE_API_ARGUMENT (audioModificationRef, isValidAudioModification (audioModification));
@@ -1613,6 +1646,7 @@ void DocumentController::deactivateAudioModificationForUndoHistory (ARAAudioModi
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1630,6 +1664,7 @@ void DocumentController::destroyAudioModification (ARAAudioModificationRef audio
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1653,6 +1688,7 @@ ARAPlaybackRegionRef DocumentController::createPlaybackRegion (ARAAudioModificat
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1683,6 +1719,7 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1717,6 +1754,8 @@ void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef 
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+// this function can be called from other threads!
+//  ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_ARGUMENT (headTime, headTime != nullptr);
     ARA_VALIDATE_API_ARGUMENT (tailTime, tailTime != nullptr);
 
@@ -1729,6 +1768,7 @@ void DocumentController::destroyPlaybackRegion (ARAPlaybackRegionRef playbackReg
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
     ARA_VALIDATE_API_STATE (_contentReaders.empty ());
 
@@ -1765,6 +1805,7 @@ bool DocumentController::isAudioSourceContentAvailable (ARAAudioSourceRef audioS
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSourceRef, isValidAudioSource (audioSource));
@@ -1782,6 +1823,7 @@ ARAContentGrade DocumentController::getAudioSourceContentGrade (ARAAudioSourceRe
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSourceRef, isValidAudioSource (audioSource));
@@ -1805,6 +1847,7 @@ ARAContentReaderRef DocumentController::createAudioSourceContentReader (ARAAudio
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (getFactory ()->analyzeableContentTypesCount > 0);
 
     auto audioSource { fromRef (audioSourceRef) };
@@ -1842,6 +1885,7 @@ bool DocumentController::isAudioModificationContentAvailable (ARAAudioModificati
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto audioModification { fromRef (audioModificationRef) };
     ARA_VALIDATE_API_ARGUMENT (audioModificationRef, isValidAudioModification (audioModification));
@@ -1857,6 +1901,7 @@ ARAContentGrade DocumentController::getAudioModificationContentGrade (ARAAudioMo
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto audioModification { fromRef (audioModificationRef) };
     ARA_VALIDATE_API_ARGUMENT (audioModificationRef, isValidAudioModification (audioModification));
@@ -1880,6 +1925,7 @@ ARAContentReaderRef DocumentController::createAudioModificationContentReader (AR
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (getFactory ()->analyzeableContentTypesCount > 0);
 
     auto audioModification { fromRef (audioModificationRef) };
@@ -1917,6 +1963,7 @@ bool DocumentController::isPlaybackRegionContentAvailable (ARAPlaybackRegionRef 
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto playbackRegion { fromRef (playbackRegionRef) };
     ARA_VALIDATE_API_ARGUMENT (playbackRegionRef, isValidPlaybackRegion (playbackRegion));
@@ -1932,6 +1979,7 @@ ARAContentGrade DocumentController::getPlaybackRegionContentGrade (ARAPlaybackRe
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto playbackRegion { fromRef (playbackRegionRef) };
     ARA_VALIDATE_API_ARGUMENT (playbackRegionRef, isValidPlaybackRegion (playbackRegion));
@@ -1955,6 +2003,7 @@ ARAContentReaderRef DocumentController::createPlaybackRegionContentReader (ARAPl
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (getFactory ()->analyzeableContentTypesCount > 0);
 
     auto playbackRegion { fromRef (playbackRegionRef) };
@@ -1992,6 +2041,7 @@ ARAInt32 DocumentController::getContentReaderEventCount (ARAContentReaderRef con
 {
     ARA_LOG_HOST_ENTRY (contentReaderRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto contentReader { fromRef (contentReaderRef) };
     ARA_VALIDATE_API_ARGUMENT (contentReaderRef, isValidContentReader (contentReader));
@@ -2003,6 +2053,7 @@ const void* DocumentController::getContentReaderDataForEvent (ARAContentReaderRe
 {
     ARA_LOG_HOST_ENTRY (contentReaderRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto contentReader { fromRef (contentReaderRef) };
     ARA_VALIDATE_API_ARGUMENT (contentReaderRef, isValidContentReader (contentReader));
@@ -2016,6 +2067,7 @@ void DocumentController::destroyContentReader (ARAContentReaderRef contentReader
 {
     ARA_LOG_HOST_ENTRY (contentReaderRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     auto contentReader { fromRef (contentReaderRef) };
     ARA_VALIDATE_API_ARGUMENT (contentReaderRef, isValidContentReader (contentReader));
@@ -2074,6 +2126,7 @@ bool DocumentController::isAudioSourceContentAnalysisIncomplete (ARAAudioSourceR
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     ARA_VALIDATE_API_ARGUMENT (nullptr, canContentTypeBeAnalyzed (type));
     if (!canContentTypeBeAnalyzed (type))
@@ -2095,6 +2148,7 @@ void DocumentController::requestAudioSourceContentAnalysis (ARAAudioSourceRef au
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSourceRef, isValidAudioSource (audioSource));
@@ -2114,6 +2168,7 @@ ARAInt32 DocumentController::getProcessingAlgorithmsCount () noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     return doGetProcessingAlgorithmsCount ();
 }
@@ -2122,6 +2177,7 @@ const ARAProcessingAlgorithmProperties* DocumentController::getProcessingAlgorit
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_ARGUMENT (nullptr, 0 <= algorithmIndex);
     ARA_VALIDATE_API_ARGUMENT (nullptr, algorithmIndex < doGetProcessingAlgorithmsCount ());
 
@@ -2140,6 +2196,7 @@ ARAInt32 DocumentController::getProcessingAlgorithmForAudioSource (ARAAudioSourc
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_VALIDATE_API_ARGUMENT (audioSourceRef, isValidAudioSource (audioSource));
@@ -2161,6 +2218,7 @@ void DocumentController::requestProcessingAlgorithmForAudioSource (ARAAudioSourc
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (isHostEditingDocument ());
 
     auto audioSource { fromRef (audioSourceRef) };
@@ -2184,6 +2242,7 @@ bool DocumentController::isLicensedForCapabilities (bool runModalActivationDialo
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
 
     const auto validatedContentTypes { _getValidatedAnalyzableContentTypes (contentTypesCount, contentTypes, true) };
 
@@ -2461,6 +2520,7 @@ void PlaybackRenderer::addPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidPlaybackRenderer (this));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
 
     auto playbackRegion { fromRef (playbackRegionRef) };
     ARA_VALIDATE_API_ARGUMENT (playbackRegionRef, _documentController->isValidPlaybackRegion (playbackRegion));
@@ -2475,6 +2535,7 @@ void PlaybackRenderer::removePlaybackRegion (ARAPlaybackRegionRef playbackRegion
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidPlaybackRenderer (this));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
 
     auto playbackRegion { fromRef (playbackRegionRef) };
     ARA_VALIDATE_API_ARGUMENT (playbackRegionRef, _documentController->isValidPlaybackRegion (playbackRegion));
@@ -2504,6 +2565,7 @@ void EditorRenderer::addPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) 
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidEditorRenderer (this));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (_regionSequences.empty ());
 
     auto playbackRegion { fromRef (playbackRegionRef) };
@@ -2519,6 +2581,7 @@ void EditorRenderer::removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRe
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidEditorRenderer (this));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
 
     auto playbackRegion { fromRef (playbackRegionRef) };
     ARA_VALIDATE_API_ARGUMENT (playbackRegionRef, _documentController->isValidPlaybackRegion (playbackRegion));
@@ -2533,6 +2596,7 @@ void EditorRenderer::addRegionSequence (ARARegionSequenceRef regionSequenceRef) 
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidEditorRenderer (this));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STATE (_playbackRegions.empty ());
 
     auto regionSequence { fromRef (regionSequenceRef) };
@@ -2548,6 +2612,7 @@ void EditorRenderer::removeRegionSequence (ARARegionSequenceRef regionSequenceRe
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidEditorRenderer (this));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
 
     auto regionSequence { fromRef (regionSequenceRef) };
     ARA_VALIDATE_API_ARGUMENT (regionSequenceRef, _documentController->isValidRegionSequence (regionSequence));
@@ -2601,6 +2666,7 @@ void EditorView::notifySelection (SizedStructPtr<ARAViewSelection> selection) no
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidEditorView (this));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_STRUCT_PTR (selection, ARAViewSelection);
     _viewSelection = ViewSelection (_documentController, selection);
 
@@ -2620,6 +2686,7 @@ void EditorView::notifyHideRegionSequences (ARASize regionSequenceRefsCount, con
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, DocumentController::isValidDocumentController (_documentController) && _documentController->isValidEditorView (this));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
     _hiddenRegionSequences = _convertRegionSequencesArray (_documentController, regionSequenceRefsCount, regionSequenceRefs);
 
 #if ARA_ENABLE_VIEW_UPDATE_LOG
@@ -2678,6 +2745,7 @@ const ARAPlugInExtensionInstance* PlugInExtension::bindToARA (ARADocumentControl
 
     _documentController = fromRef<DocumentController> (documentControllerRef);
     ARA_VALIDATE_API_ARGUMENT (documentControllerRef, DocumentController::isValidDocumentController (_documentController));
+    ARA_VALIDATE_API_THREAD (_documentController->wasCreatedOnCurrentThread ());
     ARA_VALIDATE_API_ARGUMENT (nullptr, (assignedRoles | knownRoles) == knownRoles);
 
     const bool isPlaybackRenderer { ((knownRoles & kARAPlaybackRendererRole) == 0) || ((assignedRoles & kARAPlaybackRendererRole) != 0) };
