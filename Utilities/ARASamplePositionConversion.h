@@ -52,7 +52,7 @@ inline SamplePositionType samplePositionAtTime (ARATimePosition timePosition, AR
 //@{
 
 template<typename SamplePositionType = ARASamplePosition>
-inline ARATimePosition timeAtSamplePosition (SamplePositionType samplePositon, ARASampleRate sampleRate) { return static_cast<double> (samplePositon) / sampleRate; }
+inline ARATimePosition timeAtSamplePosition (SamplePositionType samplePosition, ARASampleRate sampleRate) { return static_cast<double> (samplePosition) / sampleRate; }
 
 //@}
 
