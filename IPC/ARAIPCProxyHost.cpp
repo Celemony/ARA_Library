@@ -686,7 +686,7 @@ void ARAIPCProxyHostCommandHandler (ARAIPCMessageChannel* messageChannel, const 
         ARAPlugInInstanceRoleFlags knownRoles;
         ARAPlugInInstanceRoleFlags assignedRoles;
         decodeArguments (decoder, plugInInstanceRef, controllerRef, knownRoles, assignedRoles);
-        const auto plugInExtensionInstance { _bindingHandler (plugInInstanceRef, fromRef (controllerRef)->getRef (), knownRoles, assignedRoles) };
+        const auto plugInExtensionInstance { _bindingHandler (messageChannel, plugInInstanceRef, fromRef (controllerRef)->getRef (), knownRoles, assignedRoles) };
         const ARAPlugInExtensionRef plugInExtensionRef { toRef ( new PlugInExtension { plugInExtensionInstance } )};
         ARA_INTERNAL_ASSERT (plugInExtensionInstance->plugInExtensionRef == nullptr);   // plugInExtensionRef must not be used when ARA 2 is active
         const_cast<ARAPlugInExtensionInstance*> (plugInExtensionInstance)->plugInExtensionRef = plugInExtensionRef;

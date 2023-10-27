@@ -56,10 +56,6 @@ API_AVAILABLE_BEGIN(macos(13.0))
 #endif
 
 
-// custom IPC message to read the remote instance ref
-constexpr auto kARAIPCGetRemoteInstanceRef { MethodID::createWithNonARAMethodID<-1> () };
-
-
 // key for transaction locking through the IPC channel
 constexpr NSString * _messageIDKey { @"msgID" };
 constexpr NSString * _transactionLockKey { @"transactionLock" };
@@ -379,6 +375,11 @@ public:
     }
 #endif
 
+    AUAudioUnit * _Nullable getAudioUnit ()
+    {
+        return _audioUnit;
+    }
+
 protected:
     NSDictionary * _sendMessage (NSDictionary * message) override
     {
@@ -406,14 +407,7 @@ protected:
                                  const ARAIPCMessageDecoder * const decoder,
                                  ARAIPCMessageEncoder * const replyEncoder) override
     {
-        if (messageID == kARAIPCGetRemoteInstanceRef)
-        {
-            ARA::IPC::encodeReply (replyEncoder, (ARAIPCPlugInInstanceRef)(__bridge void *)_audioUnit);
-        }
-        else
-        {
-            ARAIPCProxyHostCommandHandler (this, messageID, decoder, replyEncoder);
-        }
+        ARAIPCProxyHostCommandHandler (this, messageID, decoder, replyEncoder);
     }
     
     void _lockTransaction () override
@@ -539,8 +533,7 @@ public:
                                                                                 ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
     {
         auto result { new ARAIPCAUPlugInExtensionMessageChannel { audioUnitChannel } };
-        ARA::IPC::RemoteCaller { result }.remoteCall (result->_remoteInstanceRef, kARAIPCGetRemoteInstanceRef);
-        result->_plugInExtensionInstance = ARAIPCProxyPlugInBindToDocumentController (result->_remoteInstanceRef, result, documentControllerRef, knownRoles, assignedRoles);
+        result->_plugInExtensionInstance = ARAIPCProxyPlugInBindToDocumentController (0, result, documentControllerRef, knownRoles, assignedRoles);
         return result;
     }
 
@@ -556,7 +549,6 @@ public:
     }
 
 private:
-    ARAIPCPlugInInstanceRef _remoteInstanceRef {};                  // stores the remote AUAudioUnit instance
     const ARAPlugInExtensionInstance * _plugInExtensionInstance {};
 };
 
@@ -627,11 +619,12 @@ void ARA_CALL ARAIPCAUProxyHostAddFactory (const ARAFactory * _Nonnull factory)
     ARAIPCProxyHostAddFactory (factory);
 }
 
-const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandler (ARAIPCPlugInInstanceRef plugInInstanceRef, ARADocumentControllerRef controllerRef,
+const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandler (ARAIPCMessageChannel * messageChannel, ARAIPCPlugInInstanceRef /*plugInInstanceRef*/,
+                                                                    ARADocumentControllerRef controllerRef,
                                                                     ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
 {
-    auto audioUnit { (__bridge AUAudioUnit<ARAAudioUnit> *) (void *) plugInInstanceRef };
-    return [audioUnit bindToDocumentController:controllerRef withRoles:assignedRoles knownRoles:knownRoles];
+    auto audioUnit { static_cast<ARAIPCAUHostMessageChannel *>(messageChannel)->getAudioUnit () };
+    return [(AUAudioUnit<ARAAudioUnit> *) audioUnit bindToDocumentController:controllerRef withRoles:assignedRoles knownRoles:knownRoles];
 }
 
 void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel)
