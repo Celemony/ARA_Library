@@ -177,6 +177,13 @@ add_library(ARA_IPC_Library ${ARA_LIBRARY_TARGET_TYPE}
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyPlugIn.cpp"
 )
 
+if(APPLE)
+    target_sources(ARA_IPC_Library PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCCFEncoding.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCCFEncoding.cpp"
+    )
+endif()
+
 target_link_libraries(ARA_IPC_Library PRIVATE
     ARA_Host_Library
     ARA_PlugIn_Library
