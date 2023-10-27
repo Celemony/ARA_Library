@@ -1324,11 +1324,7 @@ const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARA
     const auto remoteDocumentControllerRef { static_cast<DocumentController*> (PlugIn::fromRef (documentControllerRef))->getRemoteRef () };
 
     size_t remoteExtensionRef {};
-    RemoteCaller::CustomDecodeFunction customDecode { [&remoteExtensionRef] (const ARAIPCMessageDecoder* decoder) -> void
-        {
-            decoder->readSize (0, &remoteExtensionRef);
-        } };
-    RemoteCaller { sender }.remoteCall (customDecode, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
+    RemoteCaller { sender }.remoteCall (remoteExtensionRef, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
 
     return new PlugInExtension { sender, documentControllerRef, knownRoles, assignedRoles, remoteExtensionRef };
 }
