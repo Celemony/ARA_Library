@@ -48,10 +48,6 @@ void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);
 //! static dispatcher: the host command handler that controls the proxy host
 void ARAIPCProxyHostCommandHandler(const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, ARAIPCMessageEncoder * replyEncoder);
 
-//! trigger proper teardown of proxy plug-in extension when destroying Companion API plug-in instances that have been bound to ARA
-void ARAIPCProxyHostCleanupBinding(const ARAPlugInExtensionInstance * plugInExtensionInstance);
-
-
 #if defined(__cplusplus)
 }   // extern "C"
 }   // namespace IPC

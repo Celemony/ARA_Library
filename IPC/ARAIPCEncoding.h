@@ -1061,7 +1061,8 @@ constexpr auto kGetFactoryMethodID { MethodID::createWithARASetupMethodID<2> () 
 constexpr auto kInitializeARAMethodID { MethodID::createWithARASetupMethodID<3> () };
 constexpr auto kCreateDocumentControllerMethodID { MethodID::createWithARASetupMethodID<4> () };
 constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARASetupMethodID<5> () };
-constexpr auto kUninitializeARAMethodID { MethodID::createWithARASetupMethodID<6> () };
+constexpr auto kCleanupBindingMethodID { MethodID::createWithARASetupMethodID<6> () };
+constexpr auto kUninitializeARAMethodID { MethodID::createWithARASetupMethodID<7> () };
 
 
 // caller side: create a message with the specified arguments

@@ -609,11 +609,6 @@ void ARAIPCProxyHostSetBindingHandler (ARAIPCBindingHandler handler)
     _bindingHandler = handler;
 }
 
-void ARAIPCProxyHostCleanupBinding (const ARA::ARAPlugInExtensionInstance* plugInExtensionInstance)
-{
-    delete fromRef (plugInExtensionInstance->plugInExtensionRef);
-}
-
 const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
 {
     for (const auto& factory : _factories)
@@ -701,6 +696,12 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
         ARA_INTERNAL_ASSERT (plugInExtensionInstance->plugInExtensionRef == nullptr);   // plugInExtensionRef must not be used when ARA 2 is active
         const_cast<ARAPlugInExtensionInstance*> (plugInExtensionInstance)->plugInExtensionRef = plugInExtensionRef;
         return encodeReply (replyEncoder, plugInExtensionRef );
+    }
+    else if (messageID == kCleanupBindingMethodID)
+    {
+        ARAPlugInExtensionRef plugInExtensionRef;
+        decodeArguments (decoder, plugInExtensionRef);
+        delete fromRef (plugInExtensionRef);
     }
     else if (messageID == kUninitializeARAMethodID)
     {

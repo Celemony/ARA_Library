@@ -80,14 +80,9 @@ void ARA_CALL ARAIPCAUProxyHostAddFactory(const ARAFactory * _Nonnull factory);
 typedef const ARAPlugInExtensionInstance * _Nonnull (^ARAIPCAUBindingHandler)(AUAudioUnit * _Nonnull audioUnit, ARADocumentControllerRef _Nonnull controllerRef,
                                                                               ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
 
-//! callback that the proxy uses to ensure synchronous destruction of a an AUAudioUnit bound to ARA
-//! this extra hook is necessary because the regular teardown via dealloc is delayed in macOS 13 on
-//! the remote end, causing race conditions with ARA teardown methods send after plug-in destruction
-typedef void (^ARAIPCAUDestructionHandler)(AUAudioUnit * _Nonnull audioUnit);
-
 //! plug-in side: static configuration: after adding all factories, initialize the IPC (before allocating any instances)
 void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel,
-                                          ARAIPCAUBindingHandler _Nonnull bindingHandler, ARAIPCAUDestructionHandler _Nonnull destructionHandler);
+                                          ARAIPCAUBindingHandler _Nonnull bindingHandler);
 
 //! plug-in side:implementation for AUMessageChannel<NSObject> -init...
 ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageSender(AUAudioUnit * _Nonnull audioUnit,
@@ -98,9 +93,6 @@ NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageS
 
 //! plug-in side:implementation for AUMessageChannel<NSObject> -dealloc
 void ARA_CALL ARAIPCAUProxyHostUninitializeMessageSender (ARAIPCMessageSender * _Nonnull messageSender);
-
-//! plug-in side: trigger proper teardown of proxy plug-in extension when Companion API instance is destroyed
-void ARA_CALL ARAIPCAUProxyHostCleanupBinding(const ARAPlugInExtensionInstance * _Nonnull plugInExtensionInstance);
 
 //! plug-in side: static cleanup upon shutdown
 void ARA_CALL ARAIPCAUProxyHostUninitialize(void);

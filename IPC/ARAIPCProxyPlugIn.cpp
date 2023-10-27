@@ -1154,21 +1154,22 @@ private:
 /*******************************************************************************/
 // implementation of ARAPlugInExtensionInstance that uses the above instance role classes
 
-class PlugInExtension : public PlugIn::PlugInExtensionInstance
+class PlugInExtension : public PlugIn::PlugInExtensionInstance, public RemoteCaller
 {
 public:
-    PlugInExtension (ARAIPCMessageSender* sender, ARADocumentControllerRef documentControllerRef,
-                        ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles,
-                        size_t remotePlugInExtensionRef) noexcept
+    PlugInExtension (ARAIPCMessageSender* messageSender, ARAPlugInExtensionRef remoteExtensionRef,
+                     ARADocumentControllerRef documentControllerRef,
+                     ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles) noexcept
     : PlugIn::PlugInExtensionInstance { (((knownRoles & kARAPlaybackRendererRole) == 0) || ((assignedRoles & kARAPlaybackRendererRole) != 0)) ?
-                                            new PlaybackRenderer (sender, reinterpret_cast<ARAPlaybackRendererRef> (remotePlugInExtensionRef)) : nullptr,
+                                            new PlaybackRenderer (messageSender, reinterpret_cast<ARAPlaybackRendererRef> (remoteExtensionRef)) : nullptr,
                                         (((knownRoles & kARAEditorRendererRole) == 0) || ((assignedRoles & kARAEditorRendererRole) != 0)) ?
-                                            new EditorRenderer (sender, reinterpret_cast<ARAEditorRendererRef> (remotePlugInExtensionRef)) : nullptr,
+                                            new EditorRenderer (messageSender, reinterpret_cast<ARAEditorRendererRef> (remoteExtensionRef)) : nullptr,
                                         (((knownRoles & kARAEditorViewRole) == 0) || ((assignedRoles & kARAEditorViewRole) != 0)) ?
-                                            new EditorView (sender, reinterpret_cast<ARAEditorViewRef> (remotePlugInExtensionRef)) : nullptr },
+                                            new EditorView (messageSender, reinterpret_cast<ARAEditorViewRef> (remoteExtensionRef)) : nullptr },
+      RemoteCaller { messageSender },
       _documentController { PlugIn::fromRef<DocumentController> (documentControllerRef) }
     {
-        plugInExtensionRef = reinterpret_cast<ARAPlugInExtensionRef> (remotePlugInExtensionRef);
+        plugInExtensionRef = remoteExtensionRef;    // we re-use this deprecated ivar to store the remote extension
 
         ARA_LOG_HOST_ENTRY (this);
         ARA_VALIDATE_API_ARGUMENT (documentControllerRef, isValidInstance (_documentController));
@@ -1186,6 +1187,8 @@ public:
 #if ARA_ENABLE_OBJECT_LIFETIME_LOG
         ARA_LOG ("Plug success: will destroy plug-in extension %p (playbackRenderer %p, editorRenderer %p, editorView %p)", this, getPlaybackRenderer (), getEditorRenderer (), getEditorView ());
 #endif
+
+        remoteCall (kCleanupBindingMethodID, plugInExtensionRef);
 
         _documentController->removePlugInExtension (this);
 
@@ -1330,7 +1333,7 @@ const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARA
     size_t remoteExtensionRef {};
     RemoteCaller { sender }.remoteCall (remoteExtensionRef, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
 
-    return new PlugInExtension { sender, documentControllerRef, knownRoles, assignedRoles, remoteExtensionRef };
+    return new PlugInExtension { sender, reinterpret_cast<ARAPlugInExtensionRef> (remoteExtensionRef), documentControllerRef, knownRoles, assignedRoles };
 }
 
 void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInExtensionInstance)
