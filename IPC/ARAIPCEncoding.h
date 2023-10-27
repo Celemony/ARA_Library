@@ -1285,7 +1285,7 @@ public:
         encodeArguments (encoder, args...);
         ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
             {
-                ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
+                ARA_INTERNAL_ASSERT (decoder);
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
         _sender->sendMessage (methodID.getMessageID (), encoder, &replyHandler, &result);
@@ -1298,7 +1298,7 @@ public:
         encodeArguments (encoder, args...);
         ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
             {
-                ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
+                ARA_INTERNAL_ASSERT (decoder);
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
         _sender->sendMessage (methodID.getMessageID (), encoder, &replyHandler, &decodeFunction);

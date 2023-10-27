@@ -107,9 +107,6 @@ class ARAIPCMessageDecoder
 public:
     virtual ~ARAIPCMessageDecoder () = default;
 
-    //! only for debugging/validation: test if the message contains any key/value pairs
-    virtual bool isEmpty () const = 0;
-
     //! number types
     //! The "size" variant will also be used for the pointer-sized ARA (host) refs.
     //! Will return false and set argValue to 0 if key not found.
@@ -147,6 +144,7 @@ typedef struct ARAIPCMessageDecoder ARAIPCMessageDecoder;
 
 
 //! Reply Handler: a function that is called to process the reply to a message
+//! decoder will be nullptr if incoming message was empty
 typedef void (ARA_CALL *ARAIPCReplyHandler) (const ARAIPCMessageDecoder* decoder, void* userData);
 
 //! Message Sender: gateway for sending messages

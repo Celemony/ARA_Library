@@ -68,6 +68,7 @@ ARAIPCAUDestructionHandler _destructionHandler { nil };
 
 
 // key for transaction locking through the IPC channel
+constexpr NSString * _messageIDKey { @"msgID" };
 constexpr NSString * _transactionLockKey { @"transactionLock" };
 
 
@@ -245,7 +246,8 @@ public:
 
             ARA_IPC_LOG ("sends message %i%s", messageID, (isNewTransaction) ? " (starting new transaction)" : "");
 
-            NSDictionary * message { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (encoder, messageID)) };
+            NSMutableDictionary * message { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionary (encoder)) };
+            [message setObject:[NSNumber numberWithInt: messageID] forKey:_messageIDKey];
             _sendMessage (message);
 
             do
@@ -265,8 +267,10 @@ public:
 
     virtual NSDictionary * processReceivedMessage (NSDictionary * message)
     {
-        const auto decoder { ARAIPCCFCreateMessageDecoderWithDictionary ((__bridge CFDictionaryRef) message) };
-        const ARAIPCMessageID messageID { ARAIPCCFGetMessageIDFromDictionary (decoder) };
+        ARAIPCMessageDecoder* decoder {};
+        if ([message count] > 1)
+            decoder = ARAIPCCFCreateMessageDecoderWithDictionary ((__bridge CFDictionaryRef) message);
+        const ARAIPCMessageID messageID { [(NSNumber *)[message objectForKey:_messageIDKey] intValue] };
 
         if (_pendingReply.load (std::memory_order_acquire) != nullptr)
         {
@@ -314,11 +318,13 @@ private:
 
         if (messageID != 0)
         {
+            ARA_INTERNAL_ASSERT (decoder);
             ARA_IPC_LOG ("received message with ID %i%s", messageID, (_pendingReply.load (std::memory_order_relaxed) != nullptr) ? " (while awaiting reply)" : "");
 
             auto replyEncoder { createEncoder () };
             _handleReceivedMessage (messageID, decoder, replyEncoder);
-            NSDictionary * reply { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (replyEncoder, 0)) };
+            NSMutableDictionary * reply { CFBridgingRelease (ARAIPCCFCopyMessageEncoderDictionary (replyEncoder)) };
+            [reply setObject:[NSNumber numberWithInt: 0] forKey:_messageIDKey];
             delete replyEncoder;
 
             ARA_IPC_LOG ("replies to message with ID %i", messageID);
@@ -329,9 +335,14 @@ private:
             const auto pendingReply { _pendingReply.load (std::memory_order_acquire) };
             ARA_INTERNAL_ASSERT (pendingReply != nullptr);
             if (pendingReply->replyHandler)
+            {
+                ARA_INTERNAL_ASSERT (decoder);
                 (*pendingReply->replyHandler) (decoder, pendingReply->replyHandlerUserData);
+            }
             else
-                ARA_INTERNAL_ASSERT (decoder->isEmpty ());  // unused replies should be empty
+            {
+                ARA_INTERNAL_ASSERT (!decoder);
+            }
             _pendingReply.store (pendingReply->previousPendingReply, std::memory_order_release);
         }
  
@@ -407,7 +418,6 @@ protected:
         }
         else if (messageID == kARAIPCDestroyRemoteInstance)
         {
-            ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
             ARAIPCPlugInInstanceRef plugInInstanceRef;
             decodeArguments (decoder, plugInInstanceRef);
 

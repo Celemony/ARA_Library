@@ -1291,9 +1291,6 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
     {
         ARA_INTERNAL_ASSERT (false && "unhandled message ID");
     }
-
-    // all calls that create a reply return early from their respective if ().
-//    ARA_INTERNAL_ASSERT ((replyEncoder == nullptr) || replyEncoder->methods->isEmpty (replyEncoder->ref));
 }
 
 }   // namespace IPC

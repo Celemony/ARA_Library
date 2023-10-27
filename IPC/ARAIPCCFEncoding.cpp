@@ -40,10 +40,6 @@ extern "C" {
 #endif
 
 
-// the message ID will be added to the underlying dictionary with a key that does not conflict with other message keys
-constexpr ARAIPCMessageKey messageIDKey { -1 };
-
-
 class _CFReleaser
 {
 public:
@@ -59,11 +55,8 @@ private:
 
 
 // wrap key value into CFString (no reference count transferred to caller)
-CFStringRef ARA_CALL ARAIPCCFMessageGetEncodedKey (ARAIPCMessageKey argKey, bool isInternalCall = false)
+CFStringRef ARA_CALL ARAIPCCFMessageGetEncodedKey (ARAIPCMessageKey argKey)
 {
-    if (!isInternalCall)
-        ARA_INTERNAL_ASSERT (argKey >= 0);
-
     // \todo All plist formats available for CFPropertyListCreateData () in createEncodedMessage () need CFString keys.
     //       Once we switch to the more modern (NS)XPC API we shall be able to use CFNumber keys directly...
     static std::map<ARAIPCMessageKey, _CFReleaser> cache;
@@ -173,20 +166,9 @@ ARAIPCMessageEncoder* ARAIPCCFCreateMessageEncoder (void)
     return new ARAIPCCFMessageEncoder {};
 }
 
-__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionary (ARAIPCMessageEncoder* encoder)
+__attribute__((cf_returns_retained)) CFMutableDictionaryRef ARAIPCCFCopyMessageEncoderDictionary (ARAIPCMessageEncoder* encoder)
 {
     return static_cast<ARAIPCCFMessageEncoder*> (encoder)->copyDictionary ();
-}
-
-__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (ARAIPCMessageEncoder* encoder, ARAIPCMessageID messageID)
-{
-    static_assert (std::is_same<ARAIPCMessageID, SInt32>::value, "encoding needs to be adopted here if key type is changed");
-
-    auto messageIDObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt32Type, &messageID) };
-    const auto dictionary { static_cast<ARAIPCCFMessageEncoder*> (encoder)->copyDictionary () };
-    CFDictionarySetValue (dictionary, ARAIPCCFMessageGetEncodedKey (messageIDKey, true), messageIDObject);
-    CFRelease (messageIDObject);
-    return dictionary;
 }
 
 __attribute__((cf_returns_retained)) CFDataRef ARAIPCCFCreateMessageEncoderData (ARAIPCMessageEncoder* encoder)
@@ -211,11 +193,6 @@ public:
     {
         if (_dictionary)
             CFRelease (_dictionary);
-    }
-
-    bool isEmpty () const override
-    {
-        return (!_dictionary) || (CFDictionaryGetCount (_dictionary) == 0);
     }
 
     bool readInt32 (ARAIPCMessageKey argKey, int32_t* argValue) const override
@@ -368,19 +345,10 @@ ARAIPCMessageDecoder* ARAIPCCFCreateMessageDecoderWithDictionary (CFDictionaryRe
     return new ARAIPCCFMessageDecoder { dictionary, true };
 }
 
-ARAIPCMessageID ARAIPCCFGetMessageIDFromDictionary (ARAIPCMessageDecoder* decoder)
-{
-    static_assert (std::is_same<ARAIPCMessageID, SInt32>::value, "decoding needs to be adopted here if key type is changed");
-    ARAIPCMessageID result;
-    bool success { static_cast<ARAIPCCFMessageDecoder*>(decoder)->readInt32 (ARAIPCCFMessageGetEncodedKey (messageIDKey, true), &result) };
-    ARA_INTERNAL_ASSERT (success);
-    return result;
-}
-
 ARAIPCMessageDecoder* ARAIPCCFCreateMessageDecoder (CFDataRef messageData)
 {
     if (CFDataGetLength (messageData) == 0)
-        return new ARAIPCCFMessageDecoder { nullptr, false };
+        return nullptr;
 
     auto dictionary { (CFDictionaryRef) CFPropertyListCreateWithData (kCFAllocatorDefault, messageData, kCFPropertyListImmutable, nullptr, nullptr) };
     ARA_INTERNAL_ASSERT (dictionary && (CFGetTypeID (dictionary) == CFDictionaryGetTypeID ()));

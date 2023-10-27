@@ -35,12 +35,10 @@ extern "C" {
 
 
 ARAIPCMessageEncoder * ARAIPCCFCreateMessageEncoder(void);
-__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionary(ARAIPCMessageEncoder * encoder);
-__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID(ARAIPCMessageEncoder * encoder, ARAIPCMessageID messageID);
+__attribute__((cf_returns_retained)) CFMutableDictionaryRef ARAIPCCFCopyMessageEncoderDictionary(ARAIPCMessageEncoder * encoder);
 __attribute__((cf_returns_retained)) CFDataRef ARAIPCCFCreateMessageEncoderData(ARAIPCMessageEncoder * encoder);
 
 ARAIPCMessageDecoder * ARAIPCCFCreateMessageDecoderWithDictionary(CFDictionaryRef messageDictionary);
-ARAIPCMessageID ARAIPCCFGetMessageIDFromDictionary(ARAIPCMessageDecoder * decoder);
 ARAIPCMessageDecoder * ARAIPCCFCreateMessageDecoder(CFDataRef messageData);
 
 
