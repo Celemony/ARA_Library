@@ -27,6 +27,8 @@
 namespace ARA {
 namespace Host {
 
+ARA_DISABLE_DOCUMENTATION_DEPRECATED_WARNINGS_BEGIN
+
 //! @addtogroup ARA_Library_Host_Dispatch
 //! @{
 
@@ -587,6 +589,8 @@ private:
 };
 
 //! @} ARA_Library_Host_Dispatch_Plug-In_Interface_Wrappers
+
+ARA_DISABLE_DOCUMENTATION_DEPRECATED_WARNINGS_END
 
 }   // namespace Host
 }   // namespace ARA
