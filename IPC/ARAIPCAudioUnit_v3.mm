@@ -31,6 +31,8 @@
     #error "configuration mismatch: enabling ARA_AUDIOUNITV3_IPC_IS_AVAILABLE requires enabling ARA_ENABLE_IPC too"
 #endif
 
+#include <utility>
+
 
 namespace ARA {
 namespace IPC {
@@ -146,27 +148,78 @@ constexpr NSString * _isReceivingKey { @"org.ara-audio.auv3ipc.is_receiving" };
 // in which case it is part of a transaction stack, or it is a new transaction.
 
 
-// wrapper for incoming messages in a singly-linked list, forming as concurrent queue
-struct ReceivedMessage
+// simple multi-producer, multi-consumer lockless concurrent queue for incoming
+// messages, based on a singly-linked list and a counting semaphore
+class ConcurrentQueue
 {
-    explicit ReceivedMessage (NSDictionary * message, void * userData)
-    : _message { message },
-      _userData { userData }
-    {
-#if !__has_feature(objc_arc)
-        [message retain];
-#endif
-    }
-#if !__has_feature(objc_arc)
-    ~ReceivedMessage ()
-    {
-        [_message release];
-    }
-#endif
+public:
+    ConcurrentQueue ()
+    : _semaphore { dispatch_semaphore_create (0) }
+    {}
 
-    NSDictionary * __strong _message;
-    void * _userData;
-    std::atomic<ReceivedMessage *> _nextMessage { nullptr };
+    ~ConcurrentQueue ()
+    {
+        dispatch_release (_semaphore);
+    }
+
+    void enqueueReceivedMessage (void * message, void * userData)
+    {
+        auto newMessage { new ReceivedMessage { message, userData } };
+        auto nextMessage { _receivedMessage.load (std::memory_order_relaxed) };
+        while (true)
+        {
+            newMessage->_nextMessage.store (nextMessage, std::memory_order_relaxed);
+            if (_receivedMessage.compare_exchange_weak (nextMessage, newMessage, std::memory_order_release, std::memory_order_relaxed))
+            {
+                dispatch_semaphore_signal (_semaphore);
+                break;
+            }
+        }
+    }
+
+    std::pair<void *, void *> dequeueReceivedMessage ()
+    {
+        dispatch_semaphore_wait (_semaphore, DISPATCH_TIME_FOREVER);
+
+        auto current { &_receivedMessage };
+        auto currentMessage { current->load (std::memory_order_consume) };
+        if (!currentMessage)
+        {
+            ARA_INTERNAL_ASSERT (false);    // semaphore was set, so there must be data
+            return { nullptr, nullptr };
+        }
+
+        while (true)
+        {
+            auto next { &currentMessage->_nextMessage };
+            auto nextMessage { next->load (std::memory_order_consume) };
+            if (nextMessage == nullptr)
+            {
+                current->store (nullptr, std::memory_order_release);
+                std::pair<void *, void *> result { currentMessage->_message, currentMessage->_userData };
+                delete currentMessage;
+                return result;
+            }
+            current = next;
+            currentMessage = nextMessage;
+        }
+    }
+
+private:
+    struct ReceivedMessage
+    {
+        explicit ReceivedMessage (void * message, void * userData)
+        : _message { message },
+          _userData { userData }
+        {}
+
+        void * const _message;
+        void * const _userData;
+        std::atomic<ReceivedMessage *> _nextMessage { nullptr };
+    };
+
+    std::atomic<ReceivedMessage *> _receivedMessage { nullptr };
+    dispatch_semaphore_t _semaphore;
 };
 
 
@@ -176,8 +229,7 @@ class ARAIPCAUMessageSender : public ARAIPCMessageSender
 public:
     ARAIPCAUMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel, bool dispatchRemoteTransactions)
     : _messageChannel { messageChannel },
-      _dispatchRemoteTransactions { dispatchRemoteTransactions },
-      _queueSemaphore { dispatch_semaphore_create (0) }
+      _dispatchRemoteTransactions { dispatchRemoteTransactions }
     {
 #if !__has_feature(objc_arc)
         [_messageChannel retain];
@@ -188,7 +240,6 @@ public:
     ~ARAIPCAUMessageSender () override
     {
         [_messageChannel release];
-        dispatch_release (_queueSemaphore);
     }
 #endif
 
@@ -239,12 +290,9 @@ public:
 
             do
             {
-                auto receivedMessage { _dequeueReceivedMessage () };
-                ARA_INTERNAL_ASSERT (receivedMessage != nullptr);
-                if (!receivedMessage)
-                    continue;
-                _processReceivedMessage ((__bridge CFDictionaryRef) receivedMessage->_message, receivedMessage->_userData);
-                delete receivedMessage;
+                const auto receivedMessage { _receiveQueue.dequeueReceivedMessage () };
+                _processReceivedMessage ((__bridge CFDictionaryRef) receivedMessage.first, receivedMessage.second);
+                CFRelease ((__bridge CFDictionaryRef) receivedMessage.first);
             } while (_pendingReply.load (std::memory_order_acquire) == &pendingReply);
 
             ARA_IPC_LOG ("received reply to message %i%s", messageID, (isNewTransaction) ? " (ending transaction)" : "");
@@ -261,7 +309,12 @@ public:
         if (_pendingReply.load (std::memory_order_acquire) != nullptr)
         {
             //ARA_IPC_LOG ("processReceivedMessage enqueues for sending thread");
-            _enqueueReceivedMessage (message, userData);
+#if __has_feature(objc_arc)
+            _receiveQueue.enqueueReceivedMessage ((__bridge_retained void *)message, userData);
+#else
+            [message retain];
+            _receiveQueue.enqueueReceivedMessage ((void *)message, userData);
+#endif
         }
         else
         {
@@ -294,47 +347,6 @@ protected:
                                          ARAIPCMessageEncoder * const replyEncoder) = 0;
 
 private:
-    void _enqueueReceivedMessage (NSDictionary * message, void * userData)
-    {
-        auto newMessage { new ReceivedMessage { message, userData } };
-        auto nextMessage { _receivedMessage.load (std::memory_order_relaxed) };
-        while (true)
-        {
-            newMessage->_nextMessage.store (nextMessage, std::memory_order_relaxed);
-            if (_receivedMessage.compare_exchange_weak (nextMessage, newMessage, std::memory_order_release, std::memory_order_relaxed))
-            {
-                dispatch_semaphore_signal (_queueSemaphore);
-                break;
-            }
-        }
-    }
-
-    ReceivedMessage * _dequeueReceivedMessage ()
-    {
-        dispatch_semaphore_wait (_queueSemaphore, DISPATCH_TIME_FOREVER);
-
-        auto current { &_receivedMessage };
-        auto currentMessage { current->load (std::memory_order_consume) };
-        if (!currentMessage)
-        {
-            ARA_INTERNAL_ASSERT (false);    // semaphore was set, so there must be data
-            return nullptr;
-        }
-
-        while (true)
-        {
-            auto next { &currentMessage->_nextMessage };
-            auto nextMessage { next->load (std::memory_order_consume) };
-            if (nextMessage == nullptr)
-            {
-                current->store (nullptr, std::memory_order_release);
-                return currentMessage;
-            }
-            current = next;
-            currentMessage = nextMessage;
-        }
-    }
-
     void _processReceivedMessage (CFDictionaryRef message, void * userData)
     {
         const auto currentThread { [NSThread currentThread] };
@@ -388,8 +400,7 @@ private:
 
     NSObject<AUMessageChannel> * __strong _messageChannel;
     const bool _dispatchRemoteTransactions;
-    std::atomic<ReceivedMessage *> _receivedMessage {};             // simple multi-producer, single-consumer lockless queue
-    dispatch_semaphore_t _queueSemaphore;                           // semaphore signaled when pushing to _receivedMessage queue
+    ConcurrentQueue _receiveQueue;
 #if __has_feature(objc_arc)
     std::atomic<void *> _sendingThread {};                          // \todo why does the declaration below fail? __unsafe_unretained should be trivially copyable...
 #else
