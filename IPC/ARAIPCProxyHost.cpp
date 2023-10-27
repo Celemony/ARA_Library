@@ -92,7 +92,7 @@ ARA_MAP_HOST_REF (RemoteHostContentReader, ARAContentReaderHostRef)
 
 /*******************************************************************************/
 //! Implementation of AudioAccessControllerInterface that channels all calls through IPC
-class AudioAccessController : public Host::AudioAccessControllerInterface, public RemoteCaller
+class AudioAccessController : public Host::AudioAccessControllerInterface, protected RemoteCaller
 {
 public:
     AudioAccessController (ARAIPCMessageSender* sender, ARAAudioAccessControllerHostRef remoteHostRef) noexcept
@@ -184,7 +184,8 @@ bool AudioAccessController::readAudioSamples (ARAAudioReaderHostRef audioReaderH
 
     // custom decoding to deal with float data memory ownership
     bool success { false };
-    RemoteCaller::CustomDecodeFunction customDecode { [&success, &remoteAudioReader, &samplesPerChannel, &channelCount, &buffers] (const ARAIPCMessageDecoder* decoder) -> void
+    CustomDecodeFunction customDecode {
+        [&success, &remoteAudioReader, &samplesPerChannel, &channelCount, &buffers] (const ARAIPCMessageDecoder* decoder) -> void
         {
             const auto bufferSize { remoteAudioReader->sampleSize * static_cast<size_t> (samplesPerChannel) };
             std::vector<size_t> resultSizes;
@@ -232,7 +233,7 @@ void AudioAccessController::destroyAudioReader (ARAAudioReaderHostRef audioReade
 
 /*******************************************************************************/
 //! Implementation of ArchivingControllerInterface that channels all calls through IPC
-class ArchivingController : public Host::ArchivingControllerInterface, public RemoteCaller
+class ArchivingController : public Host::ArchivingControllerInterface, protected RemoteCaller
 {
 public:
     ArchivingController (ARAIPCMessageSender* sender, ARAArchivingControllerHostRef remoteHostRef) noexcept
@@ -329,7 +330,8 @@ void ArchivingController::notifyDocumentUnarchivingProgress (float value) noexce
 
 ARAPersistentID ArchivingController::getDocumentArchiveID (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
-    RemoteCaller::CustomDecodeFunction customDecode { [this] (const ARAIPCMessageDecoder* decoder) -> void
+    CustomDecodeFunction customDecode {
+        [this] (const ARAIPCMessageDecoder* decoder) -> void
         {
             ARAPersistentID persistentID;
             decodeReply (persistentID, decoder);
@@ -342,7 +344,7 @@ ARAPersistentID ArchivingController::getDocumentArchiveID (ARAArchiveReaderHostR
 
 /*******************************************************************************/
 //! Implementation of ContentAccessControllerInterface that channels all calls through IPC
-class ContentAccessController : public Host::ContentAccessControllerInterface, public RemoteCaller
+class ContentAccessController : public Host::ContentAccessControllerInterface, protected RemoteCaller
 {
 public:
     ContentAccessController (ARAIPCMessageSender* sender, ARAContentAccessControllerHostRef remoteHostRef) noexcept
@@ -427,7 +429,8 @@ const void* ContentAccessController::getContentReaderDataForEvent (ARAContentRea
 {
     const auto contentReader { fromHostRef (contentReaderHostRef) };
     const void* result {};
-    RemoteCaller::CustomDecodeFunction customDecode { [&result, &contentReader] (const ARAIPCMessageDecoder* decoder) -> void
+    CustomDecodeFunction customDecode {
+        [&result, &contentReader] (const ARAIPCMessageDecoder* decoder) -> void
         {
             result = contentReader->decoder.decode (decoder);
         } };
@@ -446,7 +449,7 @@ void ContentAccessController::destroyContentReader (ARAContentReaderHostRef cont
 
 /*******************************************************************************/
 //! Implementation of ModelUpdateControllerInterface that channels all calls through IPC
-class ModelUpdateController : public Host::ModelUpdateControllerInterface, public RemoteCaller
+class ModelUpdateController : public Host::ModelUpdateControllerInterface, protected RemoteCaller
 {
 public:
     ModelUpdateController (ARAIPCMessageSender* sender, ARAModelUpdateControllerHostRef remoteHostRef) noexcept
@@ -490,7 +493,7 @@ void ModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackRegio
 
 /*******************************************************************************/
 //! Implementation of PlaybackControllerInterface that channels all calls through IPC
-class PlaybackController : public Host::PlaybackControllerInterface, public RemoteCaller
+class PlaybackController : public Host::PlaybackControllerInterface, protected RemoteCaller
 {
 public:
     PlaybackController (ARAIPCMessageSender* sender, ARAPlaybackControllerHostRef remoteHostRef) noexcept

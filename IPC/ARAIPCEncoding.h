@@ -1270,7 +1270,7 @@ public:
     RemoteCaller (ARAIPCMessageSender* sender) noexcept : _sender { sender } {}
 
     template<typename... Args>
-    void remoteCall (const MethodID methodID, const Args &... args)
+    void remoteCall (const MethodID methodID, const Args &... args) const
     {
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
@@ -1279,7 +1279,7 @@ public:
     }
 
     template<typename RetT, typename... Args>
-    void remoteCall (RetT& result, const MethodID methodID, const Args &... args)
+    void remoteCall (RetT& result, const MethodID methodID, const Args &... args) const
     {
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
@@ -1291,8 +1291,9 @@ public:
         _sender->sendMessage (methodID.getMessageID (), encoder, replyHandler, &result);
         delete encoder;
     }
+
     template<typename... Args>
-    void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args)
+    void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args) const
     {
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
@@ -1305,10 +1306,12 @@ public:
         delete encoder;
     }
 
-    bool receiverEndianessMatches () { return _sender->receiverEndianessMatches (); }
+    bool receiverEndianessMatches () const { return _sender->receiverEndianessMatches (); }
+
+    ARAIPCMessageSender* getMessageSender () const { return _sender; }
 
 private:
-    ARAIPCMessageSender* _sender;
+    ARAIPCMessageSender* const _sender;
 };
 
 }   // namespace IPC

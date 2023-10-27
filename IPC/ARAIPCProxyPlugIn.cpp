@@ -467,7 +467,8 @@ bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostR
     ARA_VALIDATE_API_ARGUMENT (openAutomatically, openAutomatically != nullptr);
 
     bool success { false };
-    RemoteCaller::CustomDecodeFunction customDecode { [this, &success, &documentArchiveID, &openAutomatically] (const ARAIPCMessageDecoder* decoder) -> void
+    CustomDecodeFunction customDecode {
+        [this, &success, &documentArchiveID, &openAutomatically] (const ARAIPCMessageDecoder* decoder) -> void
         {
             StoreAudioSourceToAudioFileChunkReply reply;
             decodeReply (reply, decoder);
@@ -915,7 +916,8 @@ const void* DocumentController::getContentReaderDataForEvent (ARAContentReaderRe
     ARA_VALIDATE_API_ARGUMENT (contentReader, isValidInstance (contentReader));
 
     const void* result {};
-    RemoteCaller::CustomDecodeFunction customDecode { [&result, &contentReader] (const ARAIPCMessageDecoder* decoder) -> void
+    CustomDecodeFunction customDecode {
+        [&result, &contentReader] (const ARAIPCMessageDecoder* decoder) -> void
         {
             result = contentReader->_decoder.decode (decoder);
         } };
@@ -978,7 +980,8 @@ const ARAProcessingAlgorithmProperties* DocumentController::getProcessingAlgorit
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-    RemoteCaller::CustomDecodeFunction customDecode { [this] (const ARAIPCMessageDecoder* decoder) -> void
+    CustomDecodeFunction customDecode {
+        [this] (const ARAIPCMessageDecoder* decoder) -> void
         {
             ARAProcessingAlgorithmProperties reply;
             decodeReply (reply, decoder);
@@ -1239,7 +1242,8 @@ size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCMessageSender* hostCommandsSend
 const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageSender* hostCommandsSender, size_t index)
 {
     RemoteFactory remoteFactory;
-    RemoteCaller::CustomDecodeFunction customDecode { [&remoteFactory] (const ARAIPCMessageDecoder* decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode {
+        [&remoteFactory] (const ARAIPCMessageDecoder* decoder) -> void
         {
             decodeReply (remoteFactory._factory, decoder);
 
