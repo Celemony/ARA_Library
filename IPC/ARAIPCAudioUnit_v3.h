@@ -44,24 +44,25 @@ API_AVAILABLE_BEGIN(macos(13.0))
 
 //! host side: initialize the message sender used for all factory-related messaging for all
 //! Audio Units that have the same component as the provided audioUnit
-//! will return nullptr if the Audio Unit does not implement ARAAudioUnit or [AUAudioUnit messageChannelFor:],
+//! will return nullptr if the Audio Unit does not implement [AUAudioUnit messageChannelFor:],
 //! leaving the channel uninitialized
 //! this sender can be used for the calls to ARAIPCAUProxyPlugInGetFactory(), ARAIPCProxyPlugInInitializeARA(),
 //! ARAIPCProxyPlugInCreateDocumentControllerWithDocument() and ARAIPCProxyPlugInUninitializeARA()
 ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyPlugInInitializeFactoryMessageSender(AUAudioUnit * _Nonnull audioUnit);
 
 //! host side: get the ARA factory for the audio unit
-//! will return NULL if the Audio Unit does not implement ARAAudioUnit or [AUAudioUnit messageChannelFor:]
+//! will return NULL if the Audio Unit does not implement [AUAudioUnit messageChannelFor:]
 const ARAFactory * _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory(ARAIPCMessageSender * _Nonnull messageSender);
 
 //! host side: create the plug-in extension when performing the binding to the remote plug-in instance
 //! also initializes the messageSender which remains valid until ARAIPCAUProxyPlugInCleanupBinding() is called
 //! the document controller must be created through a factory obtained through ARAIPCAUProxyPlugInGetFactory()
-//! will return NULL if the Audio Unit does not implement ARAAudioUnit or [AUAudioUnit messageChannelFor:],
+//! will return NULL if the Audio Unit does not implement [AUAudioUnit messageChannelFor:],
 //! leaving messageSender uninitialized in that case
 const ARAPlugInExtensionInstance * _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController(AUAudioUnit * _Nonnull audioUnit,
                                                                                                   ARADocumentControllerRef _Nonnull documentControllerRef,
-                                                                                                  ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles,
+                                                                                                  ARAPlugInInstanceRoleFlags knownRoles,
+                                                                                                  ARAPlugInInstanceRoleFlags assignedRoles,
                                                                                                   ARAIPCMessageSender * _Nullable * _Nonnull messageSender);
 
 //! host side: trigger proper teardown of proxy plug-in extension when Companion API instance is destroyed

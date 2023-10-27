@@ -568,7 +568,7 @@ public:
     }
 
 private:
-    ARAIPCPlugInInstanceRef _remoteInstanceRef {};                  // stores the remote AUAudioUnit<ARAAudioUnit> instance
+    ARAIPCPlugInInstanceRef _remoteInstanceRef {};                  // stores the remote AUAudioUnit instance
     const ARAPlugInExtensionInstance * _plugInExtensionInstance {};
 };
 
@@ -581,7 +581,7 @@ NSObject<AUMessageChannel> * _Nullable ARAIPCAUGetMessageChannel (AUAudioUnit * 
     if (![audioUnit respondsToSelector:@selector(messageChannelFor:)])
         return nil;
 
-    return (NSObject<AUMessageChannel> *) [(AUAudioUnit<ARAAudioUnit> *) audioUnit messageChannelFor:identifier];
+    return (NSObject<AUMessageChannel> *) [(AUAudioUnit *) audioUnit messageChannelFor:identifier];
 }
 
 ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyPlugInInitializeFactoryMessageSender (AUAudioUnit * _Nonnull audioUnit)
@@ -603,7 +603,8 @@ const ARAFactory * _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory (ARAIPCMessag
 
 const ARAPlugInExtensionInstance * _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,
                                                                                                    ARADocumentControllerRef _Nonnull documentControllerRef,
-                                                                                                   ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles,
+                                                                                                   ARAPlugInInstanceRoleFlags knownRoles,
+                                                                                                   ARAPlugInInstanceRoleFlags assignedRoles,
                                                                                                    ARAIPCMessageSender * _Nullable * _Nonnull messageSender)
 {
     auto messageChannel { ARAIPCAUGetMessageChannel (audioUnit, ARA_AUDIOUNIT_PLUGINEXTENSION_CUSTOM_MESSAGES_UTI) };
