@@ -32,6 +32,7 @@
     #define vsnprintf(ptr, size, ...)  do { vsprintf_s(ptr, (size) - 1, __VA_ARGS__); ptr[(size) - 1] = 0; } while (0)
 #elif defined(__APPLE__)
     #include <sys/sysctl.h>
+    #include <os/log.h>
     #include <unistd.h>
 #elif defined(__linux__)
     #include <sys/stat.h>
@@ -206,8 +207,12 @@ void ARADebugMessage(ARADebugLevel level, const char * file, int line, const cha
     OutputDebugStringA(output);
     OutputDebugStringA("\n");
 #endif
+#if defined(__APPLE__)
+    os_log(OS_LOG_DEFAULT, "%{public}s\n", output);
+#else
     fprintf(stderr, "%s\n", output);
     fflush(stderr);
+#endif
 }
 #endif    // ARA_ENABLE_DEBUG_OUTPUT
 
