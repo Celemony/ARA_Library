@@ -39,14 +39,13 @@ typedef const ARAPlugInExtensionInstance* (*ARAIPCBindingHandler) (ARAIPCPlugInI
 //! static configuration: add the ARA factories that the proxy host will wrap
 void ARAIPCProxyHostAddFactory(const ARAFactory * factory);
 
-//! static configuration: set the message channel that the proxy host will use to perform callbacks received from the plug-in
-void ARAIPCProxyHostSetPlugInCallbacksChannel(ARAIPCMessageChannel * messageChannel);
-
 //! static configuration: set the callback to execute the binding of Companion API plug-in instances to ARA document controllers
 void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);
 
 //! static dispatcher: the host command handler that controls the proxy host
-void ARAIPCProxyHostCommandHandler(const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, ARAIPCMessageEncoder * replyEncoder);
+void ARAIPCProxyHostCommandHandler(ARAIPCMessageChannel * messageChannel,
+                                   const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder,
+                                   ARAIPCMessageEncoder * replyEncoder);
 
 #if defined(__cplusplus)
 }   // extern "C"

@@ -50,7 +50,9 @@ const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerW
                                                                                             const ARADocumentProperties * properties);
 
 //! static handler of received messages
-void ARAIPCProxyPlugInCallbacksDispatcher(const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, ARAIPCMessageEncoder *  replyEncoder);
+void ARAIPCProxyPlugInCallbacksDispatcher(ARAIPCMessageChannel * messageChannel,
+                                          const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder,
+                                          ARAIPCMessageEncoder * replyEncoder);
 
 //! create the proxy plug-in extension when performing the binding to the remote plug-in instance
 const ARAPlugInExtensionInstance * ARAIPCProxyPlugInBindToDocumentController(ARAIPCPlugInInstanceRef remoteRef,

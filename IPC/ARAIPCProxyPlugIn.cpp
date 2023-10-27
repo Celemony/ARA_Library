@@ -1346,7 +1346,8 @@ void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageChannel* messageChannel, con
     RemoteCaller { messageChannel }.remoteCall (kUninitializeARAMethodID, factoryID);
 }
 
-void ARAIPCProxyPlugInCallbacksDispatcher (const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
+void ARAIPCProxyPlugInCallbacksDispatcher (ARAIPCMessageChannel* /*messageChannel*/, const ARAIPCMessageID messageID,
+                                           const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
 {
 //  ARA_LOG ("plugInCallbackDispatcher received message %s", decodeHostMessageID (messageID));
 

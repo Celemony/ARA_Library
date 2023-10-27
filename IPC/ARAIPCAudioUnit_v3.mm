@@ -412,7 +412,7 @@ protected:
         }
         else
         {
-            ARAIPCProxyHostCommandHandler (messageID, decoder, replyEncoder);
+            ARAIPCProxyHostCommandHandler (this, messageID, decoder, replyEncoder);
         }
     }
     
@@ -494,7 +494,7 @@ protected:
                                  const ARAIPCMessageDecoder * const decoder,
                                  ARAIPCMessageEncoder * const replyEncoder) override
     {
-        ARAIPCProxyPlugInCallbacksDispatcher (messageID, decoder, replyEncoder);
+        ARAIPCProxyPlugInCallbacksDispatcher (this, messageID, decoder, replyEncoder);
     }
 
     void _lockTransaction () override
@@ -637,7 +637,6 @@ const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandler (ARAIPCPlugIn
 void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel)
 {
     _factoryMessageChannel = new ARAIPCAUHostMessageChannel { factoryMessageChannel, nil };
-    ARAIPCProxyHostSetPlugInCallbacksChannel (_factoryMessageChannel);
 
     ARAIPCProxyHostSetBindingHandler (ARAIPCAUBindingHandler);
 }

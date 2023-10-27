@@ -588,7 +588,6 @@ using namespace ProxyHost;
 
 
 std::vector<const ARAFactory*> _factories {};
-ARAIPCMessageChannel* _plugInCallbacksChannel {};
 ARAIPCBindingHandler _bindingHandler {};
 
 void ARAIPCProxyHostAddFactory (const ARAFactory* factory)
@@ -597,11 +596,6 @@ void ARAIPCProxyHostAddFactory (const ARAFactory* factory)
     ARA_INTERNAL_ASSERT (!ARA::contains (_factories, factory));
 
     _factories.emplace_back (factory);
-}
-
-void ARAIPCProxyHostSetPlugInCallbacksChannel (ARAIPCMessageChannel* messageChannel)
-{
-    _plugInCallbacksChannel = messageChannel;
 }
 
 void ARAIPCProxyHostSetBindingHandler (ARAIPCBindingHandler handler)
@@ -621,7 +615,8 @@ const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
     return nullptr;
 }
 
-void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
+void ARAIPCProxyHostCommandHandler (ARAIPCMessageChannel* messageChannel, const ARAIPCMessageID messageID,
+                                    const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
 {
 //  ARA_LOG ("ARAIPCProxyHostCommandHandler received message %s", decodePlugInMessageID (messageID));
 
@@ -668,11 +663,11 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
 
         if (const ARAFactory* const factory { getFactoryWithID (factoryID) })
         {
-            const auto audioAccessController { new AudioAccessController { _plugInCallbacksChannel, audioAccessControllerHostRef } };
-            const auto archivingController { new ArchivingController { _plugInCallbacksChannel, archivingControllerHostRef } };
-            const auto contentAccessController { (provideContentAccessController != kARAFalse) ? new ContentAccessController { _plugInCallbacksChannel, contentAccessControllerHostRef } : nullptr };
-            const auto modelUpdateController { (provideModelUpdateController != kARAFalse) ? new ModelUpdateController { _plugInCallbacksChannel, modelUpdateControllerHostRef } : nullptr };
-            const auto playbackController { (providePlaybackController != kARAFalse) ? new PlaybackController { _plugInCallbacksChannel, playbackControllerHostRef } : nullptr };
+            const auto audioAccessController { new AudioAccessController { messageChannel, audioAccessControllerHostRef } };
+            const auto archivingController { new ArchivingController { messageChannel, archivingControllerHostRef } };
+            const auto contentAccessController { (provideContentAccessController != kARAFalse) ? new ContentAccessController { messageChannel, contentAccessControllerHostRef } : nullptr };
+            const auto modelUpdateController { (provideModelUpdateController != kARAFalse) ? new ModelUpdateController { messageChannel, modelUpdateControllerHostRef } : nullptr };
+            const auto playbackController { (providePlaybackController != kARAFalse) ? new PlaybackController { messageChannel, playbackControllerHostRef } : nullptr };
 
             const auto hostInstance { new Host::DocumentControllerHostInstance { audioAccessController, archivingController,
                                                                                     contentAccessController, modelUpdateController, playbackController } };
