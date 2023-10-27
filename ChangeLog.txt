@@ -3,7 +3,8 @@ This is a development build of the ARA Library 2.3.
 
 
 Changes since previous releases:
-- no changes yet
+- initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,
+  based on heavily refactored IPC Example from earlier SDK releases
 
 
 === ARA SDK 2.2 release (aka 2.2.001) (2022/11/07) ===
