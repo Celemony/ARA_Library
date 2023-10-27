@@ -19,11 +19,10 @@
 #ifndef ARAIPCProxyHost_h
 #define ARAIPCProxyHost_h
 
-
 #include "ARA_Library/IPC/ARAIPC.h"
 
-#if ARA_ENABLE_IPC
 
+#if ARA_ENABLE_IPC
 
 #if defined(__cplusplus)
 namespace ARA {
@@ -38,15 +37,14 @@ void ARAIPCProxyHostAddFactory(const ARAFactory * factory);
 //! static configuration: set sender that the proxy host will use to perform callbacks received from the plug-in
 void ARAIPCProxyHostSetPlugInCallbacksSender(ARAIPCMessageSender plugInCallbacksSender);
 
+//! static configuration: set the callback to execute the binding of Companion API plug-in instances to ARA document controllers
+void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);
+
 //! static dispatcher: the host command handler that controls the proxy host
 void ARAIPCProxyHostCommandHandler(const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, ARAIPCMessageEncoder * replyEncoder);
 
-//! translation needed when establishing the binding to the remote documentController
-ARADocumentControllerRef ARAIPCProxyHostTranslateDocumentControllerRef(ARADocumentControllerRef remoteRef);
-
-//! creating and deleting plug-in extension instances associated with the proxy host
-ARAPlugInExtensionRef ARAIPCProxyHostCreatePlugInExtension(const ARAPlugInExtensionInstance * instance);
-void ARAIPCProxyHostDestroyPlugInExtension(ARAPlugInExtensionRef plugInExtensionRef);
+//! trigger proper teardown of proxy plug-in extension when destroying Companion API plug-in instances that have been bound to ARA
+void ARAIPCProxyHostCleanupBinding(const ARAPlugInExtensionInstance * plugInExtensionInstance);
 
 
 #if defined(__cplusplus)
@@ -54,7 +52,6 @@ void ARAIPCProxyHostDestroyPlugInExtension(ARAPlugInExtensionRef plugInExtension
 }   // namespace IPC
 }   // namespace ARA
 #endif
-
 
 #endif // ARA_ENABLE_IPC
 

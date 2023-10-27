@@ -703,7 +703,7 @@ bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudi
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     ARABool result;
-    remoteCallWithReply (result, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal), _remoteRef, audioModificationRef);
+    remoteCallWithReply (result, false, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal), _remoteRef, audioModificationRef);
     return (result != kARAFalse);
 }
 
@@ -1312,18 +1312,22 @@ const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWi
     return result->getInstance ();
 }
 
-ARADocumentControllerRef ARAIPCProxyPlugInTranslateDocumentControllerRef (ARADocumentControllerRef documentControllerRef)
-{
-    return static_cast<DocumentController*> (PlugIn::fromRef (documentControllerRef))->getRemoteRef ();
-}
-
-const ARAPlugInExtensionInstance* ARAIPCProxyPlugInCreatePlugInExtension (size_t remoteExtensionRef, ARAIPCMessageSender sender, ARADocumentControllerRef documentControllerRef,
+const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARAIPCPlugInInstanceRef remoteRef, ARAIPCMessageSender sender, ARADocumentControllerRef documentControllerRef,
                                                                             ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
 {
+    const auto remoteDocumentControllerRef { static_cast<DocumentController*> (PlugIn::fromRef (documentControllerRef))->getRemoteRef () };
+
+    size_t remoteExtensionRef {};
+    RemoteCaller::CustomDecodeFunction customDecode { [&remoteExtensionRef] (const ARAIPCMessageDecoder& decoder) -> void
+        {
+            decoder.methods->readSize (decoder.ref, 0, &remoteExtensionRef);
+        } };
+    RemoteCaller { sender }.remoteCallWithReply (customDecode, false, kBindToDocumentControllerMessageID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
+
     return new PlugInExtension { sender, documentControllerRef, knownRoles, assignedRoles, remoteExtensionRef };
 }
 
-void ARAIPCProxyPlugInDestroyPlugInExtension (const ARAPlugInExtensionInstance* plugInExtensionInstance)
+void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInExtensionInstance)
 {
     delete static_cast<const PlugInExtension*> (plugInExtensionInstance);
 }

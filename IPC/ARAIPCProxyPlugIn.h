@@ -48,14 +48,13 @@ const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerW
 //! static handler of received messages
 void ARAIPCProxyPlugInCallbacksDispatcher(const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder, ARAIPCMessageEncoder *  replyEncoder);
 
-//! \todo to perform the binding to the remote plug-in instance, the host needs access to this translation...
-ARADocumentControllerRef ARAIPCProxyPlugInTranslateDocumentControllerRef(ARADocumentControllerRef documentControllerRef);
+//! create the proxy plug-in extension when performing the binding to the remote plug-in instance
+const ARAPlugInExtensionInstance * ARAIPCProxyPlugInBindToDocumentController(ARAIPCPlugInInstanceRef remoteRef,
+                                                                            ARAIPCMessageSender sender, ARADocumentControllerRef documentControllerRef,
+                                                                            ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
 
-//! create the plug-in extension when performing the binding to the remote plug-in instance
-const ARAPlugInExtensionInstance * ARAIPCProxyPlugInCreatePlugInExtension(size_t remoteExtensionRef, ARAIPCMessageSender sender, ARADocumentControllerRef documentControllerRef,
-                                                                          ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
-//! destroy the plug-in extension when destroying the remote plug-in instance
-void ARAIPCProxyPlugInDestroyPlugInExtension(const ARAPlugInExtensionInstance * plugInExtension);
+//! trigger proper teardown of proxy plug-in extension upon destroying a remote plug-in instance that has been bound to ARA
+void ARAIPCProxyPlugInCleanupBinding(const ARAPlugInExtensionInstance * plugInExtension);
 
 
 #if defined(__cplusplus)
