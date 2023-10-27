@@ -1348,7 +1348,7 @@ private:
     std::map<AudioSource*, ContentUpdateScopes> _audioSourceContentUpdates;
     std::map<AudioModification*, ContentUpdateScopes> _audioModificationContentUpdates;
     std::map<PlaybackRegion*, ContentUpdateScopes> _playbackRegionContentUpdates;
-    std::atomic_flag _analysisProgressIsSynced/* { true } C++ standard only allows for default-init to false */;
+    std::atomic_flag _analysisProgressIsSynced {}; // { true } would be better but C++ standard only allows for default-init to false
 
     bool _isHostEditingDocument { false };
 
