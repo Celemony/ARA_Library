@@ -30,6 +30,7 @@
 #endif
 
 #include <cstring>
+#include <map>
 #include <set>
 #include <string>
 
@@ -1199,26 +1200,8 @@ private:
 
 /*******************************************************************************/
 
-}   // namespace ProxyPlugIn
-using namespace ProxyPlugIn;
-
-/*******************************************************************************/
-// Utility class that wraps an ARAFactory.
-
-struct ARAIPCProxyPlugInFactory
+struct RemoteFactory
 {
-public:
-    ARAIPCProxyPlugInFactory (ARAIPCMessageSender hostCommandsSender, size_t index);
-
-    const ARADocumentControllerInstance* createDocumentControllerWithDocument (const ARADocumentControllerHostInstance* hostInstance,
-                                                                               const ARADocumentProperties* properties);
-
-    const ARAFactory* getFactory () const { return &_factory; }
-    ARAIPCMessageSender getHostCommandsSender () const { return _hostCommandsSender; }
-
-private:
-    ARAIPCMessageSender _hostCommandsSender;
-
     ARAFactory _factory;
     struct
     {
@@ -1228,83 +1211,104 @@ private:
         std::string informationURL;
         std::string version;
         std::string documentArchiveID;
-    } _factoryStrings;
-    std::vector<std::string> _factoryCompatibleIDStrings;
-    std::vector<ARAUtf8String> _factoryCompatibleIDs;
-    std::vector<ARAContentType> _factoryAnalyzableTypes;
+    } _strings;
+    std::vector<std::string> _compatibleIDStrings;
+    std::vector<ARAUtf8String> _compatibleIDs;
+    std::vector<ARAContentType> _analyzableTypes;
 };
 
-ARAIPCProxyPlugInFactory::ARAIPCProxyPlugInFactory (ARAIPCMessageSender hostCommandsSender, size_t index)
-: _hostCommandsSender { hostCommandsSender }
-{
-    RemoteCaller::CustomDecodeFunction customDecode { [this] (const ARAIPCMessageDecoder& decoder) -> void
-        {
-            decodeReply (_factory, decoder);
+std::map<std::string, RemoteFactory> _factories {};
 
-            ARA_VALIDATE_API_ARGUMENT(&_factory, _factory.highestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
 
-            _factoryStrings.factoryID = _factory.factoryID;
-            _factory.factoryID = _factoryStrings.factoryID.c_str ();
+/*******************************************************************************/
 
-            _factoryStrings.plugInName = _factory.plugInName;
-            _factory.plugInName = _factoryStrings.plugInName.c_str ();
-            _factoryStrings.manufacturerName = _factory.manufacturerName;
-            _factory.manufacturerName = _factoryStrings.manufacturerName.c_str ();
-            _factoryStrings.informationURL = _factory.informationURL;
-            _factory.informationURL = _factoryStrings.informationURL.c_str ();
-            _factoryStrings.version = _factory.version;
-            _factory.version = _factoryStrings.version.c_str ();
+}   // namespace ProxyPlugIn
+using namespace ProxyPlugIn;
 
-            _factoryStrings.documentArchiveID = _factory.documentArchiveID;
-            _factory.documentArchiveID = _factoryStrings.documentArchiveID.c_str ();
+/*******************************************************************************/
 
-            _factoryCompatibleIDStrings.reserve (_factory.compatibleDocumentArchiveIDsCount);
-            _factoryCompatibleIDs.reserve (_factory.compatibleDocumentArchiveIDsCount);
-            for (auto i { 0U }; i < _factory.compatibleDocumentArchiveIDsCount; ++i)
-            {
-                _factoryCompatibleIDStrings.emplace_back (_factory.compatibleDocumentArchiveIDs[i]);
-                _factoryCompatibleIDs.emplace_back (_factoryCompatibleIDStrings[i].c_str ());
-            }
-            _factory.compatibleDocumentArchiveIDs = _factoryCompatibleIDs.data ();
 
-            _factoryAnalyzableTypes.reserve (_factory.analyzeableContentTypesCount);
-            for (auto i { 0U }; i < _factory.analyzeableContentTypesCount; ++i)
-                _factoryAnalyzableTypes.emplace_back (_factory.analyzeableContentTypes[i]);
-            _factory.analyzeableContentTypes = _factoryAnalyzableTypes.data ();
-        } };
-
-    RemoteCaller { _hostCommandsSender }.remoteCallWithReply (customDecode, kGetFactoryMessageID, index);
-}
-
-std::vector<ARAIPCProxyPlugInFactory> _proxyFactories {};
-
-size_t ARAIPCProxyPlugInInitializeFactories (ARAIPCMessageSender hostCommandsSender)
+size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCMessageSender hostCommandsSender)
 {
     size_t count;
     RemoteCaller { hostCommandsSender }.remoteCallWithReply (count, kGetFactoriesCountMessageID);
     ARA_INTERNAL_ASSERT (count > 0);
-
-    _proxyFactories.reserve (count);
-    for (auto i { 0U }; i < count; ++i)
-        _proxyFactories.emplace_back (hostCommandsSender, i);
-    return _proxyFactories.size ();
+    return count;
 }
 
-ARAIPCProxyPlugInFactory* ARAIPCProxyPlugInGetFactoryAtIndex (size_t index)
+const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageSender hostCommandsSender, size_t index)
 {
-    ARA_INTERNAL_ASSERT (index < _proxyFactories.size ());
-    return &_proxyFactories[index];
+    RemoteFactory remoteFactory;
+    RemoteCaller::CustomDecodeFunction customDecode { [&remoteFactory] (const ARAIPCMessageDecoder& decoder) -> void
+        {
+            decodeReply (remoteFactory._factory, decoder);
+
+            ARA_VALIDATE_API_ARGUMENT(&remoteFactory._factory, remoteFactory._factory.highestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
+
+            remoteFactory._strings.factoryID = remoteFactory._factory.factoryID;
+            remoteFactory._factory.factoryID = remoteFactory._strings.factoryID.c_str ();
+
+            remoteFactory._strings.plugInName = remoteFactory._factory.plugInName;
+            remoteFactory._factory.plugInName = remoteFactory._strings.plugInName.c_str ();
+            remoteFactory._strings.manufacturerName = remoteFactory._factory.manufacturerName;
+            remoteFactory._factory.manufacturerName = remoteFactory._strings.manufacturerName.c_str ();
+            remoteFactory._strings.informationURL = remoteFactory._factory.informationURL;
+            remoteFactory._factory.informationURL = remoteFactory._strings.informationURL.c_str ();
+            remoteFactory._strings.version = remoteFactory._factory.version;
+            remoteFactory._factory.version = remoteFactory._strings.version.c_str ();
+
+            remoteFactory._strings.documentArchiveID = remoteFactory._factory.documentArchiveID;
+            remoteFactory._factory.documentArchiveID = remoteFactory._strings.documentArchiveID.c_str ();
+
+            remoteFactory._compatibleIDStrings.reserve (remoteFactory._factory.compatibleDocumentArchiveIDsCount);
+            remoteFactory._compatibleIDs.reserve (remoteFactory._factory.compatibleDocumentArchiveIDsCount);
+            for (auto i { 0U }; i < remoteFactory._factory.compatibleDocumentArchiveIDsCount; ++i)
+            {
+                remoteFactory._compatibleIDStrings.emplace_back (remoteFactory._factory.compatibleDocumentArchiveIDs[i]);
+                remoteFactory._compatibleIDs.emplace_back (remoteFactory._compatibleIDStrings[i].c_str ());
+            }
+            remoteFactory._factory.compatibleDocumentArchiveIDs = remoteFactory._compatibleIDs.data ();
+
+            remoteFactory._analyzableTypes.reserve (remoteFactory._factory.analyzeableContentTypesCount);
+            for (auto i { 0U }; i < remoteFactory._factory.analyzeableContentTypesCount; ++i)
+                remoteFactory._analyzableTypes.emplace_back (remoteFactory._factory.analyzeableContentTypes[i]);
+            remoteFactory._factory.analyzeableContentTypes = remoteFactory._analyzableTypes.data ();
+        } };
+
+    RemoteCaller { hostCommandsSender }.remoteCallWithReply (customDecode, kGetFactoryMessageID, index);
+
+    const auto result { _factories.insert (std::make_pair (remoteFactory._strings.factoryID, remoteFactory)) };
+    if (result.second)
+    {
+        result.first->second._factory.factoryID = result.first->second._strings.factoryID.c_str ();
+
+        result.first->second._factory.factoryID = result.first->second._strings.factoryID.c_str ();
+        result.first->second._factory.plugInName = result.first->second._strings.plugInName.c_str ();
+        result.first->second._factory.manufacturerName = result.first->second._strings.manufacturerName.c_str ();
+        result.first->second._factory.informationURL = result.first->second._strings.informationURL.c_str ();
+        result.first->second._factory.version = result.first->second._strings.version.c_str ();
+
+        result.first->second._factory.documentArchiveID = result.first->second._strings.documentArchiveID.c_str ();
+
+        for (auto i { 0U }; i < result.first->second._compatibleIDStrings.size (); ++i)
+            result.first->second._compatibleIDs[i] = result.first->second._compatibleIDStrings[i].c_str ();
+        result.first->second._factory.compatibleDocumentArchiveIDs = result.first->second._compatibleIDs.data ();
+
+        result.first->second._factory.analyzeableContentTypes = result.first->second._analyzableTypes.data ();
+    }
+    return &result.first->second._factory;
 }
 
-const ARAFactory* ARAIPCProxyPlugInGetFactoryData (ARAIPCProxyPlugInFactory* proxyFactory)
-{
-    return proxyFactory->getFactory ();
-}
-
-const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWithDocument (ARAIPCProxyPlugInFactory* proxyFactory,
+const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWithDocument (
+                                            ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID,
                                             const ARADocumentControllerHostInstance* hostInstance, const ARADocumentProperties* properties)
 {
-    auto result { new DocumentController { proxyFactory->getHostCommandsSender (), proxyFactory->getFactory (), hostInstance, properties } };
+    const auto cached { _factories.find (std::string { factoryID }) };
+    ARA_INTERNAL_ASSERT (cached != _factories.end ());
+    if (cached == _factories.end ())
+        return nullptr;
+
+    auto result { new DocumentController { hostCommandsSender, &cached->second._factory, hostInstance, properties } };
     return result->getInstance ();
 }
 

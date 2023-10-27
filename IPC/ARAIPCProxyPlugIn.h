@@ -32,20 +32,16 @@ extern "C" {
 #endif
 
 
-typedef struct ARAIPCProxyPlugInFactory ARAIPCProxyPlugInFactory;
+//! counts the factories available through the message channel the sender is accessing
+size_t ARAIPCProxyPlugInGetFactoriesCount(ARAIPCMessageSender hostCommandsSender);
 
-
-//! static initialization
-size_t ARAIPCProxyPlugInInitializeFactories(ARAIPCMessageSender hostCommandsSender);
-
-//! access proxies to the factories provided by the remote plug-in
-ARAIPCProxyPlugInFactory * ARAIPCProxyPlugInGetFactoryAtIndex(size_t index);
-
-//! get copy of the remote factory data, with all function calls removed
-const ARAFactory * ARAIPCProxyPlugInGetFactoryData(ARAIPCProxyPlugInFactory * proxyFactory);
+//! get a static copy of the remote factory data, with all function calls removed
+//! index must be smaller than the result of ARAIPCProxyPlugInGetFactoriesCount()
+const ARAFactory * ARAIPCProxyPlugInGetFactoryAtIndex(ARAIPCMessageSender hostCommandsSender, size_t index);
 
 //! proxy document controller creation call, to be used instead of ARAFactory.createDocumentControllerWithDocument()
-const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCProxyPlugInFactory * proxyFactory,
+const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCMessageSender hostCommandsSender,
+                                                                                            const ARAPersistentID factoryID,
                                                                                             const ARADocumentControllerHostInstance * hostInstance,
                                                                                             const ARADocumentProperties * properties);
 
