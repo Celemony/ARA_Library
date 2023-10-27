@@ -228,7 +228,7 @@ public:
     }
 
     void sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder * encoder,
-                      ARAIPCReplyHandler * replyHandler, void * replyHandlerUserData) override
+                      ReplyHandler replyHandler, void * replyHandlerUserData) override
     {
         @autoreleasepool
         {
@@ -355,7 +355,7 @@ private:
 private:
     struct PendingReply
     {
-        ARAIPCReplyHandler * replyHandler;
+        ReplyHandler replyHandler;
         void * replyHandlerUserData;
         PendingReply * previousPendingReply;
     };

@@ -1283,12 +1283,12 @@ public:
     {
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
-        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
+        const auto replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
             {
                 ARA_INTERNAL_ASSERT (decoder);
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
-        _sender->sendMessage (methodID.getMessageID (), encoder, &replyHandler, &result);
+        _sender->sendMessage (methodID.getMessageID (), encoder, replyHandler, &result);
         delete encoder;
     }
     template<typename... Args>
@@ -1296,12 +1296,12 @@ public:
     {
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
-        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
+        const auto replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
             {
                 ARA_INTERNAL_ASSERT (decoder);
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
-        _sender->sendMessage (methodID.getMessageID (), encoder, &replyHandler, &decodeFunction);
+        _sender->sendMessage (methodID.getMessageID (), encoder, replyHandler, &decodeFunction);
         delete encoder;
     }
 

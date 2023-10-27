@@ -143,9 +143,6 @@ typedef struct ARAIPCMessageDecoder ARAIPCMessageDecoder;
 //! @}
 
 
-//! Reply Handler: a function that is called to process the reply to a message
-//! decoder will be nullptr if incoming message was empty
-typedef void (ARA_CALL *ARAIPCReplyHandler) (const ARAIPCMessageDecoder* decoder, void* userData);
 
 //! Message Sender: gateway for sending messages
 //! @{
@@ -153,6 +150,10 @@ typedef void (ARA_CALL *ARAIPCReplyHandler) (const ARAIPCMessageDecoder* decoder
 class ARAIPCMessageSender
 {
 public:
+    //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
+    //! decoder will be nullptr if incoming message was empty
+    typedef void (ARA_CALL *ReplyHandler) (const ARAIPCMessageDecoder* decoder, void* userData);
+
     virtual ~ARAIPCMessageSender() = default;
 
     //! generate an encoder to encode a new message
@@ -167,7 +168,7 @@ public:
     //! The calling thread will be blocked until the receiver has processed the message and
     //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
     virtual void sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
-                              ARAIPCReplyHandler* replyHandler, void* replyHandlerUserData) = 0;
+                              ReplyHandler replyHandler, void* replyHandlerUserData) = 0;
 
     //! indicate byte order mismatch between sending and receiving machine
     virtual bool receiverEndianessMatches () = 0;
