@@ -210,6 +210,7 @@ extern "C"
     #if defined(__cplusplus)
         #define ARA_VALIDATE_API_STATE(condition)           ((condition) ? void() : (ARA::ARAValidationFailure(ARA::kARAAssertInvalidState, nullptr, __FILE__, __LINE__, #condition)))
         #define ARA_VALIDATE_API_ARGUMENT(arg, condition)   ((condition) ? void() : (ARA::ARAValidationFailure(ARA::kARAAssertInvalidArgument, arg, __FILE__, __LINE__, #condition)))
+        #define ARA_VALIDATE_API_THREAD(condition)          ((condition) ? void() : (ARA::ARAValidationFailure(ARA::kARAAssertInvalidThread, nullptr, __FILE__, __LINE__, #condition)))
         #define ARA_VALIDATE_API_CONDITION(condition)       ((condition) ? void() : (ARA::ARAValidationFailure(ARA::kARAAssertUnspecified, nullptr, __FILE__, __LINE__, #condition)))
         #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) (ARA_VALIDATE_API_ARGUMENT(structInstance, (structInstance != nullptr) && (structInstance->structSize >= ARA::k##structType##MinSize)))
 //! \todo eventually we should switch to this definition which checks alignment as well - either for all structs,
@@ -219,6 +220,7 @@ extern "C"
     #else
         #define ARA_VALIDATE_API_STATE(condition)           ((condition) ? ((void)0) : (ARAValidationFailure(kARAAssertInvalidState, NULL, __FILE__, __LINE__, #condition)))
         #define ARA_VALIDATE_API_ARGUMENT(arg, condition)   ((condition) ? ((void)0) : (ARAValidationFailure(kARAAssertInvalidArgument, arg, __FILE__, __LINE__, #condition)))
+        #define ARA_VALIDATE_API_THREAD(condition)          ((condition) ? ((void)0) : (ARAValidationFailure(kARAAssertInvalidThread, arg, __FILE__, __LINE__, #condition)))
         #define ARA_VALIDATE_API_CONDITION(condition)       ((condition) ? ((void)0) : (ARAValidationFailure(kARAAssertUnspecified, NULL, __FILE__, __LINE__, #condition)))
         #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) (ARA_VALIDATE_API_ARGUMENT(structInstance, (structInstance != NULL) && (structInstance->structSize >= k##structType##MinSize)))
         #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) (ARA_VALIDATE_API_STRUCT_PTR(interfacePointer, InterfaceType), ARA_VALIDATE_API_ARGUMENT(interfacePointer, ARACheckFunctionPointersAreValid(interfacePointer)))
@@ -231,6 +233,7 @@ extern "C"
 #else
     #define ARA_VALIDATE_API_STATE(condition) ((void)0)
     #define ARA_VALIDATE_API_ARGUMENT(arg, condition) ((void)0)
+    #define ARA_VALIDATE_API_THREAD(condition) ((void)0)
     #define ARA_VALIDATE_API_CONDITION(condition) ((void)0)
     #define ARA_VALIDATE_API_STRUCT_PTR(structInstance, structType) ((void)0)
     #define ARA_VALIDATE_API_INTERFACE(interfacePointer, InterfaceType) ((void)0)
