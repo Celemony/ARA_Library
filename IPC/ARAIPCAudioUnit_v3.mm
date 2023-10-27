@@ -230,9 +230,8 @@ thread_local bool _isReceivingOnThisThread { false };   // actually a "static" m
 class ARAIPCAUMessageSender : public ARAIPCMessageSender
 {
 public:
-    ARAIPCAUMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel, bool dispatchRemoteTransactions)
-    : _messageChannel { messageChannel },
-      _dispatchRemoteTransactions { dispatchRemoteTransactions }
+    ARAIPCAUMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel)
+    : _messageChannel { messageChannel }
     {
 #if !__has_feature(objc_arc)
         [_messageChannel retain];
@@ -313,10 +312,10 @@ public:
         }
         else
         {
-            if (_dispatchRemoteTransactions)
+            if (const auto dispatchTarget { _getDispatchTargetForIncomingTransaction (messageID) })
             {
                 //ARA_IPC_LOG ("processReceivedMessage dispatches");
-                dispatch_async (dispatch_get_main_queue (),
+                dispatch_async (dispatchTarget,
                     ^{
                         //ARA_IPC_LOG ("processReceivedMessage processes dispatched");
                         _processReceivedMessage (messageID, decoder, userData);
@@ -338,6 +337,7 @@ protected:
     virtual bool _tryLockTransaction () = 0;
     virtual void _unlockTransaction () = 0;
     virtual NSDictionary * _sendMessage (NSDictionary * message) = 0;
+    virtual dispatch_queue_t _getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) = 0;
     virtual void _handleReceivedMessage (const ARAIPCMessageID messageID,
                                          const ARAIPCMessageDecoder * const decoder,
                                          void * const userData,
@@ -388,7 +388,6 @@ private:
     };
 
     NSObject<AUMessageChannel> * __strong _messageChannel;
-    const bool _dispatchRemoteTransactions;
     ConcurrentQueue _receiveQueue;
     std::atomic <std::thread::id> _sendingThread {};
     std::atomic<PendingReply *> _pendingReply {};   // if set, the receive callback forward to that thread
@@ -400,7 +399,7 @@ class ARAIPCAUHostMessageSender : public ARAIPCAUMessageSender
 {
 public:
     ARAIPCAUHostMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel)
-    : ARAIPCAUMessageSender { messageChannel, true },
+    : ARAIPCAUMessageSender { messageChannel },
       _sendLock { dispatch_semaphore_create (1) }
     {}
 
@@ -427,6 +426,11 @@ protected:
             ARA_INTERNAL_ASSERT (false && "trying to send IPC message while host has not set callHostBlock");
             return nil;
         }
+    }
+
+    dispatch_queue_t _getDispatchTargetForIncomingTransaction (ARAIPCMessageID /*messageID*/) override
+    {
+        return ([NSThread isMainThread]) ? nullptr : dispatch_get_main_queue ();
     }
 
     void _handleReceivedMessage (const ARAIPCMessageID messageID,
@@ -482,7 +486,7 @@ class ARAIPCAUPlugInMessageSender : public ARAIPCAUMessageSender
 {
 public:
     ARAIPCAUPlugInMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel)
-    : ARAIPCAUMessageSender { messageChannel, false },
+    : ARAIPCAUMessageSender { messageChannel },
       _transactionLock { dispatch_semaphore_create (1) }
     {
         // \todo we happen to use the same message block for both the ARA_AUDIOUNIT_FACTORY_CUSTOM_MESSAGES_UTI
@@ -509,6 +513,14 @@ protected:
         NSDictionary * reply { [getMessageChannel () callAudioUnit:message] };
         ARA_INTERNAL_ASSERT (([reply count] == 0) || (([reply count] == 1) && [message objectForKey:_transactionLockKey]));
         return reply;
+    }
+
+    dispatch_queue_t _getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) override
+    {
+        ARA_INTERNAL_ASSERT((messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples).getMessageID ()) ||
+                            ((ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback).getMessageID () <= messageID) &&
+                             (messageID <= ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestEnableCycle).getMessageID ())));
+        return nullptr;
     }
 
     void _handleReceivedMessage (const ARAIPCMessageID messageID,
