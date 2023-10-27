@@ -28,7 +28,11 @@
 #if ARA_ENABLE_IPC
 
 
-#include <dispatch/dispatch.h>
+#if defined (_WIN32)
+    #include <Windows.h>
+#elif defined (__APPLE__)
+    #include <dispatch/dispatch.h>
+#endif
 
 #include <atomic>
 #include <thread>
@@ -47,7 +51,14 @@ public:
     virtual ~ARAIPCMessageHandler () = default;
 
     //! type returned from getDispatchTargetForIncomingTransaction()
+#if defined (_WIN32)
+    using DispatchTarget = HANDLE;
+    friend void APCProcessReceivedMessageFunc (ULONG_PTR parameter);
+#elif defined (__APPLE__)
     using DispatchTarget = dispatch_queue_t;
+#else
+    #error "not yet implemented on this platform"
+#endif
 
     //! IPC channels will call this method to determine which thread should be
     //! used for handling an incoming transaction. Returning nullptr results in the
@@ -118,6 +129,10 @@ protected:
 
 private:
     void _handleReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder);
+
+#if defined (_WIN32)
+    friend void APCRouteNewTransactionFunc (ULONG_PTR parameter);
+#endif
 
 private:
     ARAIPCMessageHandler* const _handler;

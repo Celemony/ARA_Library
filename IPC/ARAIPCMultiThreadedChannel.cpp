@@ -31,7 +31,9 @@
 
 #include <utility>
 
-#include <CoreFoundation/CoreFoundation.h>
+#if defined (__APPLE__)
+    #include <CoreFoundation/CoreFoundation.h>
+#endif
 
 
 // ARA IPC design overview
@@ -125,17 +127,25 @@ class SendThreadBridge
 {
 public:
     SendThreadBridge ()
+#if defined (_WIN32)
+    : _semaphore { ::CreateSemaphoreA (nullptr, 0, LONG_MAX, nullptr) }
+#elif defined (__APPLE__)
     : _semaphore { dispatch_semaphore_create (0) }
+#endif
     {
         ARA_INTERNAL_ASSERT (_semaphore != nullptr);
     }
 
-#if !__has_feature(objc_arc)
     ~SendThreadBridge ()
     {
+#if defined (_WIN32)
+        ::CloseHandle (_semaphore);
+#elif defined (__APPLE__)
+    #if !__has_feature(objc_arc)
         dispatch_release (_semaphore);
-    }
+    #endif
 #endif
+    }
 
     // called on receive thread
     void pushReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
@@ -143,20 +153,33 @@ public:
         _messageID = messageID;
         _decoder = decoder;
         std::atomic_thread_fence (std::memory_order_release);
+#if defined (_WIN32)
+        ::ReleaseSemaphore (_semaphore, 1, nullptr);
+#elif defined (__APPLE__)
         dispatch_semaphore_signal (_semaphore);
+#endif
     }
 
     // called on send thread
     void pullReceivedMessage (ARAIPCMessageID& messageID, const ARAIPCMessageDecoder*& decoder)
     {
+#if defined (_WIN32)
+        const auto waitResult { ::WaitForSingleObject (_semaphore, INFINITE) };
+        ARA_INTERNAL_ASSERT (waitResult == WAIT_OBJECT_0);
+#elif defined (__APPLE__)
         dispatch_semaphore_wait (_semaphore, DISPATCH_TIME_FOREVER);
+#endif
         std::atomic_thread_fence (std::memory_order_acquire);
         messageID = _messageID;
         decoder = _decoder;
     }
 
 private:
+#if defined (_WIN32)
+    HANDLE _semaphore;
+#elif defined (__APPLE__)
     dispatch_semaphore_t _semaphore;
+#endif
     ARAIPCMessageID _messageID { 0 };
     const ARAIPCMessageDecoder* _decoder { nullptr };
 };
@@ -164,6 +187,26 @@ private:
 
 // plug-in side implementation of ARAIPCMessageHandler
 
+#if defined (_WIN32)
+// from https://devblogs.microsoft.com/oldnewthing/20141015-00/?p=43843
+BOOL ConvertToRealHandle(HANDLE h,
+                         BOOL bInheritHandle,
+                         HANDLE *phConverted)
+{
+ return DuplicateHandle(GetCurrentProcess(), h,
+                        GetCurrentProcess(), phConverted,
+                        0, bInheritHandle, DUPLICATE_SAME_ACCESS);
+}
+
+HANDLE _GetRealCurrentThread ()
+{
+    HANDLE currentThread {};
+    auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
+    ARA_INTERNAL_ASSERT (success);
+    return currentThread;
+}
+
+#elif defined (__APPLE__)
 std::thread::id _getMainThreadID ()
 {
     if (CFRunLoopGetMain () == CFRunLoopGetCurrent ())
@@ -180,10 +223,19 @@ std::thread::id _getMainThreadID ()
         return result;
     }
 }
+#endif
 
 ARAIPCProxyHostMessageHandler::ARAIPCProxyHostMessageHandler ()
-: _mainThreadID { _getMainThreadID () },
+:
+#if defined (_WIN32)
+  _mainThreadID { std::this_thread::get_id () },
+  _mainThreadDispatchTarget { _GetRealCurrentThread () }
+#elif defined (__APPLE__)
+  _mainThreadID { _getMainThreadID () },
   _mainThreadDispatchTarget { dispatch_get_main_queue () }
+#else
+    #error "not yet implemented on this platform"
+#endif
 {}
 
 ARAIPCMessageHandler::DispatchTarget ARAIPCProxyHostMessageHandler::getDispatchTargetForIncomingTransaction (ARAIPCMessageID /*messageID*/)
@@ -276,6 +328,22 @@ void MultiThreadedChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessage
         unlockTransaction ();
 }
 
+#if defined (_WIN32)
+struct APCProcessReceivedMessageParams
+{
+    MultiThreadedChannel* channel;
+    ARAIPCMessageID messageID;
+    const ARAIPCMessageDecoder* decoder;
+};
+
+void APCRouteNewTransactionFunc (ULONG_PTR parameter)
+{
+    auto params { reinterpret_cast<APCProcessReceivedMessageParams*> (parameter) };
+    params->channel->_handleReceivedMessage (params->messageID, params->decoder);
+    delete params;
+}
+#endif
+
 void MultiThreadedChannel::routeReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
 {
     if (_sendingThread.load (std::memory_order_acquire) != std::thread::id {})
@@ -292,10 +360,16 @@ void MultiThreadedChannel::routeReceivedMessage (ARAIPCMessageID messageID, cons
         if (const auto dispatchTarget { _handler->getDispatchTargetForIncomingTransaction (messageID) })
         {
             ARA_IPC_LOG ("dispatches received message with ID %i (new transaction)", messageID);
+#if defined (_WIN32)
+            auto params { new APCProcessReceivedMessageParams { this, messageID, decoder } };
+            const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, dispatchTarget, reinterpret_cast<ULONG_PTR> (params)) };
+            ARA_INTERNAL_ASSERT (result != 0);
+#elif defined (__APPLE__)
             dispatch_async (dispatchTarget,
                 ^{
                     _handleReceivedMessage (messageID, decoder);
                 });
+#endif
         }
         else
         {
