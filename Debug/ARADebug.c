@@ -89,7 +89,7 @@ static ARABool IsDebuggerAttached(void)
 
     // We're being debugged if the P_TRACED flag is set.
     return (info.kp_proc.p_flag & P_TRACED) ? kARATrue : kARAFalse;
-#elif defined (__linux__)
+#elif defined(__linux__)
     char buf[4096];
 
     const int status_fd = open("/proc/self/status", O_RDONLY);
@@ -174,32 +174,32 @@ void ARADebugMessage(ARADebugLevel level, const char * file, int line, const cha
     char lineString[64] = { 0 };
     char output[4096] = { 0 };
 
-#if defined (__GNUC__)
-    _Pragma ("GCC diagnostic push")
-    _Pragma ("GCC diagnostic ignored \"-Wformat-nonliteral\"")
+#if defined(__GNUC__)
+    _Pragma("GCC diagnostic push")
+    _Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
 #endif
     va_list vargs;
-    va_start (vargs, text);
-    vsnprintf (textString, sizeof(textString), text, vargs);
+    va_start(vargs, text);
+    vsnprintf(textString, sizeof(textString), text, vargs);
     va_end(vargs);
-#if defined (__GNUC__)
-    _Pragma ("GCC diagnostic pop")
+#if defined(__GNUC__)
+    _Pragma("GCC diagnostic pop")
 #endif
 
     if (line > 0)
     {
 #if defined(_MSC_VER)
-        snprintf (lineString, sizeof(lineString), "(%i)", line);
+        snprintf(lineString, sizeof(lineString), "(%i)", line);
 #else
-        snprintf (lineString, sizeof(lineString), ":%i", line);
+        snprintf(lineString, sizeof(lineString), ":%i", line);
 #endif
     }
 
     switch (level)
     {
-        case kARADebugLevelLog: snprintf (output, sizeof(output), "[%s%sARA_LOG] %s", debugPrefix, prefixSpace, textString); break;
-        case kARADebugLevelWarning: snprintf (output, sizeof(output), "[%s%sARA_WARN] in file %s%s:\n\t%s", debugPrefix, prefixSpace, file, lineString, textString); break;
-        case kARADebugLevelAssert: snprintf (output, sizeof(output), "[%s%sARA_ASSERT] in file %s%s:\n\t%s", debugPrefix, prefixSpace, file, lineString, textString); break;
+        case kARADebugLevelLog: snprintf(output, sizeof(output), "[%s%sARA_LOG] %s", debugPrefix, prefixSpace, textString); break;
+        case kARADebugLevelWarning: snprintf(output, sizeof(output), "[%s%sARA_WARN] in file %s%s:\n\t%s", debugPrefix, prefixSpace, file, lineString, textString); break;
+        case kARADebugLevelAssert: snprintf(output, sizeof(output), "[%s%sARA_ASSERT] in file %s%s:\n\t%s", debugPrefix, prefixSpace, file, lineString, textString); break;
     }
 
 #if defined(_WIN32)
@@ -237,10 +237,10 @@ void ARASetExternalAssertReference(ARAAssertFunction * address)
     araExternalAssert = address;
 }
 
-#if defined (__GNUC__)
+#if defined(__GNUC__)
     // this might be returning depending on what ARA_HANDLE_ASSERT() injects, so just silence the warning
-    _Pragma ("GCC diagnostic push")
-    _Pragma ("GCC diagnostic ignored \"-Wmissing-noreturn\"")
+    _Pragma("GCC diagnostic push")
+    _Pragma("GCC diagnostic ignored \"-Wmissing-noreturn\"")
 #endif
 void ARAAssertionFailure(ARAAssertCategory category, const void * problematicArgument, const char * file, int line, const char * diagnosis)
 {
@@ -255,15 +255,15 @@ void ARAAssertionFailure(ARAAssertCategory category, const void * problematicArg
         default: categoryText = "unknown failure"; break;
     }
     char failure[1024];
-    snprintf (failure, sizeof(failure), "ARA API violation (%s, pointer = %p): %s", categoryText, problematicArgument, diagnosis);
+    snprintf(failure, sizeof(failure), "ARA API violation (%s, pointer = %p): %s", categoryText, problematicArgument, diagnosis);
 
     ARA_HANDLE_ASSERT(file, line, failure);
 #else
     (void)category; (void)problematicArgument; (void)file; (void)line; (void)diagnosis;   // prevent unused argument warnings
 #endif    // ARA_ENABLE_INTERNAL_ASSERTS
 }
-#if defined (__GNUC__)
-    _Pragma ("GCC diagnostic pop")
+#if defined(__GNUC__)
+    _Pragma("GCC diagnostic pop")
 #endif
 
 void ARAInterfaceAssert(ARAAssertCategory category, const void * problematicArgument, const char * diagnosis)
