@@ -89,8 +89,15 @@ typedef void (^ARAIPCAUDestructionHandler)(AUAudioUnit * _Nonnull audioUnit);
 void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel,
                                           ARAIPCAUBindingHandler _Nonnull bindingHandler, ARAIPCAUDestructionHandler _Nonnull destructionHandler);
 
+//! plug-in side:implementation for AUMessageChannel<NSObject> -init...
+ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageSender(AUAudioUnit * _Nonnull audioUnit,
+                                                                                  NSObject<AUMessageChannel> * _Nonnull messageChannel);
+
 //! plug-in side: implementation for AUMessageChannel<NSObject> -callAudioUnit:
-NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (AUAudioUnit * _Nullable audioUnit, NSDictionary * _Nonnull message);
+NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageSender * _Nonnull messageSender, NSDictionary * _Nonnull message);
+
+//! plug-in side:implementation for AUMessageChannel<NSObject> -dealloc
+void ARA_CALL ARAIPCAUProxyHostUninitializeMessageSender (ARAIPCMessageSender * _Nonnull messageSender);
 
 //! plug-in side: trigger proper teardown of proxy plug-in extension when Companion API instance is destroyed
 void ARA_CALL ARAIPCAUProxyHostCleanupBinding(const ARAPlugInExtensionInstance * _Nonnull plugInExtensionInstance);

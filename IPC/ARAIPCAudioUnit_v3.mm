@@ -352,7 +352,7 @@ private:
         PendingReply * previousPendingReply;
     };
 
-    NSObject<AUMessageChannel> * __strong _messageChannel;
+    NSObject<AUMessageChannel> * __unsafe_unretained _Nonnull _messageChannel;  // avoid "retain" cycle: the AUMessageChannel implementation manages this object
     SendThreadBridge _sendThreadBridge;
     std::atomic <std::thread::id> _sendingThread {};
     std::atomic<PendingReply *> _pendingReply {};   // if set, the receive callback forward to that thread
@@ -363,8 +363,10 @@ private:
 class ARAIPCAUHostMessageSender : public ARAIPCAUMessageSender
 {
 public:
-    ARAIPCAUHostMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel)
+    ARAIPCAUHostMessageSender (NSObject<AUMessageChannel> * _Nonnull messageChannel,
+                               AUAudioUnit * _Nullable audioUnit)
     : ARAIPCAUMessageSender { messageChannel },
+      _audioUnit { audioUnit },
       _sendLock { dispatch_semaphore_create (1) }
     {}
 
@@ -374,6 +376,11 @@ public:
         dispatch_release (_sendLock);
     }
 #endif
+
+    AUAudioUnit * _Nullable getAudioUnit ()
+    {
+        return _audioUnit;
+    }
 
 protected:
     NSDictionary * _sendMessage (NSDictionary * message) override
@@ -452,6 +459,7 @@ protected:
     }
 
 private:
+    AUAudioUnit * __unsafe_unretained _Nullable _audioUnit;
     dispatch_semaphore_t _sendLock;     // needed because we're injecting messages from any thread in order to access the transaction lock
 };
 
@@ -632,7 +640,7 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitializeFactoryMessageSender (ARAIPCMessage
 
 
 // plug-in side: proxy host C adapter to ARAIPCAUHostMessageSender
-ARAIPCAUHostMessageSender * _sharedProxyHostCallbacksSender {};
+ARAIPCAUHostMessageSender * _factoryMessageSender {};
 
 void ARA_CALL ARAIPCAUProxyHostAddFactory (const ARAFactory * _Nonnull factory)
 {
@@ -648,8 +656,8 @@ const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandlerWrapper (ARAIP
 
 void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel, ARAIPCAUBindingHandler _Nonnull bindingHandler, ARAIPCAUDestructionHandler _Nonnull destructionHandler)
 {
-    _sharedProxyHostCallbacksSender = new ARAIPCAUHostMessageSender { factoryMessageChannel };
-    ARAIPCProxyHostSetPlugInCallbacksSender (_sharedProxyHostCallbacksSender);
+    _factoryMessageSender = new ARAIPCAUHostMessageSender { factoryMessageChannel, nil };
+    ARAIPCProxyHostSetPlugInCallbacksSender (_factoryMessageSender);
 
 #if __has_feature(objc_arc)
     _bindingHandler = bindingHandler;
@@ -661,14 +669,26 @@ void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel> * _Nonnull
     ARAIPCProxyHostSetBindingHandler (ARAIPCAUBindingHandlerWrapper);
 }
 
-NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (AUAudioUnit * _Nullable audioUnit, NSDictionary * _Nonnull message)
+ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageSender(AUAudioUnit * _Nonnull audioUnit,
+                                                                                  NSObject<AUMessageChannel> * _Nonnull messageChannel)
 {
-    return _sharedProxyHostCallbacksSender->processReceivedMessage (message, (__bridge void *)audioUnit);
+    return new ARAIPCAUHostMessageSender { messageChannel, audioUnit };
+}
+
+NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageSender * _Nonnull messageSender, NSDictionary * _Nonnull message)
+{
+    auto sender { (ARAIPCAUHostMessageSender *)messageSender };
+    return sender->processReceivedMessage (message, (__bridge void *)sender->getAudioUnit ());
 }
 
 void ARA_CALL ARAIPCAUProxyHostCleanupBinding (const ARAPlugInExtensionInstance * _Nonnull plugInExtensionInstance)
 {
     ARAIPCProxyHostCleanupBinding (plugInExtensionInstance);
+}
+
+void ARA_CALL ARAIPCAUProxyHostUninitializeMessageSender (ARAIPCMessageSender * _Nonnull messageSender)
+{
+    delete messageSender;
 }
 
 void ARA_CALL ARAIPCAUProxyHostUninitialize (void)
@@ -680,7 +700,7 @@ void ARA_CALL ARAIPCAUProxyHostUninitialize (void)
     [_bindingHandler release];
     [_destructionHandler release];
 #endif
-    delete _sharedProxyHostCallbacksSender;
+    delete _factoryMessageSender;
 }
 
 
