@@ -16,7 +16,7 @@
 # limitations under the License.
 # ======================
 
-cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.19 FATAL_ERROR)
 
 if(ARA_API_DIR)
     # normalize path if provided (and if relative path, assume it's relative to the top-level project)
@@ -64,7 +64,7 @@ function(configure_ARA_Library_target target)
     )
 
     # ARA_API dependency
-    ara_link_ARA_API(${target} PUBLIC)
+    target_link_libraries(${target} PUBLIC ARA_API)
 
     # include paths
     target_include_directories(${target}

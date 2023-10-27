@@ -9,6 +9,8 @@ Changes since previous releases:
   a channel count too and copies the channel arrangement data instead of referencing it
   As a result, DocumentController::doUpdateChannelArrangement() has been removed since
   the arrangement is now always available, just like sample rate etc.
+- required minimum CMake version increased from 3.4 to 3.19 (same as VST3)
+
 
 === ARA SDK 2.2 release (aka 2.2.001) (2022/11/07) ===
 - added surround support for audio sources
