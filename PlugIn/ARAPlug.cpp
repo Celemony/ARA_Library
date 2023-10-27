@@ -2697,6 +2697,7 @@ const ARAPlugInExtensionInstance* PlugInExtension::bindToARA (ARADocumentControl
 
     _documentController = fromRef<DocumentController> (documentControllerRef);
     ARA_VALIDATE_API_ARGUMENT (documentControllerRef, DocumentController::isValidDocumentController (_documentController));
+    ARA_VALIDATE_API_ARGUMENT (nullptr, (assignedRoles | knownRoles) == knownRoles);
 
     const bool isPlaybackRenderer { ((knownRoles & kARAPlaybackRendererRole) == 0) || ((assignedRoles & kARAPlaybackRendererRole) != 0) };
     const bool isEditorRenderer { ((knownRoles & kARAEditorRendererRole) == 0) || ((assignedRoles & kARAEditorRendererRole) != 0) };
