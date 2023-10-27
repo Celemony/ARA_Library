@@ -33,6 +33,37 @@
 
 namespace ARA {
 
+ChannelFormat::ChannelFormat (const ARAChannelCount channelCount,
+                              const ARAChannelArrangementDataType channelArrangementDataType,
+                              const void* const channelArrangement)
+: _channelCount {channelCount },
+  _channelArrangementDataType { channelArrangementDataType }
+{
+    const auto size { getChannelArrangementDataSize (channelCount, channelArrangementDataType, channelArrangement) };
+    if (size > 0)
+    {
+        if (size > sizeof (_arrangementStorage))
+            _channelArrangement = new ARAByte[size];
+        else
+            _channelArrangement = &_arrangementStorage;
+
+        std::memcpy (_channelArrangement, channelArrangement, size);
+    }
+    else
+    {
+        _channelArrangement = nullptr;
+    }
+}
+
+ChannelFormat::~ChannelFormat ()
+{
+    if ((_channelArrangement != nullptr) &&
+        (_channelArrangement != _arrangementStorage))
+    {
+        delete[] static_cast<ARAByte *> (_channelArrangement);
+    }
+}
+
 bool ChannelFormat::operator== (const ChannelFormat& other) const noexcept
 {
     if (_channelCount != other._channelCount)
@@ -41,17 +72,24 @@ bool ChannelFormat::operator== (const ChannelFormat& other) const noexcept
     if (_channelArrangementDataType != other._channelArrangementDataType)
         return false;
 
-    if (_channelArrangement == other._channelArrangement)
+    const auto size { getChannelArrangementDataSize (_channelCount, _channelArrangementDataType, _channelArrangement) };
+    if (size != getChannelArrangementDataSize (other._channelCount, other._channelArrangementDataType, other._channelArrangement))
+        return false;
+
+    if (size == 0)
         return true;
 
-    ARA_INTERNAL_ASSERT (getDataSize () == other.getDataSize ());   // data size only depends on _channelCount and _channelArrangementDataType,
-                                                                    // which are both compared above
-    return (0 == std::memcmp (_channelArrangement, other._channelArrangement, getDataSize ()));
+    return (0 == std::memcmp (_channelArrangement, other._channelArrangement, size));
 }
 
-ARASize ChannelFormat::getDataSize () const noexcept
+ARASize ChannelFormat::getChannelArrangementDataSize (const ARAChannelCount /*channelCount*/,
+                                                      const ARAChannelArrangementDataType channelArrangementDataType,
+                                                      const void* const channelArrangement) noexcept
 {
-    switch (_channelArrangementDataType)
+    if (channelArrangement == nullptr)
+        return 0;
+
+    switch (channelArrangementDataType)
     {
         case kARAChannelArrangementUndefined:
         {
@@ -64,7 +102,9 @@ ARASize ChannelFormat::getDataSize () const noexcept
         case kARAChannelArrangementCoreAudioChannelLayout:
         {
 #if defined (__APPLE__)
-            const auto audioChannelLayout { static_cast<const AudioChannelLayout*> (_channelArrangement) };
+            static_assert (offsetof (AudioChannelLayout, mChannelDescriptions) <= sizeof (_arrangementStorage),
+                           "storage should be large enough to store all non-channel-description based layouts");
+            const auto audioChannelLayout { static_cast<const AudioChannelLayout*> (channelArrangement) };
             return offsetof (AudioChannelLayout, mChannelDescriptions) +
                    sizeof (AudioChannelDescription) * audioChannelLayout->mNumberChannelDescriptions;
 #else

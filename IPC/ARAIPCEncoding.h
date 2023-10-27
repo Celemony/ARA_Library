@@ -588,8 +588,7 @@ ARA_IPC_BEGIN_ENCODE (ARAAudioSourceProperties)
         //       this means the caller would need to copy the incoming data for mutation -
         //       maybe it would be better to move receiverEndianessMatches () from the sending side to
         //       the receiving side? We need to review how such a change would affect audio readers etc.
-        const ChannelFormat channelArrangement { value.channelCount, value.channelArrangementDataType, value.channelArrangement };
-        const auto size { channelArrangement.getDataSize () };
+        const auto size { ChannelFormat::getChannelArrangementDataSize (value.channelCount, value.channelArrangementDataType, value.channelArrangement) };
         if (size > 0)
         {
             const BytesEncoder tmp_channelArrangement { reinterpret_cast<const uint8_t*> (value.channelArrangement), size, true };

@@ -36,11 +36,12 @@ public:
 
     ChannelFormat (const ARAChannelCount channelCount,
                    const ARAChannelArrangementDataType channelArrangementDataType,
-                   const void* const channelArrangement)
-    : _channelCount {channelCount },
-      _channelArrangementDataType { channelArrangementDataType },
-      _channelArrangement { channelArrangement }
-    {}
+                   const void* const channelArrangement);
+
+    ~ChannelFormat ();
+
+    //! Validation helper for use at API boundary.
+    bool isValid () const noexcept;
 
     //! Equality tests.
     bool operator== (const ChannelFormat& other) const noexcept;
@@ -56,10 +57,9 @@ public:
     const void* getChannelArrangement () const noexcept { return _channelArrangement; }
 
     //! Returns the size of the opaque channel arrangement data.
-    ARASize getDataSize () const noexcept;
-
-    //! Validation helper for use at API boundary.
-    bool isValid () const noexcept;
+    static ARASize getChannelArrangementDataSize (const ARAChannelCount channelCount,
+                                                  const ARAChannelArrangementDataType channelArrangementDataType,
+                                                  const void* const channelArrangement) noexcept;
 
 private:
     // Returns the channel count encoded in the channel arrangement data.
@@ -70,7 +70,8 @@ private:
 private:
     const ARAChannelCount _channelCount;
     const ARAChannelArrangementDataType _channelArrangementDataType;
-    const void* const _channelArrangement;
+    void* _channelArrangement;
+    ARAByte _arrangementStorage[24];
 };
 
 //! @} ARA_Library_Utility_Channel_Arrangement

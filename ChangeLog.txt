@@ -6,7 +6,7 @@ Changes since previous releases:
 - initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,
   based on heavily refactored IPC Example from earlier SDK releases
 - ChannelArrangement helper class refactored as ChannelFormat, which now maintains
-  a channel count too
+  a channel count too and copies the channel arrangement data instead of referencing it
 
 === ARA SDK 2.2 release (aka 2.2.001) (2022/11/07) ===
 - added surround support for audio sources
