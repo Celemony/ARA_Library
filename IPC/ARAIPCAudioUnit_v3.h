@@ -81,8 +81,14 @@ void ARA_CALL ARAIPCAUProxyHostAddFactory(const ARAFactory * _Nonnull factory);
 typedef const ARAPlugInExtensionInstance * _Nonnull (^ARAIPCAUBindingHandler)(AUAudioUnit * _Nonnull audioUnit, ARADocumentControllerRef _Nonnull controllerRef,
                                                                               ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
 
+//! callback that the proxy uses to ensure synchronous destruction of a an AUAudioUnit bound to ARA
+//! this extra hook is necessary because the regular teardown via dealloc is delayed in macOS 13 on
+//! the remote end, causing race conditions with ARA teardown methods send after plug-in destruction
+typedef void (^ARAIPCAUDestructionHandler)(AUAudioUnit * _Nonnull audioUnit);
+
 //! plug-in side: static configuration: after adding all factories, initialize the IPC (before allocating any instances)
-void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel, ARAIPCAUBindingHandler _Nonnull bindingHandler);
+void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel,
+                                          ARAIPCAUBindingHandler _Nonnull bindingHandler, ARAIPCAUDestructionHandler _Nonnull destructionHandler);
 
 //! plug-in side: implementation for AUMessageChannel<NSObject> -callAudioUnit:
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (AUAudioUnit * _Nullable audioUnit, NSDictionary * _Nonnull wrappedMessage);
