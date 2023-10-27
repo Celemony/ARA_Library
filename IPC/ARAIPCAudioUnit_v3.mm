@@ -31,6 +31,8 @@
     #error "configuration mismatch: enabling ARA_AUDIOUNITV3_IPC_IS_AVAILABLE requires enabling ARA_ENABLE_IPC too"
 #endif
 
+#include <chrono>
+#include <thread>
 #include <utility>
 
 
@@ -66,10 +68,6 @@ ARAIPCAUDestructionHandler _destructionHandler { nil };
 
 // key for transaction locking through the IPC channel
 constexpr NSString * _transactionLockKey { @"transactionLock" };
-
-
-// key for thread local dictionary
-constexpr NSString * _isReceivingKey { @"org.ara-audio.auv3ipc.is_receiving" };
 
 
 // ARA AUv3 IPC design overview
@@ -224,6 +222,9 @@ private:
 
 
 // base class for both proxy implementations
+
+thread_local bool _isReceivingOnThisThread { false };   // actually a "static" member of ARAIPCAUMessageSender, but for some reason C++ doesn't allow this...
+
 class ARAIPCAUMessageSender : public ARAIPCMessageSender
 {
 public:
@@ -264,21 +265,16 @@ public:
     {
         @autoreleasepool
         {
-            const auto currentThread { [NSThread currentThread] };
-            const bool isReceivingThread { [[currentThread threadDictionary] objectForKey:_isReceivingKey] != nil };
+            const auto thisThread { std::this_thread::get_id () };
             const auto previousSendingThread { _sendingThread.load (std::memory_order_acquire) };
-            const bool isNewTransaction { (currentThread != previousSendingThread) && !isReceivingThread };
+            const bool isNewTransaction { (thisThread != previousSendingThread) && !_isReceivingOnThisThread };
 
             // \todo can we do better here than spinning/sleeping here? And for how long?
             if (isNewTransaction)
                 while (!_tryLockTransaction ())
-                    [NSThread sleepForTimeInterval:0.0001];
+                    std::this_thread::sleep_for (std::chrono::microseconds { 100 });
 
-#if __has_feature(objc_arc)
-            _sendingThread.store ((__bridge void *)currentThread, std::memory_order_release);
-#else
-            _sendingThread.store (currentThread, std::memory_order_release);
-#endif
+            _sendingThread.store (thisThread, std::memory_order_release);
 
             PendingReply pendingReply { replyHandler, replyHandlerUserData, _pendingReply.load (std::memory_order_acquire) };
             _pendingReply.store (&pendingReply, std::memory_order_release);
@@ -349,10 +345,9 @@ protected:
 private:
     void _processReceivedMessage (CFDictionaryRef message, void * userData)
     {
-        const auto currentThread { [NSThread currentThread] };
-        const bool isAlreadyReceiving { [[currentThread threadDictionary] objectForKey:_isReceivingKey] != nil };
+        const bool isAlreadyReceiving { _isReceivingOnThisThread };
         if (!isAlreadyReceiving)
-            [[currentThread threadDictionary] setObject:_isReceivingKey forKey:_isReceivingKey];
+            _isReceivingOnThisThread = true;
 
         const auto decoder { ARAIPCCFCreateMessageDecoderWithDictionary (message) };
         ARAIPCMessageID messageID { ARAIPCCFGetMessageIDFromDictionary (decoder) };
@@ -387,7 +382,7 @@ private:
         delete decoder;
 
         if (!isAlreadyReceiving)
-            [[currentThread threadDictionary] removeObjectForKey:_isReceivingKey];
+            _isReceivingOnThisThread = false;
     }
 
 private:
@@ -401,12 +396,8 @@ private:
     NSObject<AUMessageChannel> * __strong _messageChannel;
     const bool _dispatchRemoteTransactions;
     ConcurrentQueue _receiveQueue;
-#if __has_feature(objc_arc)
-    std::atomic<void *> _sendingThread {};                          // \todo why does the declaration below fail? __unsafe_unretained should be trivially copyable...
-#else
-    std::atomic<NSThread * __unsafe_unretained> _sendingThread {};
-#endif
-    std::atomic<PendingReply *> _pendingReply {};                   // if set, the receive callback forward to that thread
+    std::atomic <std::thread::id> _sendingThread {};
+    std::atomic<PendingReply *> _pendingReply {};   // if set, the receive callback forward to that thread
 };
 
 
