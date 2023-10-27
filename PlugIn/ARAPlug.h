@@ -451,7 +451,7 @@ public:
     ARASampleRate getSampleRate () const noexcept { return _sampleRate; }                      //!< See ARAAudioSourceProperties::sampleRate.
     ARASampleCount getSampleCount () const noexcept { return _sampleCount; }                   //!< See ARAAudioSourceProperties::sampleCount.
     ARATimeDuration getDuration () const noexcept { return timeAtSamplePosition (_sampleCount, _sampleRate); }  //!< The duration of the audio source in seconds; sampleRate / sampleCount.
-    ARAChannelCount getChannelCount () const noexcept { return _channelCount; }                //!< See ARAAudioSourceProperties::channelCount.
+    ARAChannelCount getChannelCount () const noexcept { return _channelFormat.getChannelCount (); }             //!< See ARAAudioSourceProperties::channelCount.
     bool merits64BitSamples () const noexcept { return _merits64BitSamples; }                  //!< See ARAAudioSourceProperties::merits64BitSamples.
 //@}
 
@@ -459,14 +459,6 @@ public:
 //@{
     bool isSampleAccessEnabled () const noexcept { return _sampleAccessEnabled; }              //!< See DocumentController::enableAudioSourceSamplesAccess.
     bool isDeactivatedForUndoHistory () const noexcept { return _deactivatedForUndoHistory; }  //!< See DocumentController::deactivateAudioSourceForUndoHistory.
-
-protected:
-    //! Since the channel arrangement is expressed in terms of the Companion API and not
-    //! in some native ARA format, translating it into the plug-in's internal representation
-    //! is delegated by the library via this call for clients to override as necessary.
-    virtual void doUpdateChannelArrangement (const ChannelFormat& channelArrangement) noexcept {}
-
-public:
 //@}
 
 //! @name Audio Source Relationships
@@ -506,7 +498,7 @@ private:
     std::string _persistentID;
     ARASampleCount _sampleCount { 0 };
     ARASampleRate _sampleRate { 44.100 };
-    ARAChannelCount _channelCount { 1 };
+    ChannelFormat _channelFormat {};
     bool _merits64BitSamples { false };
     bool _sampleAccessEnabled { false };
     bool _deactivatedForUndoHistory { false };
@@ -1323,8 +1315,6 @@ private:
 
     void _willChangeMusicalContextOrder () noexcept;
     void _willChangeRegionSequenceOrder (MusicalContext* affectedMusicalContext) noexcept;
-
-    void _validateAudioSourceChannelArrangement (PropertiesPtr<ARAAudioSourceProperties> properties) noexcept;
 
     std::vector<ARAContentType> const _getValidatedAnalyzableContentTypes (ARASize contentTypesCount, const ARAContentType contentTypes[], bool mayBeEmpty) noexcept;
 

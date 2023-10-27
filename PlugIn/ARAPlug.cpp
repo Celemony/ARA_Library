@@ -522,13 +522,13 @@ void AudioSource::updateProperties (PropertiesPtr<ARAAudioSourceProperties> prop
 
     _sampleCount = properties->sampleCount;
     _sampleRate = properties->sampleRate;
-    _channelCount = properties->channelCount;
     _merits64BitSamples = (properties->merits64BitSamples != kARAFalse);
 
     if (properties.implements<ARA_STRUCT_MEMBER (ARAAudioSourceProperties, channelArrangement)> ())
-        doUpdateChannelArrangement (ChannelFormat { _channelCount, properties->channelArrangementDataType, properties->channelArrangement });
+        _channelFormat.update (properties->channelCount, properties->channelArrangementDataType, properties->channelArrangement);
     else
-        doUpdateChannelArrangement (ChannelFormat {});
+        _channelFormat.update (properties->channelCount, kARAChannelArrangementUndefined, nullptr);
+    ARA_VALIDATE_API_ARGUMENT (properties, _channelFormat.isValid ());
 }
 
 /*******************************************************************************/
@@ -1423,21 +1423,6 @@ void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSeque
 
 /*******************************************************************************/
 
-void DocumentController::_validateAudioSourceChannelArrangement (PropertiesPtr<ARAAudioSourceProperties> properties) noexcept
-{
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAAudioSourceProperties, channelArrangement)> ())
-    {
-        ARA_VALIDATE_API_ARGUMENT (properties,
-                                   (ChannelFormat { properties->channelCount, properties->channelArrangementDataType, properties->channelArrangement }
-                                    .isValid ()));
-    }
-    else
-    {
-        ARA_VALIDATE_API_ARGUMENT (properties, !properties.implements<ARA_STRUCT_MEMBER (ARAAudioSourceProperties, channelArrangementDataType)> ());
-        ARA_VALIDATE_API_ARGUMENT (properties, (properties->channelCount <= 2));
-    }
-}
-
 ARAAudioSourceRef DocumentController::createAudioSource (ARAAudioSourceHostRef hostRef, PropertiesPtr<ARAAudioSourceProperties> properties) noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
@@ -1449,8 +1434,6 @@ ARAAudioSourceRef DocumentController::createAudioSource (ARAAudioSourceHostRef h
     auto audioSource { doCreateAudioSource (_document, hostRef) };
     ARA_INTERNAL_ASSERT (audioSource != nullptr);
 
-    _validateAudioSourceChannelArrangement (properties);
-    
     willUpdateAudioSourceProperties (audioSource, properties);
     audioSource->updateProperties (properties);
     didUpdateAudioSourceProperties (audioSource);
@@ -1479,8 +1462,6 @@ void DocumentController::updateAudioSourceProperties (ARAAudioSourceRef audioSou
         // the host may change these properties only while access is disabled
         ARA_VALIDATE_API_STATE (!audioSource->isSampleAccessEnabled ());
     }
-
-    _validateAudioSourceChannelArrangement (properties);
 
     willUpdateAudioSourceProperties (audioSource, properties);
     audioSource->updateProperties (properties);
