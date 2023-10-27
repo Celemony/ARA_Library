@@ -28,6 +28,7 @@
 
 #include "ARA_Library/Debug/ARADebug.h"
 #include "ARA_Library/Dispatch/ARAContentReader.h"
+#include "ARA_Library/Utilities/ARAChannelArrangement.h"
 
 #include <algorithm>
 #include <functional>
@@ -582,6 +583,22 @@ ARA_IPC_BEGIN_ENCODE (ARAAudioSourceProperties)
     ARA_IPC_ENCODE_MEMBER (sampleRate)
     ARA_IPC_ENCODE_MEMBER (channelCount)
     ARA_IPC_ENCODE_MEMBER (merits64BitSamples)
+    ARA_IPC_ENCODE_ADDENDUM_MEMBER (channelArrangementDataType)
+    if (ARA_IPC_HAS_ADDENDUM_MEMBER (channelArrangement))
+    {
+        // \todo potential endianess conversion is missing here if needed - but this is not known here,
+        //       it must be performed in the calling code.
+        //       this means the caller would need to copy the incoming data for mutation -
+        //       maybe it would be better to move receiverEndianessMatches () from the sending side to
+        //       the receiving side? We need to review how such a change would affect audio readers etc.
+        const ChannelArrangement channelArrangement { value.channelArrangementDataType, value.channelArrangement };
+        const auto size { channelArrangement.getDataSize () };
+        if (size > 0)
+        {
+            const BytesEncoder tmp_channelArrangement { reinterpret_cast<const uint8_t*> (value.channelArrangement), size, true };
+            _encodeAndAppend (encoder, offsetof (ARAAudioSourceProperties, channelArrangement), tmp_channelArrangement);
+        }
+    }
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
     ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
@@ -590,6 +607,35 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
     ARA_IPC_DECODE_MEMBER (sampleRate)
     ARA_IPC_DECODE_MEMBER (channelCount)
     ARA_IPC_DECODE_MEMBER (merits64BitSamples)
+    ARA_IPC_DECODE_ADDENDUM_MEMBER (channelArrangementDataType)
+    if (result.structSize > offsetof (ARAAudioSourceProperties, channelArrangementDataType))
+    {
+        ARA_IPC_UPDATE_STRUCT_SIZE_FOR_OPTIONAL (channelArrangement);
+
+        if (result.channelArrangementDataType == kARAChannelArrangementUndefined)
+        {
+            result.channelArrangement = nullptr;
+        }
+        else
+        {
+            /* \todo the outer struct contains a pointer to the inner struct, so we need some */
+            /* place to store it - this static only works as long as this is single-threaded! */
+            static ARAByte cache[2016UL];   // some arbitrary space that can be conveniently allocated
+            auto resultSize_channelArrangement { sizeof (cache) };
+            BytesDecoder tmp_channelArrangement { cache, resultSize_channelArrangement };
+            if (_readAndDecode (tmp_channelArrangement, decoder, offsetof (ARAAudioSourceProperties, channelArrangement)) &&
+                (resultSize_channelArrangement < sizeof (cache)))
+            {
+                result.channelArrangement = &cache;
+            }
+            else
+            {
+                result.channelArrangementDataType = kARAChannelArrangementUndefined;
+                result.channelArrangement = nullptr;
+                success = false;
+            }
+        }
+    }
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE (ARAAudioModificationProperties)
