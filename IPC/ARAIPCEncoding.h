@@ -1270,16 +1270,16 @@ public:
     RemoteCaller (ARAIPCMessageSender* sender) noexcept : _sender { sender } {}
 
     template<typename... Args>
-    void remoteCall (const bool stackable, const MethodID methodID, const Args &... args)
+    void remoteCall (const MethodID methodID, const Args &... args)
     {
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
-        _sender->sendMessage (stackable, methodID.getMessageID (), encoder, nullptr, nullptr);
+        _sender->sendMessage (methodID.getMessageID (), encoder, nullptr, nullptr);
         delete encoder;
     }
 
     template<typename RetT, typename... Args>
-    void remoteCall (RetT& result, const bool stackable, const MethodID methodID, const Args &... args)
+    void remoteCall (RetT& result, const MethodID methodID, const Args &... args)
     {
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
@@ -1288,11 +1288,11 @@ public:
                 ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
-        _sender->sendMessage (stackable, methodID.getMessageID (), encoder, &replyHandler, &result);
+        _sender->sendMessage (methodID.getMessageID (), encoder, &replyHandler, &result);
         delete encoder;
     }
     template<typename... Args>
-    void remoteCall (CustomDecodeFunction& decodeFunction, const bool stackable, const MethodID methodID, const Args &... args)
+    void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args)
     {
         auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
@@ -1301,7 +1301,7 @@ public:
                 ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
-        _sender->sendMessage (stackable, methodID.getMessageID (), encoder, &replyHandler, &decodeFunction);
+        _sender->sendMessage (methodID.getMessageID (), encoder, &replyHandler, &decodeFunction);
         delete encoder;
     }
 

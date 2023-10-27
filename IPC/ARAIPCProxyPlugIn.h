@@ -40,8 +40,7 @@ size_t ARAIPCProxyPlugInGetFactoriesCount(ARAIPCMessageSender * hostCommandsSend
 const ARAFactory * ARAIPCProxyPlugInGetFactoryAtIndex(ARAIPCMessageSender * hostCommandsSender, size_t index);
 
 //! proxy initialization call, to be used instead of ARAFactory.initializeARAWithConfiguration()
-// \todo we're currently not supporting propagating ARA assertions through IPC,
-//       because it would require to make all calls stackable...
+// \todo we're currently not supporting propagating ARA assertions through IPC...
 void ARAIPCProxyPlugInInitializeARA(ARAIPCMessageSender * hostCommandsSender, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration);
 
 //! proxy document controller creation call, to be used instead of ARAFactory.createDocumentControllerWithDocument()

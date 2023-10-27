@@ -30,7 +30,6 @@
 
 
 #import "ARA_Library/IPC/ARAIPC.h"
-#import "ARA_Library/IPC/ARAIPCLockingContext.h"
 
 
 #if defined(__cplusplus)
@@ -46,10 +45,10 @@ API_AVAILABLE_BEGIN(macos(13.0))
 //! host side: initialize the message sender used for all factory-related messaging for all
 //! Audio Units that have the same component as the provided audioUnit
 //! will return nullptr if the Audio Unit does not implement ARAAudioUnit or [AUAudioUnit messageChannelFor:],
-//! leaving the channel uninitalized
+//! leaving the channel uninitialized
 //! this sender can be used for the calls to ARAIPCAUProxyPlugInGetFactory(), ARAIPCProxyPlugInInitializeARA(),
 //! ARAIPCProxyPlugInCreateDocumentControllerWithDocument() and ARAIPCProxyPlugInUninitializeARA()
-ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyPlugInInitializeFactoryMessageSender(AUAudioUnit * _Nonnull audioUnit, ARAIPCLockingContextRef _Nonnull lockingContextRef);
+ARAIPCMessageSender * _Nullable ARA_CALL ARAIPCAUProxyPlugInInitializeFactoryMessageSender(AUAudioUnit * _Nonnull audioUnit);
 
 //! host side: get the ARA factory for the audio unit
 //! will return NULL if the Audio Unit does not implement ARAAudioUnit or [AUAudioUnit messageChannelFor:]
@@ -61,7 +60,6 @@ const ARAFactory * _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory(ARAIPCMessage
 //! will return NULL if the Audio Unit does not implement ARAAudioUnit or [AUAudioUnit messageChannelFor:],
 //! leaving messageSender uninitalized in that case
 const ARAPlugInExtensionInstance * _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController(AUAudioUnit * _Nonnull audioUnit,
-                                                                                                  ARAIPCLockingContextRef _Nonnull lockingContextRef,
                                                                                                   ARADocumentControllerRef _Nonnull documentControllerRef,
                                                                                                   ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles,
                                                                                                   ARAIPCMessageSender * _Nullable * _Nonnull messageSender);

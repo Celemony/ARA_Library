@@ -123,6 +123,8 @@ public:
 
     //! UTF8-encoded C strings
     //! Will return false and set argValue to NULL if key not found.
+    //! Note that received string data is only valid as long as the message that
+    //! provided them is alive.
     virtual bool readString (ARAIPCMessageKey argKey, const char ** argValue) const = 0;
 
     //! raw bytes
@@ -161,13 +163,15 @@ public:
     //! The caller is responsible for deleting the encoder after use.
     virtual ARAIPCMessageEncoder* createEncoder () = 0;
 
-    //! send function: send message create using the encoder, blocking until a reply has been received.
+    //! send an encoded messages to the receiving process
     //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
-    //! A send function can be called from any thread, but not concurrently.
-    virtual void sendMessage (const bool stackable, ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
+    //! This method can be called from any thread, concurrent calls will be serialized.
+    //! The calling thread will be blocked until the receiver has processed the message and
+    //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
+    virtual void sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
                               ARAIPCReplyHandler* replyHandler, void* replyHandlerUserData) = 0;
 
-    //! Test if the receiver runs on a different architecture with different endianess.
+    //! indicate byte order mismatch between sending and receiving machine
     virtual bool receiverEndianessMatches () = 0;
 };
 #else
