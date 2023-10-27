@@ -26,10 +26,6 @@ namespace ARA
 {
 extern "C"
 {
-    // helper define to properly insert ARA namespace into C compatible macros
-    #define ARA_NAMESPACE ARA::
-#else
-    #define ARA_NAMESPACE
 #endif
 
 
