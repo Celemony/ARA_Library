@@ -271,10 +271,8 @@ public:
             const auto previousSendingThread { _sendingThread.load (std::memory_order_acquire) };
             const bool isNewTransaction { (thisThread != previousSendingThread) && !_isReceivingOnThisThread };
 
-            // \todo can we do better here than spinning/sleeping here? And for how long?
             if (isNewTransaction)
-                while (!_tryLockTransaction ())
-                    std::this_thread::sleep_for (std::chrono::microseconds { 100 });
+                _lockTransaction ();
 
             _sendingThread.store (thisThread, std::memory_order_release);
 
@@ -335,7 +333,7 @@ public:
     }
 
 protected:
-    virtual bool _tryLockTransaction () = 0;
+    virtual void _lockTransaction () = 0;
     virtual void _unlockTransaction () = 0;
     virtual NSDictionary * _sendMessage (NSDictionary * message) = 0;
     virtual dispatch_queue_t _getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) = 0;
@@ -461,15 +459,21 @@ protected:
         }
     }
     
-    bool _tryLockTransaction () override
+    void _lockTransaction () override
     {
         const auto message { [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:true] forKey:_transactionLockKey] };
-        const auto reply { _sendMessage (message) };
-        ARA_INTERNAL_ASSERT ([reply objectForKey:_transactionLockKey] != nil);
-        const auto result { [(NSNumber *) [reply objectForKey:_transactionLockKey] boolValue] };
-        if (result)
-            std::atomic_thread_fence (std::memory_order_acquire);
-        return result;
+        while (true)
+        {
+            const auto reply { _sendMessage (message) };
+            ARA_INTERNAL_ASSERT ([reply objectForKey:_transactionLockKey] != nil);
+            if ([(NSNumber *) [reply objectForKey:_transactionLockKey] boolValue])
+                break;
+
+            // \todo in order to avoid this busy-wait, the other side would need to send us some "lock available" message
+            //       upon unlock whenever a lock request was rejected - this thread could wait via some signal then retry...
+            std::this_thread::sleep_for (std::chrono::microseconds { 100 });
+        }
+        std::atomic_thread_fence (std::memory_order_acquire);
     }
 
     void _unlockTransaction () override
@@ -536,9 +540,10 @@ protected:
         ARAIPCProxyPlugInCallbacksDispatcher (messageID, decoder, replyEncoder);
     }
 
-    bool _tryLockTransaction () override
+    void _lockTransaction () override
     {
-        return (dispatch_semaphore_wait (_transactionLock, DISPATCH_TIME_NOW) == 0);
+        const auto ARA_MAYBE_UNUSED_VAR (result) { dispatch_semaphore_wait (_transactionLock, DISPATCH_TIME_FOREVER) };
+        ARA_INTERNAL_ASSERT (result == 0);
     }
 
     void _unlockTransaction () override
@@ -552,9 +557,9 @@ protected:
         {
             bool result { true };
             if ([transactionLockRequest boolValue])
-                result = _tryLockTransaction ();
+                result = (dispatch_semaphore_wait (_transactionLock, DISPATCH_TIME_NOW) == 0);
             else
-                _unlockTransaction ();
+                dispatch_semaphore_signal (_transactionLock);
             return [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:result] forKey:_transactionLockKey];
         }
 
