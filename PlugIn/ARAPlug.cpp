@@ -2815,6 +2815,9 @@ void PlugInEntry::uninitializeARA () noexcept
 const ARADocumentControllerInstance* PlugInEntry::createDocumentControllerWithDocument (const ARADocumentControllerHostInstance* hostInstance, const ARADocumentProperties* properties) noexcept
 {
     ARA_LOG_HOST_ENTRY (nullptr);
+
+    ARA_VALIDATE_API_STATE ((_usedApiGeneration != 0) && "ARAFactory::initializeARAWithConfiguration () not called!");
+
     ARA_VALIDATE_API_STRUCT_PTR (hostInstance, ARADocumentControllerHostInstance);
     ARA_VALIDATE_API_INTERFACE (hostInstance->audioAccessControllerInterface, ARAAudioAccessControllerInterface);
     ARA_VALIDATE_API_INTERFACE (hostInstance->archivingControllerInterface, ARAArchivingControllerInterface);

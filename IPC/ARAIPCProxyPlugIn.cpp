@@ -1299,6 +1299,12 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageSender hostCo
     return &result.first->second._factory;
 }
 
+void ARAIPCProxyPlugInInitializeARA (ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration)
+{
+    ARA_INTERNAL_ASSERT (desiredApiGeneration >= kARAAPIGeneration_2_0_Final);
+    RemoteCaller { hostCommandsSender }.remoteCallWithoutReply(false, kInitializeARAMessageID, factoryID, desiredApiGeneration);
+}
+
 const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWithDocument (
                                             ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID,
                                             const ARADocumentControllerHostInstance* hostInstance, const ARADocumentProperties* properties)
@@ -1330,6 +1336,11 @@ const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARA
 void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInExtensionInstance)
 {
     delete static_cast<const PlugInExtension*> (plugInExtensionInstance);
+}
+
+void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID)
+{
+    RemoteCaller { hostCommandsSender }.remoteCallWithoutReply (false, kUninitializeARAMessageID, factoryID);
 }
 
 void ARAIPCProxyPlugInCallbacksDispatcher (const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
