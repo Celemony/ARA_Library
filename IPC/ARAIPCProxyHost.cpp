@@ -95,7 +95,7 @@ ARA_MAP_HOST_REF (RemoteHostContentReader, ARAContentReaderHostRef)
 class AudioAccessController : public Host::AudioAccessControllerInterface, public RemoteCaller
 {
 public:
-    AudioAccessController (ARAIPCMessageSender sender, ARAAudioAccessControllerHostRef remoteHostRef) noexcept
+    AudioAccessController (ARAIPCMessageSender* sender, ARAAudioAccessControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
 
     ARAAudioReaderHostRef createAudioReaderForSource (ARAAudioSourceHostRef audioSourceHostRef, bool use64BitSamples) noexcept override;
@@ -184,7 +184,7 @@ bool AudioAccessController::readAudioSamples (ARAAudioReaderHostRef audioReaderH
 
     // custom decoding to deal with float data memory ownership
     bool success { false };
-    RemoteCaller::CustomDecodeFunction customDecode { [&success, &remoteAudioReader, &samplesPerChannel, &channelCount, &buffers] (const ARAIPCMessageDecoder& decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode { [&success, &remoteAudioReader, &samplesPerChannel, &channelCount, &buffers] (const ARAIPCMessageDecoder* decoder) -> void
         {
             const auto bufferSize { remoteAudioReader->sampleSize * static_cast<size_t> (samplesPerChannel) };
             std::vector<size_t> resultSizes;
@@ -235,7 +235,7 @@ void AudioAccessController::destroyAudioReader (ARAAudioReaderHostRef audioReade
 class ArchivingController : public Host::ArchivingControllerInterface, public RemoteCaller
 {
 public:
-    ArchivingController (ARAIPCMessageSender sender, ARAArchivingControllerHostRef remoteHostRef) noexcept
+    ArchivingController (ARAIPCMessageSender* sender, ARAArchivingControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
 
     ARASize getArchiveSize (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept override;
@@ -329,14 +329,14 @@ void ArchivingController::notifyDocumentUnarchivingProgress (float value) noexce
 
 ARAPersistentID ArchivingController::getDocumentArchiveID (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
-    RemoteCaller::CustomDecodeFunction customDecode { [this] (const ARAIPCMessageDecoder& decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode { [this] (const ARAIPCMessageDecoder* decoder) -> void
         {
             ARAPersistentID persistentID;
             decodeReply (persistentID, decoder);
             _archiveID.assign (persistentID);
         } };
     remoteCall (customDecode, false, ARA_IPC_HOST_METHOD_ID (ARAArchivingControllerInterface, getDocumentArchiveID), _remoteHostRef, archiveReaderHostRef);
-    return _archiveID.c_str();
+    return _archiveID.c_str ();
 }
 
 
@@ -345,7 +345,7 @@ ARAPersistentID ArchivingController::getDocumentArchiveID (ARAArchiveReaderHostR
 class ContentAccessController : public Host::ContentAccessControllerInterface, public RemoteCaller
 {
 public:
-    ContentAccessController (ARAIPCMessageSender sender, ARAContentAccessControllerHostRef remoteHostRef) noexcept
+    ContentAccessController (ARAIPCMessageSender* sender, ARAContentAccessControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
 
     bool isMusicalContextContentAvailable (ARAMusicalContextHostRef musicalContextHostRef, ARAContentType type) noexcept override;
@@ -427,7 +427,7 @@ const void* ContentAccessController::getContentReaderDataForEvent (ARAContentRea
 {
     const auto contentReader { fromHostRef (contentReaderHostRef) };
     const void* result {};
-    RemoteCaller::CustomDecodeFunction customDecode { [&result, &contentReader] (const ARAIPCMessageDecoder& decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode { [&result, &contentReader] (const ARAIPCMessageDecoder* decoder) -> void
         {
             result = contentReader->decoder.decode (decoder);
         } };
@@ -449,7 +449,7 @@ void ContentAccessController::destroyContentReader (ARAContentReaderHostRef cont
 class ModelUpdateController : public Host::ModelUpdateControllerInterface, public RemoteCaller
 {
 public:
-    ModelUpdateController (ARAIPCMessageSender sender, ARAModelUpdateControllerHostRef remoteHostRef) noexcept
+    ModelUpdateController (ARAIPCMessageSender* sender, ARAModelUpdateControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
 
     void notifyAudioSourceAnalysisProgress (ARAAudioSourceHostRef audioSourceHostRef, ARAAnalysisProgressState state, float value) noexcept override;
@@ -489,7 +489,7 @@ void ModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackRegio
 class PlaybackController : public Host::PlaybackControllerInterface, public RemoteCaller
 {
 public:
-    PlaybackController (ARAIPCMessageSender sender, ARAPlaybackControllerHostRef remoteHostRef) noexcept
+    PlaybackController (ARAIPCMessageSender* sender, ARAPlaybackControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { sender }, _remoteHostRef { remoteHostRef } {}
 
     void requestStartPlayback () noexcept override;
@@ -581,23 +581,23 @@ using namespace ProxyHost;
 
 
 std::vector<const ARAFactory*> _factories {};
-ARAIPCMessageSender _plugInCallbacksSender {};
+ARAIPCMessageSender* _plugInCallbacksSender {};
 ARAIPCBindingHandler _bindingHandler {};
 
 void ARAIPCProxyHostAddFactory (const ARAFactory* factory)
 {
-    ARA_INTERNAL_ASSERT(factory->highestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
-    ARA_INTERNAL_ASSERT(!ARA::contains (_factories, factory));
+    ARA_INTERNAL_ASSERT (factory->highestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
+    ARA_INTERNAL_ASSERT (!ARA::contains (_factories, factory));
 
     _factories.emplace_back (factory);
 }
 
-void ARAIPCProxyHostSetPlugInCallbacksSender (ARAIPCMessageSender plugInCallbacksSender)
+void ARAIPCProxyHostSetPlugInCallbacksSender (ARAIPCMessageSender* plugInCallbacksSender)
 {
     _plugInCallbacksSender = plugInCallbacksSender;
 }
 
-void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler)
+void ARAIPCProxyHostSetBindingHandler (ARAIPCBindingHandler handler)
 {
     _bindingHandler = handler;
 }
@@ -615,7 +615,7 @@ const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
             return factory;
     }
 
-    ARA_INTERNAL_ASSERT(false && "provided factory ID not previously registered via ARAIPCProxyHostAddFactory()");
+    ARA_INTERNAL_ASSERT (false && "provided factory ID not previously registered via ARAIPCProxyHostAddFactory()");
     return nullptr;
 }
 
@@ -643,7 +643,7 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
         ARA_INTERNAL_ASSERT (interfaceConfig.desiredApiGeneration >= kARAAPIGeneration_2_0_Final);
 
         if (const ARAFactory* const factory { getFactoryWithID (factoryID) })
-            factory->initializeARAWithConfiguration(&interfaceConfig);
+            factory->initializeARAWithConfiguration (&interfaceConfig);
     }
     else if (messageID == kCreateDocumentControllerMethodID)
     {
@@ -701,7 +701,7 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
         decodeArguments (decoder, factoryID);
 
         if (const ARAFactory* const factory { getFactoryWithID (factoryID) })
-            factory->uninitializeARA();
+            factory->uninitializeARA ();
     }
 
     //ARADocumentControllerInterface
@@ -1210,7 +1210,7 @@ void ARAIPCProxyHostCommandHandler (const ARAIPCMessageID messageID, const ARAIP
         decodeArguments (decoder, controllerRef, runModalActivationDialogIfNeeded, types, transformationFlags);
 
         return encodeReply (replyEncoder, (fromRef (controllerRef)->isLicensedForCapabilities ((runModalActivationDialogIfNeeded != kARAFalse),
-                                                                    types.size(), types.data (), transformationFlags)) ? kARATrue : kARAFalse);
+                                                                    types.size (), types.data (), transformationFlags)) ? kARATrue : kARAFalse);
     }
 
     // ARAPlaybackRendererInterface

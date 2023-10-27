@@ -103,7 +103,7 @@ public:
 template<typename ElementT>
 struct ArrayArgument
 {
-    static_assert (sizeof(ElementT) > sizeof(ARAByte), "byte-sized arrays should be sent as raw bytes");
+    static_assert (sizeof (ElementT) > sizeof (ARAByte), "byte-sized arrays should be sent as raw bytes");
     ElementT* elements;
     size_t count;
 };
@@ -176,75 +176,75 @@ struct _IsStructPointerArg
 
 
 // primitives for appending an argument to a message
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const int32_t argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const int32_t argValue)
 {
-    encoder.methods->appendInt32 (encoder.ref, argKey, argValue);
+    encoder->appendInt32 (argKey, argValue);
 }
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const int64_t argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const int64_t argValue)
 {
-    encoder.methods->appendInt64 (encoder.ref, argKey, argValue);
+    encoder->appendInt64 (argKey, argValue);
 }
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const size_t argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const size_t argValue)
 {
-    encoder.methods->appendSize (encoder.ref, argKey, argValue);
+    encoder->appendSize (argKey, argValue);
 }
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const float argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const float argValue)
 {
-    encoder.methods->appendFloat (encoder.ref, argKey, argValue);
+    encoder->appendFloat (argKey, argValue);
 }
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const double argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const double argValue)
 {
-    encoder.methods->appendDouble (encoder.ref, argKey, argValue);
+    encoder->appendDouble (argKey, argValue);
 }
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const char* const argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const char* const argValue)
 {
-    encoder.methods->appendString (encoder.ref, argKey, argValue);
+    encoder->appendString (argKey, argValue);
 }
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const BytesEncoder& argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const BytesEncoder& argValue)
 {
     const uint8_t* bytes;
     size_t size;
     bool copy;
     argValue (bytes, size, copy);
-    encoder.methods->appendBytes (encoder.ref, argKey, bytes, size, copy);
+    encoder->appendBytes (argKey, bytes, size, copy);
 }
 
 // primitives for reading an (optional) argument from a message
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, int32_t& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, int32_t& argValue)
 {
-    return decoder.methods->readInt32 (decoder.ref, argKey, &argValue);
+    return decoder->readInt32 (argKey, &argValue);
 }
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, int64_t& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, int64_t& argValue)
 {
-    return decoder.methods->readInt64 (decoder.ref, argKey, &argValue);
+    return decoder->readInt64 (argKey, &argValue);
 }
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, size_t& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, size_t& argValue)
 {
-    return decoder.methods->readSize (decoder.ref, argKey, &argValue);
+    return decoder->readSize (argKey, &argValue);
 }
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, float& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, float& argValue)
 {
-    return decoder.methods->readFloat (decoder.ref, argKey, &argValue);
+    return decoder->readFloat (argKey, &argValue);
 }
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, double& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, double& argValue)
 {
-    return decoder.methods->readDouble (decoder.ref, argKey, &argValue);
+    return decoder->readDouble (argKey, &argValue);
 }
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, const char*& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, const char*& argValue)
 {
-    return decoder.methods->readString (decoder.ref, argKey, &argValue);
+    return decoder->readString (argKey, &argValue);
 }
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, BytesDecoder& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, BytesDecoder& argValue)
 {
     size_t receivedSize;
-    const auto found { decoder.methods->readBytesSize (decoder.ref, argKey, &receivedSize) };
+    const auto found { decoder->readBytesSize (argKey, &receivedSize) };
     auto availableSize { receivedSize };
     const auto bytes { argValue (availableSize) };
     if (!found)
         return false;
     if (availableSize < receivedSize)
         return false;
-    decoder.methods->readBytes (decoder.ref, argKey, bytes);
+    decoder->readBytes (argKey, bytes);
     return true;
 }
 
@@ -258,17 +258,17 @@ inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCM
 // templated overloads of the IPCMessageEn-/Decoder primitives for ARA (host) ref types,
 // which are stored as size_t
 template<typename T, typename std::enable_if<_IsRefType<T>::value, bool>::type = true>
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const T argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const T argValue)
 {
-    encoder.methods->appendSize (encoder.ref, argKey, reinterpret_cast<size_t> (argValue));
+    encoder->appendSize (argKey, reinterpret_cast<size_t> (argValue));
 }
 template<typename T, typename std::enable_if<_IsRefType<T>::value, bool>::type = true>
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, T& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, T& argValue)
 {
     // \todo is there a safe/proper way across all compilers for this cast to avoid the copy?
 //  return decoder.readSize (argKey, *reinterpret_cast<size_t*> (&argValue));
     size_t tmp;
-    const auto success { decoder.methods->readSize (decoder.ref, argKey, &tmp) };
+    const auto success { decoder->readSize (argKey, &tmp) };
     argValue = reinterpret_cast<T> (tmp);
     return success;
 }
@@ -277,14 +277,14 @@ inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCM
     sending arrays of ARABytes via this overload (seems simpler but less efficient):
 // to read and write arrays of ARAByte (not raw bytes but e.g. ARAKeySignatureIntervalUsage),
 // we use int32_t to keep the IPCMessageEn-/Decoder API small
-inline void _appendToMessage (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const ARAByte argValue)
+inline void _appendToMessage (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const ARAByte argValue)
 {
-    encoder.appendInt32 (argKey, static_cast<int32_t> (argValue));
+    encoder->appendInt32 (argKey, static_cast<int32_t> (argValue));
 }
-inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, ARAByte& argValue)
+inline bool _readFromMessage (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, ARAByte& argValue)
 {
     int32_t tmp;
-    const auto result { decoder.readInt32 (argKey, tmp) };
+    const auto result { decoder->readInt32 (argKey, tmp) };
     ARA_INTERNAL_ASSERT ((0 <= tmp) && (tmp <= static_cast<int32_t> (std::numeric_limits<ARAByte>::max ())));
     argValue = static_cast<ARAByte> (tmp);
     return result;
@@ -310,16 +310,16 @@ inline bool _readFromMessage (const ARAIPCMessageDecoder& decoder, const ARAIPCM
 // declarations of wrapper functions to implicitly deduce _ValueEn-/Decoder<> -
 // they are defined further down below, after all specializations are defined
 template <typename ValueT>
-inline void _encodeAndAppend (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const ValueT& argValue);
+inline void _encodeAndAppend (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const ValueT& argValue);
 template <typename ValueT>
-inline bool _readAndDecode (ValueT& result, const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey);
+inline bool _readAndDecode (ValueT& result, const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey);
 
 
 // primary templates for basic types (numbers, strings, (host)refs and raw bytes)
 template<typename ValueT>
 struct _ValueEncoder
 {
-    static inline void encodeAndAppend (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const ValueT& argValue)
+    static inline void encodeAndAppend (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const ValueT& argValue)
     {
         _appendToMessage (encoder, argKey, argValue);
     }
@@ -327,7 +327,7 @@ struct _ValueEncoder
 template<typename ValueT>
 struct _ValueDecoder
 {
-    static inline bool readAndDecode (ValueT& result, const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey)
+    static inline bool readAndDecode (ValueT& result, const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey)
     {
         return _readFromMessage (decoder, argKey, result);
     }
@@ -339,26 +339,24 @@ struct _ValueDecoder
 template<typename ValueT>
 struct _CompoundValueEncoderBase
 {
-    static inline void encodeAndAppend (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const ValueT& argValue)
+    static inline void encodeAndAppend (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const ValueT& argValue)
     {
-        auto subEncoderRef { encoder.methods->appendSubMessage (encoder.ref, argKey) };
-        ARA_INTERNAL_ASSERT (subEncoderRef != nullptr);
-        ARAIPCMessageEncoder subEncoder { subEncoderRef, encoder.methods };
+        auto subEncoder { encoder->appendSubMessage (argKey) };
+        ARA_INTERNAL_ASSERT (subEncoder != nullptr);
         _ValueEncoder<ValueT>::encode (subEncoder, argValue);
-        encoder.methods->destroyEncoder (subEncoderRef);
+        delete subEncoder;
     }
 };
 template<typename ValueT>
 struct _CompoundValueDecoderBase
 {
-    static inline bool readAndDecode (ValueT& result, const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey)
+    static inline bool readAndDecode (ValueT& result, const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey)
     {
-        auto subDecoderRef { decoder.methods->readSubMessage (decoder.ref, argKey) };
-        if (subDecoderRef == nullptr)
+        auto subDecoder { decoder->readSubMessage (argKey) };
+        if (subDecoder == nullptr)
             return false;
-        ARAIPCMessageDecoder subDecoder { subDecoderRef, decoder.methods };
         const auto success { _ValueDecoder<ValueT>::decode (result, subDecoder) };
-        decoder.methods->destroyDecoder (subDecoderRef);
+        delete subDecoder;
         return success;
     }
 };
@@ -368,7 +366,7 @@ struct _CompoundValueDecoderBase
 template<typename ElementT>
 struct _ValueEncoder<ArrayArgument<ElementT>> : public _CompoundValueEncoderBase<ArrayArgument<ElementT>>
 {
-    static inline void encode (ARAIPCMessageEncoder& encoder, const ArrayArgument<ElementT>& value)
+    static inline void encode (ARAIPCMessageEncoder* encoder, const ArrayArgument<ElementT>& value)
     {
         ARA_INTERNAL_ASSERT (value.count <= static_cast<size_t> (std::numeric_limits<ARAIPCMessageKey>::max ()));
         const auto count { static_cast<ARAIPCMessageKey> (value.count) };
@@ -382,7 +380,7 @@ struct _ValueEncoder<ArrayArgument<ElementT>> : public _CompoundValueEncoderBase
 template<typename ElementT>
 struct _ValueDecoder<ArrayArgument<ElementT>> : public _CompoundValueDecoderBase<ArrayArgument<ElementT>>
 {
-    static inline bool decode (ArrayArgument<ElementT>& result, const ARAIPCMessageDecoder& decoder)
+    static inline bool decode (ArrayArgument<ElementT>& result, const ARAIPCMessageDecoder* decoder)
     {
         bool success { true };
         ARAIPCMessageKey count;
@@ -401,7 +399,7 @@ struct _ValueDecoder<ArrayArgument<ElementT>> : public _CompoundValueDecoderBase
 template<typename ElementT>
 struct _ValueDecoder<std::vector<ElementT>> : public _CompoundValueDecoderBase<std::vector<ElementT>>
 {
-    static inline bool decode (std::vector<ElementT>& result, const ARAIPCMessageDecoder& decoder)
+    static inline bool decode (std::vector<ElementT>& result, const ARAIPCMessageDecoder* decoder)
     {
         bool success { true };
         ARAIPCMessageKey count;
@@ -420,7 +418,7 @@ struct _ValueDecoder<std::vector<ElementT>> : public _CompoundValueDecoderBase<s
 template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<StructT>            \
 {                                               /* specialization for given struct */           \
     using StructType = StructT;                                                                 \
-    static inline void encode (ARAIPCMessageEncoder& encoder, const StructType& value)          \
+    static inline void encode (ARAIPCMessageEncoder* encoder, const StructType& value)          \
     {
 #define ARA_IPC_ENCODE_MEMBER(member)                                                           \
         _encodeAndAppend (encoder, offsetof (StructType, member), value.member);
@@ -453,7 +451,7 @@ template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<Stru
             _encodeAndAppend (encoder, offsetof (StructType, member), *value.member);
 #define ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR(member)                                     \
         if (ARA_IPC_HAS_ADDENDUM_MEMBER (member))                                               \
-            ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR(member)
+            ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR (member)
 #define ARA_IPC_END_ENCODE                                                                      \
     }                                                                                           \
 };
@@ -463,7 +461,7 @@ template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<Stru
 template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<StructT>            \
 {                                               /* specialization for given struct */           \
     using StructType = StructT;                                                                 \
-    static inline bool decode (StructType& result, const ARAIPCMessageDecoder& decoder)         \
+    static inline bool decode (StructType& result, const ARAIPCMessageDecoder* decoder)         \
     {                                                                                           \
         bool success { true };
 #define ARA_IPC_BEGIN_DECODE_SIZED(StructT)                                                     \
@@ -506,22 +504,21 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
             ARA_IPC_UPDATE_STRUCT_SIZE_FOR_OPTIONAL (member);                                   \
         }
 #define ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER(member)                                         \
-        ARA_IPC_DECODE_ADDENDUM_MEMBER(member)                                                  \
+        ARA_IPC_DECODE_ADDENDUM_MEMBER (member)                                                 \
         else {                                                                                  \
             result.member = nullptr;                                                            \
         }
 #define ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR(member, OPTIONAL_UPDATE_MACRO)                       \
-        auto subDecoderRef_##member { decoder.methods->readSubMessage (decoder.ref, offsetof (StructType, member)) }; \
-        if (subDecoderRef_##member != nullptr) {                                                \
-            ARAIPCMessageDecoder subDecoder { subDecoderRef_##member, decoder.methods };        \
+        auto subDecoder_##member { decoder->readSubMessage (offsetof (StructType, member)) };   \
+        if (subDecoder_##member != nullptr) {                                                   \
             /* \todo the outer struct contains a pointer to the inner struct, so we need some */\
             /* place to store it - this static only works as long as this is single-threaded! */\
             static std::remove_const<std::remove_pointer<decltype (result.member)>::type>::type cache; \
-            success &= _ValueDecoder<decltype (cache)>::decode (cache, subDecoder);             \
+            success &= _ValueDecoder<decltype (cache)>::decode (cache, subDecoder_##member);    \
             ARA_INTERNAL_ASSERT (success);                                                      \
             result.member = &cache;                                                             \
             { OPTIONAL_UPDATE_MACRO }                                                           \
-            decoder.methods->destroyDecoder (subDecoderRef_##member);                           \
+            delete subDecoder_##member;                                                         \
         }                                                                                       \
         else {                                                                                  \
             result.member = nullptr;                                                            \
@@ -653,7 +650,7 @@ ARA_IPC_BEGIN_ENCODE (ARAPlaybackRegionProperties)
     ARA_IPC_ENCODE_MEMBER (durationInModificationTime)
     ARA_IPC_ENCODE_MEMBER (startInPlaybackTime)
     ARA_IPC_ENCODE_MEMBER (durationInPlaybackTime)
-    if (!ARA_IPC_HAS_ADDENDUM_MEMBER(regionSequenceRef))
+    if (!ARA_IPC_HAS_ADDENDUM_MEMBER (regionSequenceRef))
         ARA_IPC_ENCODE_MEMBER (musicalContextRef)
     ARA_IPC_ENCODE_ADDENDUM_MEMBER (regionSequenceRef)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER (name)
@@ -905,12 +902,12 @@ ARA_IPC_END_DECODE
 // actual definitions of wrapper functions to implicitly deduce _ValueEn-/Decoder<> -
 // they are forward-declared above, before _ValueEn-/Decoder<> are defined
 template <typename ValueT>
-inline void _encodeAndAppend (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const ValueT& argValue)
+inline void _encodeAndAppend (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const ValueT& argValue)
 {
     return _ValueEncoder<ValueT>::encodeAndAppend (encoder, argKey, argValue);
 }
 template <typename ValueT>
-inline bool _readAndDecode (ValueT& result, const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey)
+inline bool _readAndDecode (ValueT& result, const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey)
 {
     return _ValueDecoder<ValueT>::readAndDecode (result, decoder, argKey);
 }
@@ -931,39 +928,39 @@ struct _IsOptionalArgument<std::pair<ArgT, bool>>
 };
 
 // private helpers for encodeArguments() and decodeArguments() to deal with the variable arguments one at a time
-inline void _encodeArgumentsHelper (ARAIPCMessageEncoder& /*encoder*/, const ARAIPCMessageKey /*argKey*/)
+inline void _encodeArgumentsHelper (ARAIPCMessageEncoder* /*encoder*/, const ARAIPCMessageKey /*argKey*/)
 {
 }
 template<typename ArgT, typename... MoreArgs, typename std::enable_if<!_IsStructPointerArg<ArgT>::type::value, bool>::type = true>
-inline void _encodeArgumentsHelper (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const ArgT& argValue, const MoreArgs &... moreArgs)
+inline void _encodeArgumentsHelper (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const ArgT& argValue, const MoreArgs &... moreArgs)
 {
     _encodeAndAppend (encoder, argKey, argValue);
     _encodeArgumentsHelper (encoder, argKey + 1, moreArgs...);
 }
 template<typename ArgT, typename... MoreArgs, typename std::enable_if<_IsStructPointerArg<ArgT>::type::value, bool>::type = true>
-inline void _encodeArgumentsHelper (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const ArgT& argValue, const MoreArgs &... moreArgs)
+inline void _encodeArgumentsHelper (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const ArgT& argValue, const MoreArgs &... moreArgs)
 {
     if (argValue != nullptr)
         _encodeAndAppend (encoder, argKey, *argValue);
     _encodeArgumentsHelper (encoder, argKey + 1, moreArgs...);
 }
 template<typename... MoreArgs>
-inline void _encodeArgumentsHelper (ARAIPCMessageEncoder& encoder, const ARAIPCMessageKey argKey, const std::nullptr_t& /*argValue*/, const MoreArgs &... moreArgs)
+inline void _encodeArgumentsHelper (ARAIPCMessageEncoder* encoder, const ARAIPCMessageKey argKey, const std::nullptr_t& /*argValue*/, const MoreArgs &... moreArgs)
 {
     _encodeArgumentsHelper (encoder, argKey + 1, moreArgs...);
 }
 
-inline void _decodeArgumentsHelper (const ARAIPCMessageDecoder& /*decoder*/, const ARAIPCMessageKey /*argKey*/)
+inline void _decodeArgumentsHelper (const ARAIPCMessageDecoder* /*decoder*/, const ARAIPCMessageKey /*argKey*/)
 {
 }
 template<typename ArgT, typename... MoreArgs, typename std::enable_if<!_IsOptionalArgument<ArgT>::value, bool>::type = true>
-inline void _decodeArgumentsHelper (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
+inline void _decodeArgumentsHelper (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
 {
     _readAndDecode (argValue, decoder, argKey);
     _decodeArgumentsHelper (decoder, argKey + 1, moreArgs...);
 }
 template<typename ArgT, typename... MoreArgs, typename std::enable_if<_IsOptionalArgument<ArgT>::value, bool>::type = true>
-inline void _decodeArgumentsHelper (const ARAIPCMessageDecoder& decoder, const ARAIPCMessageKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
+inline void _decodeArgumentsHelper (const ARAIPCMessageDecoder* decoder, const ARAIPCMessageKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
 {
     argValue.second = _readAndDecode (argValue.first, decoder, argKey);
     _decodeArgumentsHelper (decoder, argKey + 1, moreArgs...);
@@ -1070,19 +1067,19 @@ constexpr auto kUninitializeARAMethodID { MethodID::createWithARASetupMethodID<6
 
 // caller side: create a message with the specified arguments
 template<typename... Args>
-inline void encodeArguments (ARAIPCMessageEncoder& encoder, const Args &... args)
+inline void encodeArguments (ARAIPCMessageEncoder* encoder, const Args &... args)
 {
     _encodeArgumentsHelper (encoder, 0, args...);
 }
 
 // caller side: decode the received reply to a sent message
 template<typename RetT, typename std::enable_if<!std::is_class<RetT>::value || !std::is_pod<RetT>::value, bool>::type = true>
-inline bool decodeReply (RetT& result, const ARAIPCMessageDecoder& decoder)
+inline bool decodeReply (RetT& result, const ARAIPCMessageDecoder* decoder)
 {
     return _readAndDecode (result, decoder, 0);
 }
 template<typename RetT, typename std::enable_if<std::is_class<RetT>::value && std::is_pod<RetT>::value, bool>::type = true>
-inline bool decodeReply (RetT& result, const ARAIPCMessageDecoder& decoder)
+inline bool decodeReply (RetT& result, const ARAIPCMessageDecoder* decoder)
 {
     return _ValueDecoder<RetT>::decode (result, decoder);
 }
@@ -1093,7 +1090,7 @@ template<typename... Args>
 inline void decodeArguments (const ARAIPCMessageDecoder* decoder, Args &... args)
 {
     ARA_INTERNAL_ASSERT (decoder != nullptr);
-    _decodeArgumentsHelper (*decoder, 0, args...);
+    _decodeArgumentsHelper (decoder, 0, args...);
 }
 
 // callee side: wrapper for optional method arguments: first is the argument value, second if it was present
@@ -1105,13 +1102,13 @@ template<typename ValueT, typename std::enable_if<!std::is_class<ValueT>::value 
 inline void encodeReply (ARAIPCMessageEncoder* encoder, const ValueT& value)
 {
     ARA_INTERNAL_ASSERT (encoder != nullptr);
-    _encodeAndAppend (*encoder, 0, value);
+    _encodeAndAppend (encoder, 0, value);
 }
 template<typename ValueT, typename std::enable_if<std::is_class<ValueT>::value && std::is_pod<ValueT>::value, bool>::type = true>
 inline void encodeReply (ARAIPCMessageEncoder* encoder, const ValueT& value)
 {
     ARA_INTERNAL_ASSERT (encoder != nullptr);
-    _ValueEncoder<ValueT>::encode (*encoder, value);
+    _ValueEncoder<ValueT>::encode (encoder, value);
 }
 
 
@@ -1121,7 +1118,7 @@ inline const char* _decodeMessageID (std::map<ARAIPCMessageID, std::string>& cac
     auto it { cache.find (messageID) };
     if (it == cache.end ())
         it = cache.emplace (messageID, std::string { interfaceName } + " method " + std::to_string (messageID >> 3)).first;
-    return it->second.c_str();
+    return it->second.c_str ();
 }
 inline const char* decodeHostMessageID (const ARAIPCMessageID messageID)
 {
@@ -1179,17 +1176,17 @@ public:
       _contentString { _findStringMember (type) }
     {}
 
-    const void* decode (const ARAIPCMessageDecoder& decoder)
+    const void* decode (const ARAIPCMessageDecoder* decoder)
     {
         (this->*_decoderFunction) (decoder);
         return &_eventStorage;
     }
 
 private:
-    using _DecoderFunction = void (ContentEventDecoder::*) (const ARAIPCMessageDecoder&);
+    using _DecoderFunction = void (ContentEventDecoder::*) (const ARAIPCMessageDecoder*);
 
     template<typename ContentT>
-    void _decodeContentEvent (const ARAIPCMessageDecoder& decoder)
+    void _decodeContentEvent (const ARAIPCMessageDecoder* decoder)
     {
         decodeReply (*reinterpret_cast<ContentT*> (&this->_eventStorage), decoder);
         if (this->_contentString != nullptr)
@@ -1269,50 +1266,50 @@ private:
 class RemoteCaller
 {
 public:
-    using CustomDecodeFunction = std::function<void (const ARAIPCMessageDecoder& decoder)>;
+    using CustomDecodeFunction = std::function<void (const ARAIPCMessageDecoder* decoder)>;
 
-    RemoteCaller (ARAIPCMessageSender sender) noexcept : _sender { sender } {}
+    RemoteCaller (ARAIPCMessageSender* sender) noexcept : _sender { sender } {}
 
     template<typename... Args>
     void remoteCall (const bool stackable, const MethodID methodID, const Args &... args)
     {
-        auto encoder { _sender.methods->createEncoder (_sender.ref) };
+        auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
-        _sender.methods->sendMessage (stackable, _sender.ref, methodID.getMessageID (), &encoder, nullptr, nullptr);
-        encoder.methods->destroyEncoder (encoder.ref);
+        _sender->sendMessage (stackable, methodID.getMessageID (), encoder, nullptr, nullptr);
+        delete encoder;
     }
 
     template<typename RetT, typename... Args>
     void remoteCall (RetT& result, const bool stackable, const MethodID methodID, const Args &... args)
     {
-        auto encoder { _sender.methods->createEncoder (_sender.ref) };
+        auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
-        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder decoder, void* userData) -> void
+        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
             {
-                ARA_INTERNAL_ASSERT (!decoder.methods->isEmpty (decoder.ref));
+                ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
-        _sender.methods->sendMessage (stackable, _sender.ref, methodID.getMessageID (), &encoder, &replyHandler, &result);
-        encoder.methods->destroyEncoder (encoder.ref);
+        _sender->sendMessage (stackable, methodID.getMessageID (), encoder, &replyHandler, &result);
+        delete encoder;
     }
     template<typename... Args>
     void remoteCall (CustomDecodeFunction& decodeFunction, const bool stackable, const MethodID methodID, const Args &... args)
     {
-        auto encoder { _sender.methods->createEncoder (_sender.ref) };
+        auto encoder { _sender->createEncoder () };
         encodeArguments (encoder, args...);
-        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder decoder, void* userData) -> void
+        ARAIPCReplyHandler replyHandler { [] (const ARAIPCMessageDecoder* decoder, void* userData) -> void
             {
-                ARA_INTERNAL_ASSERT (!decoder.methods->isEmpty (decoder.ref));
+                ARA_INTERNAL_ASSERT (!decoder->isEmpty ());
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
-        _sender.methods->sendMessage (stackable, _sender.ref, methodID.getMessageID (), &encoder, &replyHandler, &decodeFunction);
-        encoder.methods->destroyEncoder (encoder.ref);
+        _sender->sendMessage (stackable, methodID.getMessageID (), encoder, &replyHandler, &decodeFunction);
+        delete encoder;
     }
 
-    bool receiverEndianessMatches () { return _sender.methods->receiverEndianessMatches (_sender.ref); }
+    bool receiverEndianessMatches () { return _sender->receiverEndianessMatches (); }
 
 private:
-    ARAIPCMessageSender _sender;
+    ARAIPCMessageSender* _sender;
 };
 
 }   // namespace IPC

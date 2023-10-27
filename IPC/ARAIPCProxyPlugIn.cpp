@@ -188,7 +188,7 @@ ARA_MAP_HOST_REF (HostAudioReader, ARAAudioReaderHostRef)
 class DocumentController : public PlugIn::DocumentControllerInterface, protected RemoteCaller, public InstanceValidator<DocumentController>
 {
 public:
-    DocumentController (ARAIPCMessageSender sender, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept;
+    DocumentController (ARAIPCMessageSender * sender, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept;
 
 public:
     template <typename StructType>
@@ -325,7 +325,7 @@ ARA_MAP_HOST_REF (DocumentController, ARAAudioAccessControllerHostRef, ARAArchiv
 
 /*******************************************************************************/
 
-DocumentController::DocumentController (ARAIPCMessageSender sender, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept
+DocumentController::DocumentController (ARAIPCMessageSender * sender, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept
 : RemoteCaller { sender },
   _factory { factory },
   _hostAudioAccessController { instance },
@@ -467,7 +467,7 @@ bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostR
     ARA_VALIDATE_API_ARGUMENT (openAutomatically, openAutomatically != nullptr);
 
     bool success { false };
-    RemoteCaller::CustomDecodeFunction customDecode { [this, &success, &documentArchiveID, &openAutomatically] (const ARAIPCMessageDecoder& decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode { [this, &success, &documentArchiveID, &openAutomatically] (const ARAIPCMessageDecoder* decoder) -> void
         {
             StoreAudioSourceToAudioFileChunkReply reply;
             decodeReply (reply, decoder);
@@ -488,7 +488,7 @@ bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostR
                         break;
                     }
                 }
-                ARA_INTERNAL_ASSERT(*documentArchiveID != nullptr);
+                ARA_INTERNAL_ASSERT (*documentArchiveID != nullptr);
             }
 
             *openAutomatically = (reply.openAutomatically != kARAFalse);
@@ -915,7 +915,7 @@ const void* DocumentController::getContentReaderDataForEvent (ARAContentReaderRe
     ARA_VALIDATE_API_ARGUMENT (contentReader, isValidInstance (contentReader));
 
     const void* result {};
-    RemoteCaller::CustomDecodeFunction customDecode { [&result, &contentReader] (const ARAIPCMessageDecoder& decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode { [&result, &contentReader] (const ARAIPCMessageDecoder* decoder) -> void
         {
             result = contentReader->_decoder.decode (decoder);
         } };
@@ -978,7 +978,7 @@ const ARAProcessingAlgorithmProperties* DocumentController::getProcessingAlgorit
     ARA_LOG_HOST_ENTRY (this);
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
-    RemoteCaller::CustomDecodeFunction customDecode { [this] (const ARAIPCMessageDecoder& decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode { [this] (const ARAIPCMessageDecoder* decoder) -> void
         {
             ARAProcessingAlgorithmProperties reply;
             decodeReply (reply, decoder);
@@ -1035,7 +1035,7 @@ bool DocumentController::isLicensedForCapabilities (bool runModalActivationDialo
 class PlaybackRenderer : public PlugIn::PlaybackRendererInterface, protected RemoteCaller, public InstanceValidator<PlaybackRenderer>
 {
 public:
-    explicit PlaybackRenderer (ARAIPCMessageSender sender, ARAPlaybackRendererRef remoteRef) noexcept
+    explicit PlaybackRenderer (ARAIPCMessageSender* sender, ARAPlaybackRendererRef remoteRef) noexcept
     : RemoteCaller { sender },
       _remoteRef { remoteRef }
     {}
@@ -1069,7 +1069,7 @@ private:
 class EditorRenderer : public PlugIn::EditorRendererInterface, protected RemoteCaller, public InstanceValidator<EditorRenderer>
 {
 public:
-    explicit EditorRenderer (ARAIPCMessageSender sender, ARAEditorRendererRef remoteRef) noexcept
+    explicit EditorRenderer (ARAIPCMessageSender* sender, ARAEditorRendererRef remoteRef) noexcept
     : RemoteCaller { sender },
       _remoteRef { remoteRef }
     {}
@@ -1118,7 +1118,7 @@ private:
 class EditorView : public PlugIn::EditorViewInterface, protected RemoteCaller, public InstanceValidator<EditorView>
 {
 public:
-    explicit EditorView (ARAIPCMessageSender sender, ARAEditorViewRef remoteRef) noexcept
+    explicit EditorView (ARAIPCMessageSender* sender, ARAEditorViewRef remoteRef) noexcept
     : RemoteCaller { sender },
       _remoteRef { remoteRef }
     {}
@@ -1154,7 +1154,7 @@ private:
 class PlugInExtension : public PlugIn::PlugInExtensionInstance
 {
 public:
-    PlugInExtension (ARAIPCMessageSender sender, ARADocumentControllerRef documentControllerRef,
+    PlugInExtension (ARAIPCMessageSender* sender, ARADocumentControllerRef documentControllerRef,
                         ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles,
                         size_t remotePlugInExtensionRef) noexcept
     : PlugIn::PlugInExtensionInstance { (((knownRoles & kARAPlaybackRendererRole) == 0) || ((assignedRoles & kARAPlaybackRendererRole) != 0)) ?
@@ -1228,7 +1228,7 @@ using namespace ProxyPlugIn;
 /*******************************************************************************/
 
 
-size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCMessageSender hostCommandsSender)
+size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCMessageSender* hostCommandsSender)
 {
     size_t count;
     RemoteCaller { hostCommandsSender }.remoteCall (count, false, kGetFactoriesCountMethodID);
@@ -1236,14 +1236,14 @@ size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCMessageSender hostCommandsSende
     return count;
 }
 
-const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageSender hostCommandsSender, size_t index)
+const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageSender* hostCommandsSender, size_t index)
 {
     RemoteFactory remoteFactory;
-    RemoteCaller::CustomDecodeFunction customDecode { [&remoteFactory] (const ARAIPCMessageDecoder& decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode { [&remoteFactory] (const ARAIPCMessageDecoder* decoder) -> void
         {
             decodeReply (remoteFactory._factory, decoder);
 
-            ARA_VALIDATE_API_ARGUMENT(&remoteFactory._factory, remoteFactory._factory.highestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
+            ARA_VALIDATE_API_ARGUMENT (&remoteFactory._factory, remoteFactory._factory.highestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
 
             remoteFactory._strings.factoryID = remoteFactory._factory.factoryID;
             remoteFactory._factory.factoryID = remoteFactory._strings.factoryID.c_str ();
@@ -1299,14 +1299,14 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageSender hostCo
     return &result.first->second._factory;
 }
 
-void ARAIPCProxyPlugInInitializeARA (ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration)
+void ARAIPCProxyPlugInInitializeARA (ARAIPCMessageSender* hostCommandsSender, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration)
 {
     ARA_INTERNAL_ASSERT (desiredApiGeneration >= kARAAPIGeneration_2_0_Final);
     RemoteCaller { hostCommandsSender }.remoteCall (false, kInitializeARAMethodID, factoryID, desiredApiGeneration);
 }
 
 const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWithDocument (
-                                            ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID,
+                                            ARAIPCMessageSender* hostCommandsSender, const ARAPersistentID factoryID,
                                             const ARADocumentControllerHostInstance* hostInstance, const ARADocumentProperties* properties)
 {
     const auto cached { _factories.find (std::string { factoryID }) };
@@ -1318,15 +1318,15 @@ const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWi
     return result->getInstance ();
 }
 
-const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARAIPCPlugInInstanceRef remoteRef, ARAIPCMessageSender sender, ARADocumentControllerRef documentControllerRef,
+const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARAIPCPlugInInstanceRef remoteRef, ARAIPCMessageSender* sender, ARADocumentControllerRef documentControllerRef,
                                                                             ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
 {
     const auto remoteDocumentControllerRef { static_cast<DocumentController*> (PlugIn::fromRef (documentControllerRef))->getRemoteRef () };
 
     size_t remoteExtensionRef {};
-    RemoteCaller::CustomDecodeFunction customDecode { [&remoteExtensionRef] (const ARAIPCMessageDecoder& decoder) -> void
+    RemoteCaller::CustomDecodeFunction customDecode { [&remoteExtensionRef] (const ARAIPCMessageDecoder* decoder) -> void
         {
-            decoder.methods->readSize (decoder.ref, 0, &remoteExtensionRef);
+            decoder->readSize (0, &remoteExtensionRef);
         } };
     RemoteCaller { sender }.remoteCall (customDecode, false, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
 
@@ -1338,7 +1338,7 @@ void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInEx
     delete static_cast<const PlugInExtension*> (plugInExtensionInstance);
 }
 
-void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageSender hostCommandsSender, const ARAPersistentID factoryID)
+void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageSender* hostCommandsSender, const ARAPersistentID factoryID)
 {
     RemoteCaller { hostCommandsSender }.remoteCall (false, kUninitializeARAMethodID, factoryID);
 }

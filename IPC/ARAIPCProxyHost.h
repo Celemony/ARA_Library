@@ -35,7 +35,7 @@ extern "C" {
 void ARAIPCProxyHostAddFactory(const ARAFactory * factory);
 
 //! static configuration: set sender that the proxy host will use to perform callbacks received from the plug-in
-void ARAIPCProxyHostSetPlugInCallbacksSender(ARAIPCMessageSender plugInCallbacksSender);
+void ARAIPCProxyHostSetPlugInCallbacksSender(ARAIPCMessageSender * plugInCallbacksSender);
 
 //! static configuration: set the callback to execute the binding of Companion API plug-in instances to ARA document controllers
 void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);

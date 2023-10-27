@@ -75,340 +75,316 @@ CFStringRef ARA_CALL ARAIPCCFMessageGetEncodedKey (ARAIPCMessageKey argKey, bool
 
 
 
-inline ARAIPCMessageEncoderRef ARAIPCCFMessageToEncoderRef (CFMutableDictionaryRef dictionary)
+class ARAIPCCFMessageEncoder : public ARAIPCMessageEncoder
 {
-    return (ARAIPCMessageEncoderRef) dictionary;
-}
+public:
 
-inline CFMutableDictionaryRef ARAIPCCFMessageFromEncoderRef (ARAIPCMessageEncoderRef messageEncoderRef)
-{
-    return (CFMutableDictionaryRef) messageEncoderRef;
-}
+    ARAIPCCFMessageEncoder ()
+    : _dictionary { CFDictionaryCreateMutable (kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) }
+    {}
 
-void ARA_CALL ARAIPCCFMessageDestroyEncoder (ARAIPCMessageEncoderRef messageEncoderRef)
-{
-    if (messageEncoderRef)
-        CFRelease (ARAIPCCFMessageFromEncoderRef (messageEncoderRef));
-}
-
-void ARA_CALL ARAIPCCFMessageAppendInt32 (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, int32_t argValue)
-{
-    auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt32Type, &argValue) };
-    CFDictionarySetValue (ARAIPCCFMessageFromEncoderRef (messageEncoderRef), ARAIPCCFMessageGetEncodedKey (argKey), argObject);
-    CFRelease (argObject);
-}
-
-void ARA_CALL ARAIPCCFMessageAppendInt64 (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, int64_t argValue)
-{
-    auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt64Type, &argValue) };
-    CFDictionarySetValue (ARAIPCCFMessageFromEncoderRef (messageEncoderRef), ARAIPCCFMessageGetEncodedKey (argKey), argObject);
-    CFRelease (argObject);
-}
-
-void ARA_CALL ARAIPCCFMessageAppendSize (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, size_t argValue)
-{
-    static_assert (sizeof (SInt64) == sizeof (size_t), "integer type needs adjustment for this compiler setup");
-
-    auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt64Type, &argValue) };
-    CFDictionarySetValue (ARAIPCCFMessageFromEncoderRef (messageEncoderRef), ARAIPCCFMessageGetEncodedKey (argKey), argObject);
-    CFRelease (argObject);
-}
-
-void ARA_CALL ARAIPCCFMessageAppendFloat (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, float argValue)
-{
-    auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberFloatType, &argValue) };
-    CFDictionarySetValue (ARAIPCCFMessageFromEncoderRef (messageEncoderRef), ARAIPCCFMessageGetEncodedKey (argKey), argObject);
-    CFRelease (argObject);
-}
-
-void ARA_CALL ARAIPCCFMessageAppendDouble (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, double argValue)
-{
-    auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberDoubleType, &argValue) };
-    CFDictionarySetValue (ARAIPCCFMessageFromEncoderRef (messageEncoderRef), ARAIPCCFMessageGetEncodedKey (argKey), argObject);
-    CFRelease (argObject);
-}
-
-void ARA_CALL ARAIPCCFMessageAppendString (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, const char* argValue)
-{
-    auto argObject { CFStringCreateWithCString (kCFAllocatorDefault, argValue, kCFStringEncodingUTF8) };
-    CFDictionarySetValue (ARAIPCCFMessageFromEncoderRef (messageEncoderRef), ARAIPCCFMessageGetEncodedKey (argKey), argObject);
-    CFRelease (argObject);
-}
-
-void ARA_CALL ARAIPCCFMessageAppendBytes (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey, const uint8_t* argValue, size_t argSize, bool copy)
-{
-    CFDataRef argObject;
-    if (copy)
-        argObject = CFDataCreate (kCFAllocatorDefault, argValue, (CFIndex) argSize);
-    else
-        argObject = CFDataCreateWithBytesNoCopy (kCFAllocatorDefault, argValue, (CFIndex) argSize, kCFAllocatorNull);
-    CFDictionarySetValue (ARAIPCCFMessageFromEncoderRef (messageEncoderRef), ARAIPCCFMessageGetEncodedKey (argKey), argObject);
-    CFRelease (argObject);
-}
-
-ARAIPCMessageEncoderRef ARA_CALL ARAIPCCFMessageAppendSubMessage (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageKey argKey)
-{
-    auto argObject { CFDictionaryCreateMutable (kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
-    CFDictionarySetValue (ARAIPCCFMessageFromEncoderRef (messageEncoderRef), ARAIPCCFMessageGetEncodedKey (argKey), argObject);
-    return (ARAIPCMessageEncoderRef) argObject;
-}
-
-ARAIPCMessageEncoder ARAIPCCFCreateMessageEncoder (void)
-{
-    static const ARA::IPC::ARAIPCMessageEncoderInterface encoderMethods
+    ~ARAIPCCFMessageEncoder () override
     {
-        ARAIPCCFMessageDestroyEncoder,
-        ARAIPCCFMessageAppendInt32,
-        ARAIPCCFMessageAppendInt64,
-        ARAIPCCFMessageAppendSize,
-        ARAIPCCFMessageAppendFloat,
-        ARAIPCCFMessageAppendDouble,
-        ARAIPCCFMessageAppendString,
-        ARAIPCCFMessageAppendBytes,
-        ARAIPCCFMessageAppendSubMessage
-    };
+        CFRelease (_dictionary);
+    }
 
-    return { ARAIPCCFMessageToEncoderRef (CFDictionaryCreateMutable (kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks)), &encoderMethods };
-}
+    void appendInt32 (ARAIPCMessageKey argKey, int32_t argValue) override
+    {
+        auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt32Type, &argValue) };
+        CFDictionarySetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey), argObject);
+        CFRelease (argObject);
+    }
 
-__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionary (ARAIPCMessageEncoderRef messageEncoderRef)
+    void appendInt64 (ARAIPCMessageKey argKey, int64_t argValue) override
+    {
+        auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt64Type, &argValue) };
+        CFDictionarySetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey), argObject);
+        CFRelease (argObject);
+    }
+
+    void appendSize (ARAIPCMessageKey argKey, size_t argValue) override
+    {
+        static_assert (sizeof (SInt64) == sizeof (size_t), "integer type needs adjustment for this compiler setup");
+
+        auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt64Type, &argValue) };
+        CFDictionarySetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey), argObject);
+        CFRelease (argObject);
+    }
+
+    void appendFloat (ARAIPCMessageKey argKey, float argValue) override
+    {
+        auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberFloatType, &argValue) };
+        CFDictionarySetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey), argObject);
+        CFRelease (argObject);
+    }
+
+    void appendDouble (ARAIPCMessageKey argKey, double argValue) override
+    {
+        auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberDoubleType, &argValue) };
+        CFDictionarySetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey), argObject);
+        CFRelease (argObject);
+    }
+
+    void appendString (ARAIPCMessageKey argKey, const char * argValue) override
+    {
+        auto argObject { CFStringCreateWithCString (kCFAllocatorDefault, argValue, kCFStringEncodingUTF8) };
+        CFDictionarySetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey), argObject);
+        CFRelease (argObject);
+    }
+
+    void appendBytes (ARAIPCMessageKey argKey, const uint8_t * argValue, size_t argSize, bool copy) override
+    {
+        CFDataRef argObject;
+        if (copy)
+            argObject = CFDataCreate (kCFAllocatorDefault, argValue, (CFIndex) argSize);
+        else
+            argObject = CFDataCreateWithBytesNoCopy (kCFAllocatorDefault, argValue, (CFIndex) argSize, kCFAllocatorNull);
+        CFDictionarySetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey), argObject);
+        CFRelease (argObject);
+    }
+
+    ARAIPCMessageEncoder* appendSubMessage (ARAIPCMessageKey argKey) override
+    {
+        auto argObject = new ARAIPCCFMessageEncoder {};
+        CFDictionarySetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey), argObject->_dictionary);
+        return argObject;
+    }
+
+    __attribute__((cf_returns_retained)) CFMutableDictionaryRef copyDictionary () const
+    {
+        CFRetain (_dictionary);
+        return _dictionary;
+    }
+
+    __attribute__((cf_returns_retained)) CFDataRef createMessageEncoderData ()  const
+    {
+        if (CFDictionaryGetCount (_dictionary) == 0)
+            return nullptr;
+        return CFPropertyListCreateData (kCFAllocatorDefault, _dictionary, kCFPropertyListBinaryFormat_v1_0, 0, nullptr);
+    }
+
+private:
+    CFMutableDictionaryRef const _dictionary;
+};
+
+
+ARAIPCMessageEncoder* ARAIPCCFCreateMessageEncoder (void)
 {
-    const auto dictionary { ARAIPCCFMessageFromEncoderRef (messageEncoderRef) };
-    ARA_INTERNAL_ASSERT (dictionary);
-    CFRetain (dictionary);
-    return dictionary;
+    return new ARAIPCCFMessageEncoder {};
 }
 
-__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (ARAIPCMessageEncoderRef messageEncoderRef, ARAIPCMessageID messageIDValue)
+__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionary (ARAIPCMessageEncoder* encoder)
+{
+    return static_cast<ARAIPCCFMessageEncoder*> (encoder)->copyDictionary ();
+}
+
+__attribute__((cf_returns_retained)) CFDictionaryRef ARAIPCCFCopyMessageEncoderDictionaryAddingMessageID (ARAIPCMessageEncoder* encoder, ARAIPCMessageID messageID)
 {
     static_assert (std::is_same<ARAIPCMessageID, SInt32>::value, "encoding needs to be adopted here if key type is changed");
-    auto messageIDObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt32Type, &messageIDValue) };
-    auto dictionary { ARAIPCCFMessageFromEncoderRef (messageEncoderRef) };
-    ARA_INTERNAL_ASSERT (dictionary);
+
+    auto messageIDObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberSInt32Type, &messageID) };
+    const auto dictionary { static_cast<ARAIPCCFMessageEncoder*> (encoder)->copyDictionary () };
     CFDictionarySetValue (dictionary, ARAIPCCFMessageGetEncodedKey (messageIDKey, true), messageIDObject);
     CFRelease (messageIDObject);
-    CFRetain (dictionary);
     return dictionary;
 }
 
-__attribute__((cf_returns_retained)) CFDataRef ARAIPCCFCreateMessageEncoderData (ARAIPCMessageEncoderRef messageEncoderRef)
+__attribute__((cf_returns_retained)) CFDataRef ARAIPCCFCreateMessageEncoderData (ARAIPCMessageEncoder* encoder)
 {
-    const auto dictionary { ARAIPCCFMessageFromEncoderRef (messageEncoderRef) };
-    if ((!dictionary) || (CFDictionaryGetCount (dictionary) == 0))
-        return nullptr;
-    return CFPropertyListCreateData (kCFAllocatorDefault, dictionary, kCFPropertyListBinaryFormat_v1_0, 0, nullptr);
+    return static_cast<ARAIPCCFMessageEncoder*> (encoder)->createMessageEncoderData ();
 }
 
 
 
-inline ARAIPCMessageDecoderRef ARAIPCCFMessageToDecoderRef (CFDictionaryRef dictionary)
+class ARAIPCCFMessageDecoder : public ARAIPCMessageDecoder
 {
-    return (ARAIPCMessageDecoderRef) dictionary;
-}
+public:
 
-inline CFDictionaryRef ARAIPCCFMessageFromDecoderRef (ARAIPCMessageDecoderRef messageDecoderRef)
-{
-    return (CFDictionaryRef) messageDecoderRef;
-}
-
-void ARA_CALL ARAIPCCFMessageDestroyDecoder (ARAIPCMessageDecoderRef messageDecoderRef)
-{
-    if (messageDecoderRef)
-        CFRelease (ARAIPCCFMessageFromDecoderRef (messageDecoderRef));
-}
-
-bool ARA_CALL ARAIPCCFMessageIsEmpty (ARAIPCMessageDecoderRef messageDecoderRef)
-{
-    return (!messageDecoderRef) || (CFDictionaryGetCount (ARAIPCCFMessageFromDecoderRef (messageDecoderRef)) == 0);
-}
-
-bool ARA_CALL ARAIPCCFMessageReadInt32 (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, int32_t* argValue)
-{
-    CFNumberRef number {};
-    if (messageDecoderRef)
-        number = (CFNumberRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey));
-    if (!number)
+    explicit ARAIPCCFMessageDecoder (CFDictionaryRef dictionary, bool retain)
+    : _dictionary { dictionary }
     {
-        *argValue = 0;
-        return false;
+        if (dictionary && retain)
+            CFRetain (dictionary);
     }
-    ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
-    CFNumberGetValue (number, kCFNumberSInt32Type, argValue);
-    return true;
-}
 
-bool ARA_CALL ARAIPCCFMessageReadInt64 (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, int64_t* argValue)
-{
-    CFNumberRef number {};
-    if (messageDecoderRef)
-        number = (CFNumberRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey));
-    if (!number)
+    ~ARAIPCCFMessageDecoder () override
     {
-        *argValue = 0;
-        return false;
+        if (_dictionary)
+            CFRelease (_dictionary);
     }
-    ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
-    CFNumberGetValue (number, kCFNumberSInt64Type, argValue);
-    return true;
-}
 
-bool ARA_CALL ARAIPCCFMessageReadSize (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, size_t* argValue)
-{
-    static_assert (sizeof (SInt64) == sizeof (size_t), "integer type needs adjustment for this compiler setup");
-
-    CFNumberRef number {};
-    if (messageDecoderRef)
-        number = (CFNumberRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey));
-    if (!number)
+    bool isEmpty () const override
     {
-        *argValue = 0;
-        return false;
+        return (!_dictionary) || (CFDictionaryGetCount (_dictionary) == 0);
     }
-    ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
-    CFNumberGetValue (number, kCFNumberSInt64Type, argValue);
-    return true;
-}
 
-bool ARA_CALL ARAIPCCFMessageReadFloat (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, float* argValue)
-{
-    CFNumberRef number {};
-    if (messageDecoderRef)
-        number = (CFNumberRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey));
-    if (!number)
+    bool readInt32 (ARAIPCMessageKey argKey, int32_t* argValue) const override
     {
-        *argValue = 0.0f;
-        return false;
+        return readInt32 ((_dictionary) ? ARAIPCCFMessageGetEncodedKey (argKey) : nullptr, argValue);
     }
-    ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
-    CFNumberGetValue (number, kCFNumberFloatType, argValue);
-    return true;
-}
 
-bool ARA_CALL ARAIPCCFMessageReadDouble (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, double* argValue)
-{
-    CFNumberRef number {};
-    if (messageDecoderRef)
-        number = (CFNumberRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey));
-    if (!number)
+    bool readInt32 (CFStringRef encodedKey, int32_t* argValue) const
     {
-        *argValue = 0.0;
-        return false;
+        CFNumberRef number {};
+        if (_dictionary)
+            number = (CFNumberRef) CFDictionaryGetValue (_dictionary, encodedKey);
+        if (!number)
+        {
+            *argValue = 0;
+            return false;
+        }
+        ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
+        CFNumberGetValue (number, kCFNumberSInt32Type, argValue);
+        return true;
     }
-    ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
-    CFNumberGetValue (number, kCFNumberDoubleType, argValue);
-    return true;
-}
 
-bool ARA_CALL ARAIPCCFMessageReadString (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, const char** argValue)
-{
-    CFStringRef string {};
-    if (messageDecoderRef)
-        string = (CFStringRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey));
-    if (!string)
+    bool readInt64 (ARAIPCMessageKey argKey, int64_t* argValue) const override
     {
-        *argValue = nullptr;
-        return false;
+        CFNumberRef number {};
+        if (_dictionary)
+            number = (CFNumberRef) CFDictionaryGetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey));
+        if (!number)
+        {
+            *argValue = 0;
+            return false;
+        }
+        ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
+        CFNumberGetValue (number, kCFNumberSInt64Type, argValue);
+        return true;
     }
-    ARA_INTERNAL_ASSERT (string && (CFGetTypeID (string) == CFStringGetTypeID ()));
-    *argValue = CFStringGetCStringPtr (string, kCFStringEncodingUTF8);
-    if (!*argValue)         // CFStringGetCStringPtr() may fail e.g. with chord names like "G/D"
+
+    bool readSize (ARAIPCMessageKey argKey, size_t* argValue) const override
     {
-        const auto length { CFStringGetLength (string) };
-        std::string temp;   // \todo does not work: { static_cast<size_t> (length), char { 0 } };
-        temp.assign ( static_cast<size_t> (length) , char { 0 } );
-        CFIndex ARA_MAYBE_UNUSED_VAR (count) { CFStringGetBytes (string, CFRangeMake (0, length), kCFStringEncodingUTF8, 0, false, (UInt8*)(&temp[0]), length, nullptr) };
-        ARA_INTERNAL_ASSERT (count == length);
-        static std::set<std::string> strings;   // \todo static cache of "undecodeable" strings requires single-threaded use - maybe make iVar instead?
-        strings.insert (temp);
-        *argValue = strings.find (temp)->c_str ();
+        static_assert (sizeof (SInt64) == sizeof (size_t), "integer type needs adjustment for this compiler setup");
+
+        CFNumberRef number {};
+        if (_dictionary)
+            number = (CFNumberRef) CFDictionaryGetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey));
+        if (!number)
+        {
+            *argValue = 0;
+            return false;
+        }
+        ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
+        CFNumberGetValue (number, kCFNumberSInt64Type, argValue);
+        return true;
     }
-    return true;
-}
 
-bool ARA_CALL ARAIPCCFMessageReadBytesSize (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, size_t* argSize)
-{
-    CFDataRef bytes {};
-    if (messageDecoderRef)
-        bytes = (CFDataRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey));
-    if (!bytes)
+    bool readFloat (ARAIPCMessageKey argKey, float* argValue) const override
     {
-        *argSize = 0;
-        return false;
+        CFNumberRef number {};
+        if (_dictionary)
+            number = (CFNumberRef) CFDictionaryGetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey));
+        if (!number)
+        {
+            *argValue = 0.0f;
+            return false;
+        }
+        ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
+        CFNumberGetValue (number, kCFNumberFloatType, argValue);
+        return true;
     }
-    ARA_INTERNAL_ASSERT (bytes && (CFGetTypeID (bytes) == CFDataGetTypeID ()));
-    *argSize = (size_t) CFDataGetLength (bytes);
-    return true;
 
-}
-
-void ARA_CALL ARAIPCCFMessageReadBytes (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey, uint8_t* argValue)
-{
-    ARA_INTERNAL_ASSERT (messageDecoderRef);
-    auto bytes { (CFDataRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey)) };
-    ARA_INTERNAL_ASSERT (bytes && (CFGetTypeID (bytes) == CFDataGetTypeID ()));
-    const auto length { CFDataGetLength (bytes) };
-    CFDataGetBytes (bytes, CFRangeMake (0, length), argValue);
-}
-
-ARAIPCMessageDecoderRef ARA_CALL ARAIPCCFMessageReadSubMessage (ARAIPCMessageDecoderRef messageDecoderRef, ARAIPCMessageKey argKey)
-{
-    auto dictionary { (CFDictionaryRef) CFDictionaryGetValue (ARAIPCCFMessageFromDecoderRef (messageDecoderRef), ARAIPCCFMessageGetEncodedKey (argKey)) };
-    ARA_INTERNAL_ASSERT (!dictionary || (CFGetTypeID (dictionary) == CFDictionaryGetTypeID ()));
-    if (dictionary)
-        CFRetain (dictionary);
-    return ARAIPCCFMessageToDecoderRef (dictionary);
-}
-
-ARAIPCMessageDecoder ARAIPCCFCreateMessageDecoderWithRetainedDictionary (CFDictionaryRef __attribute__((cf_consumed)) messageDictionary)
-{
-    static const ARA::IPC::ARAIPCMessageDecoderInterface decoderMethods
+    bool readDouble (ARAIPCMessageKey argKey, double* argValue) const override
     {
-        ARAIPCCFMessageDestroyDecoder,
-        ARAIPCCFMessageIsEmpty,
-        ARAIPCCFMessageReadInt32,
-        ARAIPCCFMessageReadInt64,
-        ARAIPCCFMessageReadSize,
-        ARAIPCCFMessageReadFloat,
-        ARAIPCCFMessageReadDouble,
-        ARAIPCCFMessageReadString,
-        ARAIPCCFMessageReadBytesSize,
-        ARAIPCCFMessageReadBytes,
-        ARAIPCCFMessageReadSubMessage
-    };
+        CFNumberRef number {};
+        if (_dictionary)
+            number = (CFNumberRef) CFDictionaryGetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey));
+        if (!number)
+        {
+            *argValue = 0.0;
+            return false;
+        }
+        ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
+        CFNumberGetValue (number, kCFNumberDoubleType, argValue);
+        return true;
+    }
 
-    return { ARAIPCCFMessageToDecoderRef (messageDictionary), &decoderMethods };
+    bool readString (ARAIPCMessageKey argKey, const char ** argValue) const override
+    {
+        CFStringRef string {};
+        if (_dictionary)
+            string = (CFStringRef) CFDictionaryGetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey));
+        if (!string)
+        {
+            *argValue = nullptr;
+            return false;
+        }
+        ARA_INTERNAL_ASSERT (string && (CFGetTypeID (string) == CFStringGetTypeID ()));
+        *argValue = CFStringGetCStringPtr (string, kCFStringEncodingUTF8);
+        if (!*argValue)         // CFStringGetCStringPtr() may fail e.g. with chord names like "G/D"
+        {
+            const auto length { CFStringGetLength (string) };
+            std::string temp;   // \todo does not work: { static_cast<size_t> (length), char { 0 } };
+            temp.assign ( static_cast<size_t> (length) , char { 0 } );
+            CFIndex ARA_MAYBE_UNUSED_VAR (count) { CFStringGetBytes (string, CFRangeMake (0, length), kCFStringEncodingUTF8, 0, false, (UInt8*)(&temp[0]), length, nullptr) };
+            ARA_INTERNAL_ASSERT (count == length);
+            static std::set<std::string> strings;   // \todo static cache of "undecodeable" strings requires single-threaded use - maybe make iVar instead?
+            strings.insert (temp);
+            *argValue = strings.find (temp)->c_str ();
+        }
+        return true;
+    }
+
+    bool readBytesSize (ARAIPCMessageKey argKey, size_t* argSize) const override
+    {
+        CFDataRef bytes {};
+        if (_dictionary)
+            bytes = (CFDataRef) CFDictionaryGetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey));
+        if (!bytes)
+        {
+            *argSize = 0;
+            return false;
+        }
+        ARA_INTERNAL_ASSERT (bytes && (CFGetTypeID (bytes) == CFDataGetTypeID ()));
+        *argSize = (size_t) CFDataGetLength (bytes);
+        return true;
+    }
+
+    void readBytes (ARAIPCMessageKey argKey, uint8_t* argValue) const override
+    {
+        ARA_INTERNAL_ASSERT (_dictionary);
+        auto bytes { (CFDataRef) CFDictionaryGetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey)) };
+        ARA_INTERNAL_ASSERT (bytes && (CFGetTypeID (bytes) == CFDataGetTypeID ()));
+        const auto length { CFDataGetLength (bytes) };
+        CFDataGetBytes (bytes, CFRangeMake (0, length), argValue);
+    }
+
+    ARAIPCMessageDecoder* readSubMessage (ARAIPCMessageKey argKey) const override
+    {
+        auto dictionary { (CFDictionaryRef) CFDictionaryGetValue (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey)) };
+        ARA_INTERNAL_ASSERT (!dictionary || (CFGetTypeID (dictionary) == CFDictionaryGetTypeID ()));
+        if (dictionary == nullptr)
+            return nullptr;
+        return new ARAIPCCFMessageDecoder { dictionary, true };
+    }
+
+private:
+    CFDictionaryRef const _dictionary;
+};
+
+ARAIPCMessageDecoder* ARAIPCCFCreateMessageDecoderWithDictionary (CFDictionaryRef dictionary)
+{
+    return new ARAIPCCFMessageDecoder { dictionary, true };
 }
 
-ARAIPCMessageDecoder ARAIPCCFCreateMessageDecoderWithDictionary (CFDictionaryRef messageDictionary)
+ARAIPCMessageID ARAIPCCFGetMessageIDFromDictionary (ARAIPCMessageDecoder* decoder)
 {
-    if (messageDictionary)
-        CFRetain (messageDictionary);
-
-    return ARAIPCCFCreateMessageDecoderWithRetainedDictionary (messageDictionary);
-}
-
-ARAIPCMessageID ARAIPCCFGetMessageIDFromDictionary (ARAIPCMessageDecoderRef messageDecoderRef)
-{
-    const auto dictionary { ARAIPCCFMessageFromDecoderRef (messageDecoderRef) };
-    ARA_INTERNAL_ASSERT (dictionary != nullptr);
-    const auto number { (CFNumberRef) CFDictionaryGetValue (dictionary, ARAIPCCFMessageGetEncodedKey (messageIDKey, true)) };
-    ARA_INTERNAL_ASSERT (number != nullptr);
-    ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
     static_assert (std::is_same<ARAIPCMessageID, SInt32>::value, "decoding needs to be adopted here if key type is changed");
     ARAIPCMessageID result;
-    CFNumberGetValue (number, kCFNumberSInt32Type, &result);
+    bool success { static_cast<ARAIPCCFMessageDecoder*>(decoder)->readInt32 (ARAIPCCFMessageGetEncodedKey (messageIDKey, true), &result) };
+    ARA_INTERNAL_ASSERT (success);
     return result;
 }
 
-ARAIPCMessageDecoder ARAIPCCFCreateMessageDecoder (CFDataRef messageData)
+ARAIPCMessageDecoder* ARAIPCCFCreateMessageDecoder (CFDataRef messageData)
 {
     if (CFDataGetLength (messageData) == 0)
-        return ARAIPCCFCreateMessageDecoderWithRetainedDictionary (nullptr);
+        return new ARAIPCCFMessageDecoder { nullptr, false };
 
     auto dictionary { (CFDictionaryRef) CFPropertyListCreateWithData (kCFAllocatorDefault, messageData, kCFPropertyListImmutable, nullptr, nullptr) };
     ARA_INTERNAL_ASSERT (dictionary && (CFGetTypeID (dictionary) == CFDictionaryGetTypeID ()));
-    auto result { ARAIPCCFCreateMessageDecoderWithRetainedDictionary (dictionary) };
-    return result;
+    return new ARAIPCCFMessageDecoder { dictionary, false };
 }
 
 
