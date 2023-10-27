@@ -319,8 +319,8 @@ struct ContentLogger
     }
 };
 
-#endif // ARA_ENABLE_DEBUG_OUTPUT
-
 }   // namespace ARA
+
+#endif // ARA_ENABLE_DEBUG_OUTPUT
 
 #endif // ARAContentLogger_h
