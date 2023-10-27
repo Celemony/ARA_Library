@@ -183,6 +183,8 @@ if(APPLE)
         "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCAudioUnit_v3.mm"
         "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCCFEncoding.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCCFEncoding.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCMultiThreadedChannel.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCMultiThreadedChannel.cpp"
     )
     target_link_libraries(ARA_IPC_Library PRIVATE
         "-framework Cocoa"
