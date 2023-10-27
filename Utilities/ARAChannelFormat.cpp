@@ -87,7 +87,7 @@ bool ChannelFormat::operator== (const ChannelFormat& other) const noexcept
     return (0 == std::memcmp (_channelArrangement, other._channelArrangement, size));
 }
 
-ARASize ChannelFormat::getChannelArrangementDataSize (const ARAChannelCount /*channelCount*/,
+ARASize ChannelFormat::getChannelArrangementDataSize (const ARAChannelCount channelCount,
                                                       const ARAChannelArrangementDataType channelArrangementDataType,
                                                       const void* const channelArrangement) noexcept
 {
@@ -120,6 +120,19 @@ ARASize ChannelFormat::getChannelArrangementDataSize (const ARAChannelCount /*ch
         case kARAChannelArrangementAAXStemFormat:
         {
             return sizeof (uint32_t);
+        }
+        case kARAChannelArrangementCLAPChannelMap:
+        {
+            return static_cast<ARASize> (channelCount) * sizeof (uint8_t);
+        }
+        case kARAChannelArrangementCLAPAmbisonicInfo:
+        {
+            // copied from ambisonic.h to avoid dependency on CLAP SDK in this library
+            typedef struct clap_ambisonic_info {
+               uint32_t ordering;
+               uint32_t normalization;
+            } clap_ambisonic_info_t;
+            return sizeof (clap_ambisonic_info_t);
         }
         default:
         {
@@ -168,6 +181,11 @@ ARAChannelCount ChannelFormat::_getImpliedChannelCount (const ARAChannelArrangem
             const auto stemFormat { *static_cast<const uint32_t*> (channelArrangement) };
             // copied from AAX_STEM_FORMAT_CHANNEL_COUNT() to avoid dependency on AAX SDK in this library
             return static_cast<uint16_t> (stemFormat & 0xFFFF);
+        }
+        case kARAChannelArrangementCLAPChannelMap:
+        case kARAChannelArrangementCLAPAmbisonicInfo:
+        {
+            return 0;   // in CLAP, the format information does not encode the channel count
         }
         default:
         {
