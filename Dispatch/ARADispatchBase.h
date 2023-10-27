@@ -5,7 +5,7 @@
 //!             Typically, this file is not included directly - either ARAHostDispatch.h or
 //!             ARAPlugInDispatch.h will be used instead.
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2022, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2023, Celemony Software GmbH, All Rights Reserved.
 //!             Developed in cooperation with PreSonus Software Ltd.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.

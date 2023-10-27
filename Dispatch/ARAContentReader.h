@@ -2,7 +2,7 @@
 //! \file       ARAContentReader.h
 //!             content reading utility classes
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2018-2022, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2018-2023, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at

@@ -1,6 +1,6 @@
 # ARA Audio Random Access: Implementation Library
 
-Copyright (c) 2012-2022, [Celemony Software GmbH](https://www.celemony.com), All Rights Reserved.
+Copyright (c) 2012-2023, [Celemony Software GmbH](https://www.celemony.com), All Rights Reserved.
 Published under the Apache 2.0 license.
 
 The ARA_Library Git repository contains an extensive set of C++ classes and utility functions to ease
