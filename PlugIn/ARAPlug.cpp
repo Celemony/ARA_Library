@@ -18,7 +18,7 @@
 
 #include "ARAPlug.h"
 
-#include "ARA_Library/Utilities/ARAChannelArrangement.h"
+#include "ARA_Library/Utilities/ARAChannelFormat.h"
 
 #include <sstream>
 
@@ -526,9 +526,9 @@ void AudioSource::updateProperties (PropertiesPtr<ARAAudioSourceProperties> prop
     _merits64BitSamples = (properties->merits64BitSamples != kARAFalse);
 
     if (properties.implements<ARA_STRUCT_MEMBER (ARAAudioSourceProperties, channelArrangement)> ())
-        doUpdateChannelArrangement (ChannelArrangement { properties->channelArrangementDataType, properties->channelArrangement });
+        doUpdateChannelArrangement (ChannelFormat { _channelCount, properties->channelArrangementDataType, properties->channelArrangement });
     else
-        doUpdateChannelArrangement (ChannelArrangement {});
+        doUpdateChannelArrangement (ChannelFormat {});
 }
 
 /*******************************************************************************/
@@ -1428,8 +1428,8 @@ void DocumentController::_validateAudioSourceChannelArrangement (PropertiesPtr<A
     if (properties.implements<ARA_STRUCT_MEMBER (ARAAudioSourceProperties, channelArrangement)> ())
     {
         ARA_VALIDATE_API_ARGUMENT (properties,
-                                   (ChannelArrangement { properties->channelArrangementDataType, properties->channelArrangement }
-                                    .isValidForChannelCount (properties->channelCount)));
+                                   (ChannelFormat { properties->channelCount, properties->channelArrangementDataType, properties->channelArrangement }
+                                    .isValid ()));
     }
     else
     {

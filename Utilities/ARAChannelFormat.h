@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//! \file       ARAChannelArrangement.h
+//! \file       ARAChannelFormat.h
 //!             utility class dealing with the Companion-API-dependent surround channel arrangements
 //! \project    ARA SDK Library
 //! \copyright  Copyright (c) 2021-2022, Celemony Software GmbH, All Rights Reserved.
@@ -27,20 +27,27 @@ namespace ARA {
 //! @{
 
 //! Helper class to parse the opaque, Companion-API-dependent channel arrangement information.
-class ChannelArrangement
+class ChannelFormat
 {
 public:
     //! Construct either as default, undefined format, or construct with explicit data.
-    ChannelArrangement ()
-    : ChannelArrangement { kARAChannelArrangementUndefined, nullptr } {}
+    ChannelFormat ()
+    : ChannelFormat { 0, kARAChannelArrangementUndefined, nullptr } {}
 
-    ChannelArrangement (const ARAChannelArrangementDataType channelArrangementDataType,
-                        const void* const channelArrangement)
-    : _channelArrangementDataType { channelArrangementDataType }, _channelArrangement { channelArrangement } {}
+    ChannelFormat (const ARAChannelCount channelCount,
+                   const ARAChannelArrangementDataType channelArrangementDataType,
+                   const void* const channelArrangement)
+    : _channelCount {channelCount },
+      _channelArrangementDataType { channelArrangementDataType },
+      _channelArrangement { channelArrangement }
+    {}
 
     //! Equality tests.
-    bool operator== (const ChannelArrangement& other) const noexcept;
-    bool operator!= (const ChannelArrangement& other) const noexcept { return !(*this == other); }
+    bool operator== (const ChannelFormat& other) const noexcept;
+    bool operator!= (const ChannelFormat& other) const noexcept { return !(*this == other); }
+
+    //! Returns the channel count.
+    ARAChannelCount getChannelCount () const noexcept { return _channelCount; }
 
     //! Returns the channel arrangement data type.
     ARAChannelArrangementDataType getChannelArrangementDataType () const noexcept { return _channelArrangementDataType; }
@@ -51,14 +58,17 @@ public:
     //! Returns the size of the opaque channel arrangement data.
     ARASize getDataSize () const noexcept;
 
-    //! Returns the channel count encoded in the channel arrangement data.
-    //! May return 0 if the arrangement data does not imply a certain channel count.
-    ARAChannelCount getImpliedChannelCount () const noexcept;
-
     //! Validation helper for use at API boundary.
-    bool isValidForChannelCount (ARAChannelCount requiredChannelCount) const noexcept;
-    
+    bool isValid () const noexcept;
+
 private:
+    // Returns the channel count encoded in the channel arrangement data.
+    // May return 0 if the arrangement data does not imply a certain channel count.
+    static ARAChannelCount _getImpliedChannelCount (const ARAChannelArrangementDataType channelArrangementDataType,
+                                                    const void* const channelArrangement) noexcept;
+
+private:
+    const ARAChannelCount _channelCount;
     const ARAChannelArrangementDataType _channelArrangementDataType;
     const void* const _channelArrangement;
 };

@@ -28,7 +28,7 @@
 
 #include "ARA_Library/Debug/ARADebug.h"
 #include "ARA_Library/Dispatch/ARAContentReader.h"
-#include "ARA_Library/Utilities/ARAChannelArrangement.h"
+#include "ARA_Library/Utilities/ARAChannelFormat.h"
 
 #include <algorithm>
 #include <functional>
@@ -588,7 +588,7 @@ ARA_IPC_BEGIN_ENCODE (ARAAudioSourceProperties)
         //       this means the caller would need to copy the incoming data for mutation -
         //       maybe it would be better to move receiverEndianessMatches () from the sending side to
         //       the receiving side? We need to review how such a change would affect audio readers etc.
-        const ChannelArrangement channelArrangement { value.channelArrangementDataType, value.channelArrangement };
+        const ChannelFormat channelArrangement { value.channelCount, value.channelArrangementDataType, value.channelArrangement };
         const auto size { channelArrangement.getDataSize () };
         if (size > 0)
         {

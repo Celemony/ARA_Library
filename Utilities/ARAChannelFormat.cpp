@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//! \file       ARAChannelArrangement.cpp
+//! \file       ARAChannelFormat.cpp
 //!             utility class dealing with the Companion-API-dependent surround channel arrangements
 //! \project    ARA SDK Library
 //! \copyright  Copyright (c) 2021-2022, Celemony Software GmbH, All Rights Reserved.
@@ -16,7 +16,7 @@
 //!             limitations under the License.
 //------------------------------------------------------------------------------
 
-#include "ARAChannelArrangement.h"
+#include "ARAChannelFormat.h"
 
 #include "ARA_Library/Debug/ARADebug.h"
 
@@ -33,21 +33,23 @@
 
 namespace ARA {
 
-bool ChannelArrangement::operator== (const ChannelArrangement& other) const noexcept
+bool ChannelFormat::operator== (const ChannelFormat& other) const noexcept
 {
+    if (_channelCount != other._channelCount)
+        return false;
+
     if (_channelArrangementDataType != other._channelArrangementDataType)
         return false;
 
     if (_channelArrangement == other._channelArrangement)
         return true;
 
-    if (getDataSize () != other.getDataSize ())
-        return false;
-
+    ARA_INTERNAL_ASSERT (getDataSize () == other.getDataSize ());   // data size only depends on _channelCount and _channelArrangementDataType,
+                                                                    // which are both compared above
     return (0 == std::memcmp (_channelArrangement, other._channelArrangement, getDataSize ()));
 }
 
-ARASize ChannelArrangement::getDataSize () const noexcept
+ARASize ChannelFormat::getDataSize () const noexcept
 {
     switch (_channelArrangementDataType)
     {
@@ -82,9 +84,10 @@ ARASize ChannelArrangement::getDataSize () const noexcept
     }
 }
 
-ARAChannelCount ChannelArrangement::getImpliedChannelCount () const noexcept
+ARAChannelCount ChannelFormat::_getImpliedChannelCount (const ARAChannelArrangementDataType channelArrangementDataType,
+                                                        const void* const channelArrangement) noexcept
 {
-    switch (_channelArrangementDataType)
+    switch (channelArrangementDataType)
     {
         case kARAChannelArrangementUndefined:
         {
@@ -93,7 +96,7 @@ ARAChannelCount ChannelArrangement::getImpliedChannelCount () const noexcept
         case kARAChannelArrangementVST3SpeakerArrangement:
         {
             // copied from Steinberg::Vst::SpeakerArr::getChannelCount () to avoid dependency on VST3 SDK in this library
-            auto speakerArrangement { *static_cast<const uint64_t*> (_channelArrangement) };
+            auto speakerArrangement { *static_cast<const uint64_t*> (channelArrangement) };
             ARAChannelCount arrangementChannelCount { 0 };
             while (speakerArrangement)
             {
@@ -106,7 +109,7 @@ ARAChannelCount ChannelArrangement::getImpliedChannelCount () const noexcept
         case kARAChannelArrangementCoreAudioChannelLayout:
         {
 #if defined (__APPLE__)
-            const auto audioChannelLayout { static_cast<const AudioChannelLayout*> (_channelArrangement) };
+            const auto audioChannelLayout { static_cast<const AudioChannelLayout*> (channelArrangement) };
             const auto layoutChannelCount { (audioChannelLayout->mChannelLayoutTag == kAudioChannelLayoutTag_UseChannelDescriptions) ?
                                                     audioChannelLayout->mNumberChannelDescriptions :
                                                     AudioChannelLayoutTag_GetNumberOfChannels (audioChannelLayout->mChannelLayoutTag) };
@@ -117,7 +120,7 @@ ARAChannelCount ChannelArrangement::getImpliedChannelCount () const noexcept
         }
         case kARAChannelArrangementAAXStemFormat:
         {
-            const auto stemFormat { *static_cast<const uint32_t*> (_channelArrangement) };
+            const auto stemFormat { *static_cast<const uint32_t*> (channelArrangement) };
             // copied from AAX_STEM_FORMAT_CHANNEL_COUNT() to avoid dependency on AAX SDK in this library
             return static_cast<uint16_t> (stemFormat & 0xFFFF);
         }
@@ -129,7 +132,7 @@ ARAChannelCount ChannelArrangement::getImpliedChannelCount () const noexcept
     }
 }
 
-bool ChannelArrangement::isValidForChannelCount (ARAChannelCount requiredChannelCount) const noexcept
+bool ChannelFormat::isValid () const noexcept
 {
     if (_channelArrangementDataType == kARAChannelArrangementUndefined)
     {
@@ -138,7 +141,7 @@ bool ChannelArrangement::isValidForChannelCount (ARAChannelCount requiredChannel
             return false;
 
         // for more than stereo, a valid arrangement must be provided
-        if (requiredChannelCount > 2)
+        if (_channelCount > 2)
             return false;
     }
     else
@@ -146,9 +149,9 @@ bool ChannelArrangement::isValidForChannelCount (ARAChannelCount requiredChannel
         if (_channelArrangement == nullptr)
             return false;
 
-        const auto impliedChannelCount { getImpliedChannelCount () };
+        const auto impliedChannelCount { _getImpliedChannelCount (_channelArrangementDataType, _channelArrangement) };
         if ((impliedChannelCount != 0) &&
-            (impliedChannelCount != requiredChannelCount))
+            (impliedChannelCount != _channelCount))
             return false;
 
         if (_channelArrangementDataType == kARAChannelArrangementCoreAudioChannelLayout)
@@ -160,7 +163,7 @@ bool ChannelArrangement::isValidForChannelCount (ARAChannelCount requiredChannel
                 return false;
             // kAudioChannelLayoutTag_UseChannelDescriptions requires a description for each channel
             if (audioChannelLayout->mChannelLayoutTag == kAudioChannelLayoutTag_UseChannelDescriptions)
-                return audioChannelLayout->mNumberChannelDescriptions == static_cast<UInt32> (requiredChannelCount);
+                return audioChannelLayout->mNumberChannelDescriptions == static_cast<UInt32> (_channelCount);
             else
                 return audioChannelLayout->mNumberChannelDescriptions == 0;
 #else
