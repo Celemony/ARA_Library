@@ -106,7 +106,7 @@ extern "C"
 #elif defined(__GNUC__)
     #define ARA_MAYBE_UNUSED_VAR(var) var __attribute__((unused))
 #elif defined(_MSC_VER)
-    #define ARA_MAYBE_UNUSED_VAR(var) var(0); (false ? (void)var : (void)false)
+    #define ARA_MAYBE_UNUSED_VAR(var) var; (false ? (void)var : (void)false)
 #else
     #define ARA_MAYBE_UNUSED_VAR(var) var; (void)var
 #endif
