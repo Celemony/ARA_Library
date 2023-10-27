@@ -31,6 +31,7 @@
     #error "configuration mismatch: enabling ARA_AUDIOUNITV3_IPC_IS_AVAILABLE requires enabling ARA_ENABLE_IPC too"
 #endif
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 #include <utility>
@@ -465,11 +466,15 @@ protected:
         const auto message { [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:true] forKey:_transactionLockKey] };
         const auto reply { _sendMessage (message) };
         ARA_INTERNAL_ASSERT ([reply objectForKey:_transactionLockKey] != nil);
-        return [(NSNumber *) [reply objectForKey:_transactionLockKey] boolValue];
+        const auto result { [(NSNumber *) [reply objectForKey:_transactionLockKey] boolValue] };
+        if (result)
+            std::atomic_thread_fence (std::memory_order_acquire);
+        return result;
     }
 
     void _unlockTransaction () override
     {
+        std::atomic_thread_fence (std::memory_order_release);
         const auto message { [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:false] forKey:_transactionLockKey] };
         const auto reply { _sendMessage (message) };
         ARA_INTERNAL_ASSERT ([reply objectForKey:_transactionLockKey] != nil);
