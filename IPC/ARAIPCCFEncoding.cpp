@@ -336,6 +336,11 @@ public:
         return new ARAIPCCFMessageDecoder { dictionary, true };
     }
 
+    bool hasDataForKey (ARAIPCMessageKey argKey) const override
+    {
+        return CFDictionaryContainsKey (_dictionary, ARAIPCCFMessageGetEncodedKey (argKey));
+    }
+
 private:
     CFDictionaryRef const _dictionary;
 };

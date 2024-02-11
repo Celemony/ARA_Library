@@ -34,8 +34,9 @@
     #include <dispatch/dispatch.h>
 #endif
 
-#include <atomic>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 
 #if defined(__cplusplus)
@@ -81,8 +82,18 @@ public:
 //! @{
 class ARAIPCMessageChannel
 {
+public:     // needs to be public for thread-local variables (which cannot be class members)
+#if defined (_WIN32)
+    using ThreadRef = int32_t;
+#elif defined (__APPLE__)
+    using ThreadRef = size_t;
+#else
+    #error "not yet implemented on this platform"
+#endif
+    static constexpr ThreadRef _invalidThread { 0 };
+
 public:
-    virtual ~ARAIPCMessageChannel ();
+    virtual ~ARAIPCMessageChannel () = default;
 
     //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
     //! decoder will be nullptr if incoming message was empty
@@ -112,51 +123,47 @@ protected:
     //! takes ownership of the decoder and will eventually delete it
     void routeReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder);
 
-    //! implemented by subclasses to lock the channel for starting a new transaction
-    virtual void lockTransaction () = 0;
-
-    //! implemented by subclasses to unlock the channel after concluding a transaction
-    virtual void unlockTransaction () = 0;
-
     //! implemented by subclasses to perform the actual message (or reply) sending
     virtual void _sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder) = 0;
 
-    //! called by routeReceivedMessage () when a message comes in while some
-    //! thread is already sending (or receiving) on the channel
-    //! the default implementation sets a signal unless on the same thread
-    //! can be overridden by subclasses if the constraints of the underlying
-    //! IPC API require further interaction
-    //! passes the thread that is currently sending
-    virtual void _signalReceivedMessage (std::thread::id activeThread);
+    //! implemented by subclasses for IPC APIs that require spinning a receive
+    //! loop on some thread(s) to indicate that the thread cannot be blocked
+    //! while waiting for messages
+    virtual bool runsReceiveLoopOnCurrentThread () { return false; }
 
-    //! called by a sending (active) thread when waiting for a reply (or incoming call)
-    //! the default implementation waits for the signal from _signalReceivedMessage ()
-    //! unless on the same thread
-    //! can be overridden by subclasses if the constraints of the underlying
-    //! IPC API require further interaction (such as spinning a runloop)
-    virtual void _waitForReceivedMessage ();
+    //! implemented by subclasses for IPC APIs that require spinning a receive
+    //! loop on some thread(s) in order to run the loop until a message was received
+    //! and routed/handled
+    virtual void loopUntilMessageReceived () {}
 
 private:
     void _handleReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder);
+    void _handleReply (const ARAIPCMessageDecoder* decoder, ReplyHandler replyHandler, void* replyHandlerUserData);
+
+    static ThreadRef _getCurrentThread ();
 
 #if defined (_WIN32)
     friend void APCRouteNewTransactionFunc (ULONG_PTR parameter);
 #endif
 
+    struct RoutedMessage
+    {
+        ARAIPCMessageID _messageID { 0 };
+        const ARAIPCMessageDecoder* _decoder { nullptr };
+        ThreadRef _targetThread { _invalidThread };
+    };
+
+    RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
+
 private:
     ARAIPCMessageHandler* const _handler;
 
-    std::atomic<std::thread::id> _sendingThread {}; // if != {}, a currently sending thread is waiting for a reply (or stacked callback)
+    std::mutex _lock;
 
-    // incoming data is stored in these ivars by the receive handler if a send loop is currently
-    // waiting to pick it up - if that send is on a different thread, the semaphore must be used
-    ARAIPCMessageID _receivedMessageID { 0 };
-    const ARAIPCMessageDecoder* _receivedDecoder { nullptr };
-#if defined (_WIN32)
-    HANDLE const _receivedMessageSemaphore;
-#elif defined (__APPLE__)
-    dispatch_semaphore_t const _receivedMessageSemaphore;
-#endif
+    // incoming data is stored in _routedMessages by the receive handler for the
+    // sending threads waiting to pick it up (signaled via _routeReceiveCondition)
+    std::condition_variable _routeReceiveCondition;
+    std::vector<RoutedMessage> _routedMessages;
 };
 //! @}
 

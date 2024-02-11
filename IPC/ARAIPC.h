@@ -136,6 +136,9 @@ public:
     //! returns nullptr if key not found or if the value for the key is not representing a sub-message
     //! The caller is responsible for deleting the encoder after use.
     virtual ARAIPCMessageDecoder* readSubMessage (ARAIPCMessageKey argKey) const = 0;
+
+    //! test whether a given argument is present in the message
+    virtual bool hasDataForKey (ARAIPCMessageKey argKey) const = 0;
 };
 #else
 typedef struct ARAIPCMessageDecoder ARAIPCMessageDecoder;

@@ -49,7 +49,6 @@ API_AVAILABLE_BEGIN(macos(13.0))
 
 // key for transaction locking through the IPC channel
 constexpr NSString * _messageIDKey { @"msgID" };
-constexpr NSString * _transactionLockKey { @"transactionLock" };
 
 
 // message channel base class for both proxy implementations
@@ -76,9 +75,7 @@ public:
     void routeReceivedMessage (NSDictionary * _Nonnull message)
     {
         const ARAIPCMessageID messageID { [(NSNumber *) [message objectForKey:_messageIDKey] intValue] };
-        ARAIPCMessageDecoder* decoder {};
-        if ([message count] > 1)
-            decoder = ARAIPCCFCreateMessageDecoderWithDictionary ((__bridge CFDictionaryRef) message);
+        ARAIPCMessageDecoder* decoder { ARAIPCCFCreateMessageDecoderWithDictionary ((__bridge CFDictionaryRef) message) };
         ARAIPCMessageChannel::routeReceivedMessage (messageID, decoder);
     }
 
@@ -91,7 +88,7 @@ public:
 #endif
         [message setObject:[NSNumber numberWithInt: messageID] forKey:_messageIDKey];
         const auto reply { _sendMessage (message) };
-        ARA_INTERNAL_ASSERT (([reply count] == 0) || (([reply count] == 1) && [message objectForKey:_transactionLockKey]));
+        ARA_INTERNAL_ASSERT ([reply count] == 0);
 #if !__has_feature(objc_arc)
         [message release];
 #endif
@@ -117,16 +114,8 @@ public:
     ARAIPCAUHostMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel,
                                 AUAudioUnit * _Nullable audioUnit)
     : ARAIPCAUMessageChannel { audioUnitChannel, this },
-      _audioUnit { audioUnit },
-      _sendLock { dispatch_semaphore_create (1) }
+      _audioUnit { audioUnit }
     {}
-
-#if !__has_feature(objc_arc)
-    ~ARAIPCAUHostMessageChannel () override
-    {
-        dispatch_release (_sendLock);
-    }
-#endif
 
     AUAudioUnit * _Nullable getAudioUnit ()
     {
@@ -138,9 +127,7 @@ protected:
     {
         if (const auto callHostBlock { getAudioUnitChannel ().callHostBlock })
         {
-            dispatch_semaphore_wait (_sendLock, DISPATCH_TIME_FOREVER);
             NSDictionary * reply { callHostBlock (message) };
-            dispatch_semaphore_signal (_sendLock);
             return reply;
         }
         else
@@ -150,38 +137,8 @@ protected:
         }
     }
 
-public:
-    void lockTransaction () override
-    {
-        const auto message { [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:true] forKey:_transactionLockKey] };
-        while (true)
-        {
-            const auto reply { _sendMessage (message) };
-            ARA_INTERNAL_ASSERT ([reply count] == 1);
-            ARA_INTERNAL_ASSERT ([reply objectForKey:_transactionLockKey] != nil);
-            if ([(NSNumber *) [reply objectForKey:_transactionLockKey] boolValue])
-                break;
-
-            // \todo in order to avoid this busy-wait, the other side would need to send us some "lock available" message
-            //       upon unlock whenever a lock request was rejected - this thread could wait via some signal then retry...
-            std::this_thread::sleep_for (std::chrono::microseconds { 100 });
-        }
-        std::atomic_thread_fence (std::memory_order_acquire);
-    }
-
-    void unlockTransaction () override
-    {
-        std::atomic_thread_fence (std::memory_order_release);
-        const auto message { [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:false] forKey:_transactionLockKey] };
-        const auto reply { _sendMessage (message) };
-        ARA_INTERNAL_ASSERT ([reply count] == 1);
-        ARA_INTERNAL_ASSERT ([reply objectForKey:_transactionLockKey] != nil);
-        ARA_INTERNAL_ASSERT ([(NSNumber *) [reply objectForKey:_transactionLockKey] boolValue]);
-    }
-
 private:
     AUAudioUnit * __unsafe_unretained _Nullable _audioUnit;
-    dispatch_semaphore_t _sendLock;     // needed because we're injecting messages from any thread in order to access the transaction lock
 };
 
 
@@ -190,22 +147,11 @@ class ARAIPCAUPlugInMessageChannel : public ARAIPCAUMessageChannel, public ARAIP
 {
 public:
     ARAIPCAUPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
-    : ARAIPCAUMessageChannel { audioUnitChannel, this },
-      _transactionLock { dispatch_semaphore_create (1) }
+    : ARAIPCAUMessageChannel { audioUnitChannel, this }
     {
         getAudioUnitChannel ().callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
             {
-                if (const auto transactionLockRequest { (NSNumber *) [message objectForKey:_transactionLockKey] })
-                {
-                    bool result { true };
-                    if ([transactionLockRequest boolValue])
-                        result = (dispatch_semaphore_wait (_transactionLock, DISPATCH_TIME_NOW) == 0);
-                    else
-                        dispatch_semaphore_signal (_transactionLock);
-                    return [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:result] forKey:_transactionLockKey];
-                }
-
                 routeReceivedMessage (message);
                 return [NSDictionary dictionary];   // \todo it would yield better performance if the callHostBlock would allow nil as return value
             };
@@ -214,9 +160,6 @@ public:
     ~ARAIPCAUPlugInMessageChannel () override
     {
         getAudioUnitChannel ().callHostBlock = nil;
-#if !__has_feature(objc_arc)
-        dispatch_release (_transactionLock);
-#endif
     }
 
 protected:
@@ -225,21 +168,6 @@ protected:
         const auto reply { [getAudioUnitChannel () callAudioUnit:message] };
         return reply;
     }
-
-public:
-    void lockTransaction () override
-    {
-        const auto ARA_MAYBE_UNUSED_VAR (result) { dispatch_semaphore_wait (_transactionLock, DISPATCH_TIME_FOREVER) };
-        ARA_INTERNAL_ASSERT (result == 0);
-    }
-
-    void unlockTransaction () override
-    {
-        dispatch_semaphore_signal (_transactionLock);
-    }
-
-private:
-    dispatch_semaphore_t _transactionLock;
 };
 
 
