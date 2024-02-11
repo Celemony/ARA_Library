@@ -308,7 +308,7 @@ void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageD
     _remoteTargetThread = remoteTargetThread;
 
     auto replyEncoder { createEncoder () };
-    _handler->handleReceivedMessage (this, messageID, decoder, replyEncoder);
+    _handler->handleReceivedMessage (messageID, decoder, replyEncoder);
     delete decoder;
 
     if (remoteTargetThread != _invalidThread)

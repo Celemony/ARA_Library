@@ -40,8 +40,7 @@ public:
 
     DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
 
-    void handleReceivedMessage (MessageChannel* messageChannel,
-                                const MessageID messageID, const MessageDecoder* const decoder,
+    void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                 MessageEncoder* const replyEncoder) override;
 };
 #endif

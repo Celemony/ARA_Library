@@ -1369,8 +1369,7 @@ MessageHandler::DispatchTarget ProxyPlugInMessageHandler::getDispatchTargetForIn
     return nullptr;
 }
 
-void ProxyPlugInMessageHandler::handleReceivedMessage (MessageChannel* /*messageChannel*/,
-                                                       const MessageID messageID, const MessageDecoder* const decoder,
+void ProxyPlugInMessageHandler::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                                        MessageEncoder* const replyEncoder)
 {
 //  ARA_LOG ("ProxyPlugInMessageHandler handles message %s", decodeHostMessageID (messageID));

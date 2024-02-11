@@ -71,8 +71,7 @@ public:
 
     //! IPC channels will call this method from their receive handler
     //! after filtering replies and routing to the correct thread.
-    virtual void handleReceivedMessage (MessageChannel* messageChannel,
-                                        const MessageID messageID, const MessageDecoder* const decoder,
+    virtual void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                         MessageEncoder* const replyEncoder) = 0;
 };
 
