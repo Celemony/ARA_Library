@@ -19,7 +19,12 @@
 #ifndef ARAIPCProxyPlugIn_h
 #define ARAIPCProxyPlugIn_h
 
+#if defined(__cplusplus)
 #include "ARA_Library/IPC/ARAIPCMessageChannel.h"
+#else
+#include "ARA_Library/IPC/ARAIPC.h"
+#endif
+
 
 #if ARA_ENABLE_IPC
 
