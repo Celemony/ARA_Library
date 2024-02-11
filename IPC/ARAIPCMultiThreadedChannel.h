@@ -124,8 +124,23 @@ protected:
     //! implemented by subclasses to unlock the channel after concluding a transaction
     virtual void unlockTransaction () = 0;
 
-    // implemented by subclasses to perform the actual message (or reply) sending
+    //! implemented by subclasses to perform the actual message (or reply) sending
     virtual void _sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder) = 0;
+
+    //! called by routeReceivedMessage () when a message comes in while some
+    //! thread is already sending (or receiving) on the channel
+    //! the default implementation sets a signal unless on the same thread
+    //! can be overridden by subclasses if the constraints of the underlying
+    //! IPC API require further interaction
+    //! passes the thread that is currently sending
+    virtual void _signalReceivedMessage (std::thread::id activeThread);
+
+    //! called by a sending (active) thread when waiting for a reply (or incoming call)
+    //! the default implementation waits for the signal from _signalReceivedMessage ()
+    //! unless on the same thread
+    //! can be overridden by subclasses if the constraints of the underlying
+    //! IPC API require further interaction (such as spinning a runloop)
+    virtual void _waitForReceivedMessage ();
 
 private:
     void _handleReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder);
@@ -138,7 +153,16 @@ private:
     ARAIPCMessageHandler* const _handler;
 
     std::atomic<std::thread::id> _sendingThread {}; // if != {}, a currently sending thread is waiting for a reply (or stacked callback)
-    class SendThreadBridge* _sendThreadBridge;      // in that case, this bridge transfers the incoming data from the receive to the send thread
+
+    // incoming data is stored in these ivars by the receive handler if a send loop is currently
+    // waiting to pick it up - if that send is on a different thread, the semaphore must be used
+    ARAIPCMessageID _receivedMessageID { 0 };
+    const ARAIPCMessageDecoder* _receivedDecoder { nullptr };
+#if defined (_WIN32)
+    HANDLE const _receivedMessageSemaphore;
+#elif defined (__APPLE__)
+    dispatch_semaphore_t const _receivedMessageSemaphore;
+#endif
 };
 
 //! @} ARA_Library_IPC

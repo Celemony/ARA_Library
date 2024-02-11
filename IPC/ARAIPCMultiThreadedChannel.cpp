@@ -122,69 +122,6 @@ namespace ARA {
 namespace IPC {
 
 
-// simple thread bridge to move a single incoming message from a receiving to a sending thread
-class SendThreadBridge
-{
-public:
-    SendThreadBridge ()
-#if defined (_WIN32)
-    : _semaphore { ::CreateSemaphoreA (nullptr, 0, LONG_MAX, nullptr) }
-#elif defined (__APPLE__)
-    : _semaphore { dispatch_semaphore_create (0) }
-#endif
-    {
-        ARA_INTERNAL_ASSERT (_semaphore != nullptr);
-    }
-
-    ~SendThreadBridge ()
-    {
-#if defined (_WIN32)
-        ::CloseHandle (_semaphore);
-#elif defined (__APPLE__)
-    #if !__has_feature(objc_arc)
-        dispatch_release (_semaphore);
-    #endif
-#endif
-    }
-
-    // called on receive thread
-    void pushReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
-    {
-        _messageID = messageID;
-        _decoder = decoder;
-        std::atomic_thread_fence (std::memory_order_release);
-#if defined (_WIN32)
-        ::ReleaseSemaphore (_semaphore, 1, nullptr);
-#elif defined (__APPLE__)
-        dispatch_semaphore_signal (_semaphore);
-#endif
-    }
-
-    // called on send thread
-    void pullReceivedMessage (ARAIPCMessageID& messageID, const ARAIPCMessageDecoder*& decoder)
-    {
-#if defined (_WIN32)
-        const auto waitResult { ::WaitForSingleObject (_semaphore, INFINITE) };
-        ARA_INTERNAL_ASSERT (waitResult == WAIT_OBJECT_0);
-#elif defined (__APPLE__)
-        dispatch_semaphore_wait (_semaphore, DISPATCH_TIME_FOREVER);
-#endif
-        std::atomic_thread_fence (std::memory_order_acquire);
-        messageID = _messageID;
-        decoder = _decoder;
-    }
-
-private:
-#if defined (_WIN32)
-    HANDLE _semaphore;
-#elif defined (__APPLE__)
-    dispatch_semaphore_t _semaphore;
-#endif
-    ARAIPCMessageID _messageID { 0 };
-    const ARAIPCMessageDecoder* _decoder { nullptr };
-};
-
-
 // plug-in side implementation of ARAIPCMessageHandler
 
 #if defined (_WIN32)
@@ -274,12 +211,44 @@ thread_local bool _isReceivingOnThisThread { false };   // actually a "static" m
 
 MultiThreadedChannel::MultiThreadedChannel (ARAIPCMessageHandler* handler)
 : _handler { handler },
-  _sendThreadBridge { new SendThreadBridge }
-{}
+#if defined (_WIN32)
+  _receivedMessageSemaphore { ::CreateSemaphoreA (nullptr, 0, LONG_MAX, nullptr) }
+#elif defined (__APPLE__)
+  _receivedMessageSemaphore { dispatch_semaphore_create (0) }
+#endif
+{
+    ARA_INTERNAL_ASSERT (_receivedMessageSemaphore != nullptr);
+}
 
 MultiThreadedChannel::~MultiThreadedChannel ()
 {
-    delete _sendThreadBridge;
+    ARA_INTERNAL_ASSERT (_sendingThread.load (std::memory_order_acquire) == std::thread::id {});
+#if defined (_WIN32)
+    ::CloseHandle (_receivedMessageSemaphore);
+#elif defined (__APPLE__) && !__has_feature(objc_arc)
+    dispatch_release (_receivedMessageSemaphore);
+#endif
+}
+
+void MultiThreadedChannel::_signalReceivedMessage (std::thread::id /*activeThread*/)
+{
+    std::atomic_thread_fence (std::memory_order_release);
+#if defined (_WIN32)
+    ::ReleaseSemaphore (_receivedMessageSemaphore, 1, nullptr);
+#elif defined (__APPLE__)
+    dispatch_semaphore_signal (_receivedMessageSemaphore);
+#endif
+}
+
+void MultiThreadedChannel::_waitForReceivedMessage ()
+{
+#if defined (_WIN32)
+    const auto waitResult { ::WaitForSingleObject (_receivedMessageSemaphore, INFINITE) };
+    ARA_INTERNAL_ASSERT (waitResult == WAIT_OBJECT_0);
+#elif defined (__APPLE__)
+    dispatch_semaphore_wait (_receivedMessageSemaphore, DISPATCH_TIME_FOREVER);
+#endif
+    std::atomic_thread_fence (std::memory_order_acquire);
 }
 
 void MultiThreadedChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
@@ -301,20 +270,18 @@ void MultiThreadedChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessage
     bool didReceiveReply { false };
     do
     {
-        ARAIPCMessageID receivedMessageID;
-        const ARAIPCMessageDecoder* receivedDecoder;
-        _sendThreadBridge->pullReceivedMessage (receivedMessageID, receivedDecoder);
-        if (receivedMessageID != 0)
+        _waitForReceivedMessage ();
+        if (_receivedMessageID != 0)
         {
-            _handleReceivedMessage (receivedMessageID, receivedDecoder);    // will also delete decoder
+            _handleReceivedMessage (_receivedMessageID, _receivedDecoder);  // will also delete decoder
         }
         else
         {
             if (replyHandler)
-                (replyHandler) (receivedDecoder, replyHandlerUserData);
+                (replyHandler) (_receivedDecoder, replyHandlerUserData);
             else
-                ARA_INTERNAL_ASSERT (!receivedDecoder);                     // replies should be empty when not handled (i.e. void)
-            delete receivedDecoder;
+                ARA_INTERNAL_ASSERT (!_receivedDecoder);                    // replies should be empty when not handled (i.e. void)
+            delete _receivedDecoder;
             didReceiveReply = true;
         }
     }
@@ -346,13 +313,16 @@ void APCRouteNewTransactionFunc (ULONG_PTR parameter)
 
 void MultiThreadedChannel::routeReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
 {
-    if (_sendingThread.load (std::memory_order_acquire) != std::thread::id {})
+    const auto sendingThread { _sendingThread.load (std::memory_order_acquire) };
+    if (sendingThread != std::thread::id {})
     {
         if (messageID != 0)
             ARA_IPC_LOG ("dispatches received message with ID %i to sending thread", messageID);
         else
             ARA_IPC_LOG ("dispatches received reply to sending thread", messageID);
-        _sendThreadBridge->pushReceivedMessage (messageID, decoder);
+        _receivedMessageID = messageID;
+        _receivedDecoder = decoder;
+        _signalReceivedMessage (sendingThread);
     }
     else
     {
