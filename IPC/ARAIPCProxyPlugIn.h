@@ -21,6 +21,7 @@
 
 #if defined(__cplusplus)
 #include "ARA_Library/IPC/ARAIPCMessageChannel.h"
+#include "ARA_Library/IPC/ARAIPCEncoding.h"
 #else
 #include "ARA_Library/IPC/ARAIPC.h"
 #endif
@@ -38,10 +39,10 @@ namespace IPC {
 extern "C" {
 
 //! host side implementation of MessageHandler
-class ProxyPlugInMessageHandler : public MessageHandler
+class ProxyPlugIn : public MessageHandler, protected RemoteCaller
 {
 public:
-    using MessageHandler::MessageHandler;
+    using RemoteCaller::RemoteCaller;
 
     DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
 
@@ -52,18 +53,18 @@ public:
 
 
 //! counts the factories available through the given message channel
-size_t ARAIPCProxyPlugInGetFactoriesCount(ARAIPCMessageChannelRef messageChannelRef);
+size_t ARAIPCProxyPlugInGetFactoriesCount(ARAIPCConnectionRef connectionRef);
 
 //! get a static copy of the remote factory data, with all function calls removed
 //! index must be smaller than the result of ARAIPCProxyPlugInGetFactoriesCount()
-const ARAFactory * ARAIPCProxyPlugInGetFactoryAtIndex(ARAIPCMessageChannelRef messageChannelRef, size_t index);
+const ARAFactory * ARAIPCProxyPlugInGetFactoryAtIndex(ARAIPCConnectionRef connectionRef, size_t index);
 
 //! proxy initialization call, to be used instead of ARAFactory.initializeARAWithConfiguration()
 // \todo we're currently not supporting propagating ARA assertions through IPC...
-void ARAIPCProxyPlugInInitializeARA(ARAIPCMessageChannelRef messageChannelRef, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration);
+void ARAIPCProxyPlugInInitializeARA(ARAIPCConnectionRef connectionRef, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration);
 
 //! proxy document controller creation call, to be used instead of ARAFactory.createDocumentControllerWithDocument()
-const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCMessageChannelRef messageChannelRef,
+const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCConnectionRef connectionRef,
                                                                                             const ARAPersistentID factoryID,
                                                                                             const ARADocumentControllerHostInstance * hostInstance,
                                                                                             const ARADocumentProperties * properties);
@@ -76,7 +77,7 @@ const ARAPlugInExtensionInstance * ARAIPCProxyPlugInBindToDocumentController(ARA
 void ARAIPCProxyPlugInCleanupBinding(const ARAPlugInExtensionInstance * plugInExtension);
 
 //! proxy uninitialization call, to be used instead of ARAFactory.uninitializeARA()
-void ARAIPCProxyPlugInUninitializeARA(ARAIPCMessageChannelRef messageChannelRef, const ARAPersistentID factoryID);
+void ARAIPCProxyPlugInUninitializeARA(ARAIPCConnectionRef connectionRef, const ARAPersistentID factoryID);
 
 
 #if defined(__cplusplus)

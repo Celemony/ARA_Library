@@ -60,12 +60,17 @@ extern "C" {
 
 //! IPC reference markup type identifier. \br\br
 //! Examples:                           \br
-//! ::ARAIPCPlugInInstanceRef           \br
+//! ::ARAARAIPCConnectionRef            \br
 //! ::ARAIPCMessageChannelRef           \br
+//! ::ARAIPCPlugInInstanceRef           \br
 #define ARA_IPC_REF(IPCRefType) struct IPCRefType##MarkupType * IPCRefType
 
 
-//! C-compatible wrapper of MessageChannel
+//! C-compatible wrapper of ARA IPC Connection
+typedef ARA_IPC_REF(ARAIPCConnectionRef);
+
+
+//! C-compatible wrapper of ARA IPC MessageChannel
 typedef ARA_IPC_REF(ARAIPCMessageChannelRef);
 
 

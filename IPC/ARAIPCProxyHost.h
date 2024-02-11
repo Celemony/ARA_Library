@@ -19,7 +19,12 @@
 #ifndef ARAIPCProxyHost_h
 #define ARAIPCProxyHost_h
 
+#if defined(__cplusplus)
 #include "ARA_Library/IPC/ARAIPCMessageChannel.h"
+#include "ARA_Library/IPC/ARAIPCEncoding.h"
+#else
+#include "ARA_Library/IPC/ARAIPC.h"
+#endif
 
 #if ARA_ENABLE_IPC
 
@@ -33,18 +38,16 @@ namespace IPC {
 extern "C" {
 
 //! plug-in side implementation of MessageHandler
-class ProxyHostMessageHandler : public MessageHandler
+class ProxyHost : public MessageHandler, protected RemoteCaller
 {
-public:
-    ProxyHostMessageHandler ();
+protected:
+    explicit ProxyHost (Connection* connection);
 
+public:
     DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
 
     void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                 MessageEncoder* const replyEncoder) override;
-
-protected:
-    virtual MessageChannel* getMessageChannel () = 0;
 
 private:
     std::thread::id const _mainThreadID;

@@ -122,7 +122,7 @@ thread_local MessageChannel::ThreadRef _remoteTargetThread { 0 };
 
 struct PendingReplyHandler
 {
-    MessageChannel::ReplyHandler _replyHandler;
+    Connection::ReplyHandler _replyHandler;
     void* _replyHandlerUserData;
 };
 // actually a "static" member of MessageChannel, but for some reason C++ doesn't allow this...
@@ -132,8 +132,8 @@ thread_local const PendingReplyHandler* _pendingReplyHandler { nullptr };
 constexpr MessageChannel::ThreadRef MessageChannel::_invalidThread;
 
 
-MessageChannel::MessageChannel (MessageHandler* handler)
-: _handler { handler }
+MessageChannel::MessageChannel (Connection* connection)
+: _connection { connection }
 {
     static_assert (sizeof (std::thread::id) == sizeof (ThreadRef), "the current implementation relies on a specific thread ID size");
 // unfortunately at least in clang std::thread::id's c'tor isn't constexpr
@@ -152,7 +152,7 @@ MessageChannel::ThreadRef MessageChannel::_getCurrentThread ()
 }
 
 void MessageChannel::sendMessage (MessageID messageID, MessageEncoder* encoder,
-                                        ReplyHandler replyHandler, void* replyHandlerUserData)
+                                  Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     const auto currentThread { _getCurrentThread () };
     encoder->appendThreadRef (sendThreadKey, currentThread);
@@ -275,7 +275,7 @@ void MessageChannel::routeReceivedMessage (MessageID messageID, const MessageDec
     else
     {
         ARA_INTERNAL_ASSERT (messageID != 0);
-        if (const auto dispatchTarget { _handler->getDispatchTargetForIncomingTransaction (messageID) })
+        if (const auto dispatchTarget { _connection->getDispatchTargetForIncomingTransaction (messageID) })
         {
             ARA_IPC_LOG ("dispatches received message with ID %i (new transaction)", messageID);
 #if defined (_WIN32)
@@ -307,8 +307,8 @@ void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageD
     ARA_INTERNAL_ASSERT (success);
     _remoteTargetThread = remoteTargetThread;
 
-    auto replyEncoder { createEncoder () };
-    _handler->handleReceivedMessage (messageID, decoder, replyEncoder);
+    auto replyEncoder { _connection->createEncoder () };
+    _connection->handleReceivedMessage (messageID, decoder, replyEncoder);
     delete decoder;
 
     if (remoteTargetThread != _invalidThread)
@@ -324,7 +324,7 @@ void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageD
     _remoteTargetThread = previousRemoteTargetThread;
 }
 
-void MessageChannel::_handleReply (const MessageDecoder* decoder, ReplyHandler replyHandler, void* replyHandlerUserData)
+void MessageChannel::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThread());
     if (replyHandler)
@@ -332,6 +332,27 @@ void MessageChannel::_handleReply (const MessageDecoder* decoder, ReplyHandler r
     else
         ARA_INTERNAL_ASSERT (!decoder->hasDataForKey(0));   // replies should be empty when not handled (i.e. void)
     delete decoder;
+}
+
+
+Connection::~Connection ()
+{
+    delete _mainChannel;
+}
+
+void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
+{
+    _mainChannel->sendMessage(messageID, encoder, replyHandler, replyHandlerUserData);
+}
+
+MessageHandler::DispatchTarget Connection::getDispatchTargetForIncomingTransaction (MessageID messageID)
+{
+    return _messageHandler->getDispatchTargetForIncomingTransaction (messageID);
+}
+
+void Connection::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder, MessageEncoder* const replyEncoder)
+{
+    _messageHandler->handleReceivedMessage (messageID, decoder, replyEncoder);
 }
 
 }   // namespace IPC

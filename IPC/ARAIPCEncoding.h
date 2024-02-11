@@ -154,6 +154,7 @@ ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAArchiveWriterHostRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAContentAccessControllerHostRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAModelUpdateControllerHostRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAPlaybackControllerHostRef)
+ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAIPCConnectionRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAIPCMessageChannelRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAIPCPlugInInstanceRef)
 #undef ARA_IPC_SPECIALIZE_FOR_REF_TYPE
@@ -1274,50 +1275,50 @@ class RemoteCaller
 public:
     using CustomDecodeFunction = std::function<void (const MessageDecoder* decoder)>;
 
-    RemoteCaller (MessageChannel* messageChannel) noexcept
-    : _messageChannel { messageChannel }
+    explicit RemoteCaller (Connection* connection) noexcept
+    : _connection { connection }
     {}
 
     template<typename... Args>
     void remoteCall (const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _messageChannel->createEncoder () };
+        auto encoder { _connection->createEncoder () };
         encodeArguments (encoder, args...);
-        _messageChannel->sendMessage (methodID.getMessageID (), encoder, nullptr, nullptr);
+        _connection->sendMessage (methodID.getMessageID (), encoder, nullptr, nullptr);
     }
 
     template<typename RetT, typename... Args>
     void remoteCall (RetT& result, const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _messageChannel->createEncoder () };
+        auto encoder { _connection->createEncoder () };
         encodeArguments (encoder, args...);
         const auto replyHandler { [] (const MessageDecoder* decoder, void* userData) -> void
             {
                 ARA_INTERNAL_ASSERT (decoder);
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
-        _messageChannel->sendMessage (methodID.getMessageID (), encoder, replyHandler, &result);
+        _connection->sendMessage (methodID.getMessageID (), encoder, replyHandler, &result);
     }
 
     template<typename... Args>
     void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _messageChannel->createEncoder () };
+        auto encoder { _connection->createEncoder () };
         encodeArguments (encoder, args...);
         const auto replyHandler { [] (const MessageDecoder* decoder, void* userData) -> void
             {
                 ARA_INTERNAL_ASSERT (decoder);
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
-        _messageChannel->sendMessage (methodID.getMessageID (), encoder, replyHandler, &decodeFunction);
+        _connection->sendMessage (methodID.getMessageID (), encoder, replyHandler, &decodeFunction);
     }
 
-    bool receiverEndianessMatches () const { return _messageChannel->receiverEndianessMatches (); }
+    bool receiverEndianessMatches () const { return _connection->receiverEndianessMatches (); }
 
-    MessageChannel* getMessageChannel () const { return _messageChannel; }
+    Connection* getConnection () const { return _connection; }
 
 private:
-    MessageChannel* const _messageChannel;
+    Connection* const _connection;
 };
 
 

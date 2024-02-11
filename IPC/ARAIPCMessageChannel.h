@@ -47,7 +47,7 @@ namespace IPC {
 class MessageChannel;
 
 
-//! delegate interface for processing messages received by an IPC message channel
+//! delegate interface for processing messages received through an IPC connection
 class MessageHandler
 {
 public:
@@ -63,35 +63,32 @@ public:
     #error "not yet implemented on this platform"
 #endif
 
-    //! IPC channels will call this method to determine which thread should be
+    //! IPC connections will call this method to determine which thread should be
     //! used for handling an incoming transaction. Returning nullptr results in the
     //! current thread being used, otherwise the call will be forwarded to the
     //! returned target thread.
     virtual DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) = 0;
 
-    //! IPC channels will call this method from their receive handler
-    //! after filtering replies and routing to the correct thread.
+    //! IPC connections will call this method for incoming messages after
+    //! after filtering replies and routing them to the correct thread.
     virtual void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                         MessageEncoder* const replyEncoder) = 0;
 };
 
 
-//! IPC message channel: gateway for sending and receiving messages
+//! IPC connection: gateway for sending and receiving messages,
+//! utilizing potentially multiple MessageChannel instances
 //! @{
-class MessageChannel
+class Connection
 {
-public:     // needs to be public for thread-local variables (which cannot be class members)
-#if defined (_WIN32)
-    using ThreadRef = int32_t;
-#elif defined (__APPLE__)
-    using ThreadRef = size_t;
-#else
-    #error "not yet implemented on this platform"
-#endif
-    static constexpr ThreadRef _invalidThread { 0 };
+protected:
+    explicit Connection (MessageHandler* messageHandler, MessageChannel* mainChannel)
+    : _messageHandler { messageHandler },
+      _mainChannel { mainChannel }
+    {}
 
 public:
-    virtual ~MessageChannel () = default;
+    virtual ~Connection ();
 
     //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
     //! decoder will be nullptr if incoming message was empty
@@ -115,7 +112,51 @@ public:
     virtual bool receiverEndianessMatches () = 0;
 
 protected:
-    explicit MessageChannel (MessageHandler* handler);
+    MessageChannel* getMainChannel () const
+    {
+        return _mainChannel;
+    }
+
+    friend MessageChannel;
+    MessageHandler::DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID);
+    void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
+                                MessageEncoder* const replyEncoder);
+
+private:
+    MessageHandler* const _messageHandler;
+    MessageChannel* const _mainChannel;
+};
+//! @}
+
+
+//! IPC message channel: primitive for sending and receiving messages
+//! @{
+class MessageChannel
+{
+public:     // needs to be public for thread-local variables (which cannot be class members)
+#if defined (_WIN32)
+    using ThreadRef = int32_t;
+#elif defined (__APPLE__)
+    using ThreadRef = size_t;
+#else
+    #error "not yet implemented on this platform"
+#endif
+    static constexpr ThreadRef _invalidThread { 0 };
+
+public:
+    virtual ~MessageChannel () = default;
+
+    //! send an encoded messages to the receiving process
+    //! The encoder will be deleted after sending the message.
+    //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
+    //! This method can be called from any thread, concurrent calls will be serialized.
+    //! The calling thread will be blocked until the receiver has processed the message and
+    //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
+    void sendMessage (MessageID messageID, MessageEncoder* encoder,
+                      Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
+
+protected:
+    explicit MessageChannel (Connection* connection);
 
     //! called by subclass implementations to route an incoming message to the correct target thread
     //! takes ownership of the decoder and will eventually delete it
@@ -136,7 +177,7 @@ protected:
 
 private:
     void _handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder);
-    void _handleReply (const MessageDecoder* decoder, ReplyHandler replyHandler, void* replyHandlerUserData);
+    void _handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
 
     static ThreadRef _getCurrentThread ();
 
@@ -154,7 +195,7 @@ private:
     RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
 
 private:
-    MessageHandler* const _handler;
+    Connection* const _connection;
 
     std::mutex _lock;
 

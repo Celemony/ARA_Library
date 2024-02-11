@@ -45,11 +45,6 @@ extern "C" {
 
 API_AVAILABLE_BEGIN(macos(13.0))
 
-//! host side: an opaque encapsulation to represent a Audio Unit ARA proxy plug-in component,
-//! to be used for all Audio Unit instances from the same Audio Unit Component
-//! (pools the Audio Unit message channels for use across all AU instances)
-typedef ARA_IPC_REF(ARAIPCConnectionRef);
-
 //! host side: initialize proxy plug-in component and its internal the message channels
 //! will return nullptr if the Audio Unit does not implement [AUAudioUnit messageChannelFor:]
 //! for the required ARA message channels
@@ -57,11 +52,6 @@ typedef ARA_IPC_REF(ARAIPCConnectionRef);
 //! after the call if not needed otherwise
 //! must be balanced with ARAIPCAUProxyPlugInUninitialize()
 ARAIPCConnectionRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitialize(AUAudioUnit * _Nonnull audioUnit);
-
-//! host side: query the message channel that can be used for the calls to ARAIPCAUProxyPlugInGetFactory(),
-//! ARAIPCProxyPlugInInitializeARA(), ARAIPCProxyPlugInCreateDocumentControllerWithDocument()
-//! and ARAIPCProxyPlugInUninitializeARA()
-ARAIPCMessageChannelRef _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetMainMessageChannel(ARAIPCConnectionRef _Nonnull proxyRef);
 
 //! host side: Audio Unit specialization of ARAIPCProxyPlugInBindToDocumentController()
 //! must be balanced with ARAIPCProxyPlugInCleanupBinding() when the given audioUnit is destroyed
@@ -75,11 +65,9 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize(ARAIPCConnectionRef _Nonnull proxy
 
 
 
-//! plug-in side: static configuration: after adding all factories via ARAIPCProxyHostAddFactory(),
-//! initialize the IPC proxy (before allocating any instances)
-void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel);
-
 //! plug-in side:implementation for AUMessageChannel<NSObject> -init...
+//! will initialize the proxy on demand - make sure to add all factories via ARAIPCProxyHostAddFactory()
+//! before the first call to this function and to call ARAIPCAUProxyHostUninitialize() if the call was made
 ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel(NSObject<AUMessageChannel> * _Nonnull audioUnitChannel);
 
 //! plug-in side: implementation for AUMessageChannel<NSObject> -callAudioUnit:
