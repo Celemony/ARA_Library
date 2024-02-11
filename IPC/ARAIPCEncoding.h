@@ -424,7 +424,7 @@ struct _ValueDecoder<std::vector<ElementT>> : public _CompoundValueDecoderBase<s
 template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<StructT>            \
 {                                               /* specialization for given struct */           \
     using StructType = StructT;                                                                 \
-    static inline void encode (MessageEncoder* encoder, const StructType& value)          \
+    static inline void encode (MessageEncoder* encoder, const StructType& value)                \
     {
 #define ARA_IPC_ENCODE_MEMBER(member)                                                           \
         _encodeAndAppend (encoder, offsetof (StructType, member), value.member);
@@ -467,7 +467,7 @@ template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<Stru
 template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<StructT>            \
 {                                               /* specialization for given struct */           \
     using StructType = StructT;                                                                 \
-    static inline bool decode (StructType& result, const MessageDecoder* decoder)         \
+    static inline bool decode (StructType& result, const MessageDecoder* decoder)               \
     {                                                                                           \
         bool success { true };
 #define ARA_IPC_BEGIN_DECODE_SIZED(StructT)                                                     \
@@ -487,9 +487,9 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
         success &= _readAndDecode (tmp_##member, decoder, offsetof (StructType, member));       \
         ARA_INTERNAL_ASSERT (success);
 #define ARA_IPC_DECODE_VARIABLE_ARRAY(member, count, updateCount)                               \
-        /* \todo the outer struct contains a pointer to the inner array, so we need some  */    \
-        /* place to store it - this static only works as long as this is single-threaded! */    \
-        static std::vector<typename std::remove_const<std::remove_pointer<decltype (result.member)>::type>::type> tmp_##member; \
+        /* \todo the outer struct contains a pointer to the inner struct, so we need some */    \
+        /*       thread-safe place to store it - is there a better way to achieve this?   */    \
+        thread_local std::vector<typename std::remove_const<std::remove_pointer<decltype (result.member)>::type>::type> tmp_##member; \
         if (_readAndDecode (tmp_##member, decoder, offsetof (StructType, member))) {            \
             result.member = tmp_##member.data ();                                               \
             if (updateCount) { result.count = tmp_##member.size (); }                           \
@@ -518,8 +518,8 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
         auto subDecoder_##member { decoder->readSubMessage (offsetof (StructType, member)) };   \
         if (subDecoder_##member != nullptr) {                                                   \
             /* \todo the outer struct contains a pointer to the inner struct, so we need some */\
-            /* place to store it - this static only works as long as this is single-threaded! */\
-            static std::remove_const<std::remove_pointer<decltype (result.member)>::type>::type cache; \
+            /*       thread-safe place to store it - is there a better way to achieve this?   */\
+            thread_local std::remove_const<std::remove_pointer<decltype (result.member)>::type>::type cache; \
             success &= _ValueDecoder<decltype (cache)>::decode (cache, subDecoder_##member);    \
             ARA_INTERNAL_ASSERT (success);                                                      \
             result.member = &cache;                                                             \
@@ -621,8 +621,8 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
         else
         {
             /* \todo the outer struct contains a pointer to the inner struct, so we need some */
-            /* place to store it - this static only works as long as this is single-threaded! */
-            static ARAByte cache[2016UL];   // some arbitrary space that can be conveniently allocated
+            /*       thread-safe place to store it - is there a better way to achieve this?   */
+            thread_local ARAByte cache[2016UL];   // some arbitrary space that can be conveniently allocated
             auto resultSize_channelArrangement { sizeof (cache) };
             BytesDecoder tmp_channelArrangement { cache, resultSize_channelArrangement };
             if (_readAndDecode (tmp_channelArrangement, decoder, offsetof (ARAAudioSourceProperties, channelArrangement)) &&
