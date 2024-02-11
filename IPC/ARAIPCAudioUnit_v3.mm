@@ -54,9 +54,8 @@ constexpr NSString * _messageIDKey { @"msgID" };
 class AudioUnitMessageChannel : public MessageChannel
 {
 protected:
-    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, MessageHandler * messageHandler)
-    : MessageChannel { messageHandler },
-      _audioUnitChannel { audioUnitChannel }
+    AudioUnitMessageChannel (MessageHandler * messageHandler)
+    : MessageChannel { messageHandler }
     {}
 
 public:
@@ -96,14 +95,6 @@ public:
 
 protected:
     virtual NSDictionary * _sendMessage (NSDictionary * message) = 0;
-
-    NSObject<AUMessageChannel> * _Nonnull getAudioUnitChannel ()
-    {
-        return _audioUnitChannel;
-    }
-
-private:
-    NSObject<AUMessageChannel> * __unsafe_unretained _Nonnull _audioUnitChannel;    // avoid "retain" cycle: the AUMessageChannel implementation manages this object
 };
 
 
@@ -125,7 +116,8 @@ class ProxyHostMessageChannel : public AudioUnitMessageChannel, public ProxyHost
 public:
     ProxyHostMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel,
                              AUAudioUnit * _Nullable audioUnit)
-    : AudioUnitMessageChannel { audioUnitChannel, this },
+    : AudioUnitMessageChannel { this },
+      _audioUnitChannel { audioUnitChannel },
       _audioUnit { audioUnit }
     {}
 
@@ -137,7 +129,7 @@ public:
 protected:
     NSDictionary * _sendMessage (NSDictionary * message) override
     {
-        if (const auto callHostBlock { getAudioUnitChannel ().callHostBlock })
+        if (const auto callHostBlock { _audioUnitChannel.callHostBlock })
         {
             NSDictionary * reply { callHostBlock (message) };
             return reply;
@@ -150,6 +142,7 @@ protected:
     }
 
 private:
+    NSObject<AUMessageChannel> * __unsafe_unretained _Nonnull _audioUnitChannel;    // avoid retain cycle: the AUMessageChannel implementation manages this object
     AUAudioUnit * __unsafe_unretained _Nullable _audioUnit;
 };
 
@@ -159,9 +152,13 @@ class ProxyPlugInMessageChannel : public AudioUnitMessageChannel, public ProxyPl
 {
 public:
     ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
-    : AudioUnitMessageChannel { audioUnitChannel, this }
+    : AudioUnitMessageChannel { this },
+      _audioUnitChannel { audioUnitChannel }
     {
-        getAudioUnitChannel ().callHostBlock =
+#if !__has_feature(objc_arc)
+        [_audioUnitChannel retain];
+#endif
+        _audioUnitChannel.callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
             {
                 routeReceivedMessage (message);
@@ -171,15 +168,21 @@ public:
 
     ~ProxyPlugInMessageChannel () override
     {
-        getAudioUnitChannel ().callHostBlock = nil;
+        _audioUnitChannel.callHostBlock = nil;
+#if !__has_feature(objc_arc)
+        [_audioUnitChannel release];
+#endif
     }
 
 protected:
     NSDictionary * _sendMessage (NSDictionary * message) override
     {
-        const auto reply { [getAudioUnitChannel () callAudioUnit:message] };
+        const auto reply { [_audioUnitChannel callAudioUnit:message] };
         return reply;
     }
+
+private:
+    NSObject<AUMessageChannel> * __strong _Nonnull _audioUnitChannel;
 };
 
 
