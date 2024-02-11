@@ -20,7 +20,7 @@
 #define ARAIPCProxyPlugIn_h
 
 
-#include "ARA_Library/IPC/ARAIPC.h"
+#include "ARA_Library/IPC/ARAIPCMultiThreadedChannel.h"
 
 #if ARA_ENABLE_IPC
 
@@ -29,6 +29,19 @@
 namespace ARA {
 namespace IPC {
 extern "C" {
+
+//! host side implementation of ARAIPCMessageHandler
+class ARAIPCProxyPlugInMessageHandler : public ARAIPCMessageHandler
+{
+public:
+    using ARAIPCMessageHandler::ARAIPCMessageHandler;
+
+    DispatchTarget getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) override;
+
+    void handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
+                                const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
+                                ARAIPCMessageEncoder* const replyEncoder) override;
+};
 #endif
 
 
@@ -48,11 +61,6 @@ const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerW
                                                                                             const ARAPersistentID factoryID,
                                                                                             const ARADocumentControllerHostInstance * hostInstance,
                                                                                             const ARADocumentProperties * properties);
-
-//! static handler of received messages
-void ARAIPCProxyPlugInCallbacksDispatcher(ARAIPCMessageChannel * messageChannel,
-                                          const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder,
-                                          ARAIPCMessageEncoder * replyEncoder);
 
 //! create the proxy plug-in extension when performing the binding to the remote plug-in instance
 const ARAPlugInExtensionInstance * ARAIPCProxyPlugInBindToDocumentController(ARAIPCPlugInInstanceRef remoteRef,

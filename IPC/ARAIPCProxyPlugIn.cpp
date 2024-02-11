@@ -1346,10 +1346,22 @@ void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageChannel* messageChannel, con
     RemoteCaller { messageChannel }.remoteCall (kUninitializeARAMethodID, factoryID);
 }
 
-void ARAIPCProxyPlugInCallbacksDispatcher (ARAIPCMessageChannel* /*messageChannel*/, const ARAIPCMessageID messageID,
-                                           const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
+
+/*******************************************************************************/
+
+ARAIPCMessageHandler::DispatchTarget ARAIPCProxyPlugInMessageHandler::getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID)
 {
-//  ARA_LOG ("plugInCallbackDispatcher received message %s", decodeHostMessageID (messageID));
+    ARA_INTERNAL_ASSERT ((messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples).getMessageID ()) ||
+                         ((ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback).getMessageID () <= messageID) &&
+                          (messageID <= ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestEnableCycle).getMessageID ())));
+    return nullptr;
+}
+
+void ARAIPCProxyPlugInMessageHandler::handleReceivedMessage (ARAIPCMessageChannel* /*messageChannel*/,
+                                                             const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
+                                                             ARAIPCMessageEncoder* const replyEncoder)
+{
+//  ARA_LOG ("ARAIPCProxyPlugInMessageHandler handles message %s", decodeHostMessageID (messageID));
 
     // ARAAudioAccessControllerInterface
     if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, createAudioReaderForSource))

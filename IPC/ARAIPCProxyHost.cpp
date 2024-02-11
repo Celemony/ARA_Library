@@ -34,6 +34,10 @@
 #include <string>
 #include <vector>
 
+#if defined (__APPLE__)
+    #include <CoreFoundation/CoreFoundation.h>
+#endif
+
 
 #if ARA_SUPPORT_VERSION_1
     #error "The ARA IPC proxy host implementation does not support ARA 1."
@@ -615,10 +619,70 @@ const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
     return nullptr;
 }
 
-void ARAIPCProxyHostCommandHandler (ARAIPCMessageChannel* messageChannel, const ARAIPCMessageID messageID,
-                                    const ARAIPCMessageDecoder* const decoder, ARAIPCMessageEncoder* const replyEncoder)
+
+/*******************************************************************************/
+
+#if defined (_WIN32)
+// from https://devblogs.microsoft.com/oldnewthing/20141015-00/?p=43843
+BOOL ConvertToRealHandle(HANDLE h,
+                         BOOL bInheritHandle,
+                         HANDLE *phConverted)
 {
-//  ARA_LOG ("ARAIPCProxyHostCommandHandler received message %s", decodePlugInMessageID (messageID));
+ return DuplicateHandle(GetCurrentProcess(), h,
+                        GetCurrentProcess(), phConverted,
+                        0, bInheritHandle, DUPLICATE_SAME_ACCESS);
+}
+
+HANDLE _GetRealCurrentThread ()
+{
+    HANDLE currentThread {};
+    auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
+    ARA_INTERNAL_ASSERT (success);
+    return currentThread;
+}
+
+#elif defined (__APPLE__)
+std::thread::id _getMainThreadID ()
+{
+    if (CFRunLoopGetMain () == CFRunLoopGetCurrent ())
+    {
+        return std::this_thread::get_id ();
+    }
+    else
+    {
+        __block std::thread::id result;
+        dispatch_sync (dispatch_get_main_queue (),
+                        ^{
+                            result = std::this_thread::get_id ();
+                        });
+        return result;
+    }
+}
+#endif
+
+ARAIPCProxyHostMessageHandler::ARAIPCProxyHostMessageHandler ()
+:
+#if defined (_WIN32)
+  _mainThreadID { std::this_thread::get_id () },
+  _mainThreadDispatchTarget { _GetRealCurrentThread () }
+#elif defined (__APPLE__)
+  _mainThreadID { _getMainThreadID () },
+  _mainThreadDispatchTarget { dispatch_get_main_queue () }
+#else
+    #error "not yet implemented on this platform"
+#endif
+{}
+
+ARAIPCMessageHandler::DispatchTarget ARAIPCProxyHostMessageHandler::getDispatchTargetForIncomingTransaction (ARAIPCMessageID /*messageID*/)
+{
+    return (std::this_thread::get_id () == _mainThreadID) ? nullptr : _mainThreadDispatchTarget;
+}
+
+void ARAIPCProxyHostMessageHandler::handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
+                                                           const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
+                                                           ARAIPCMessageEncoder* const replyEncoder)
+{
+//  ARA_LOG ("ARAIPCProxyHostMessageHandler handles message %s", decodePlugInMessageID (messageID));
 
     // ARAFactory
     if (messageID == kGetFactoriesCountMethodID)

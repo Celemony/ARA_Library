@@ -26,15 +26,8 @@
 
 #include "ARA_Library/Debug/ARADebug.h"
 #include "ARA_Library/IPC/ARAIPCEncoding.h"
-#include "ARA_Library/IPC/ARAIPCProxyHost.h"
-#include "ARA_Library/IPC/ARAIPCProxyPlugIn.h"
 
 #include <utility>
-
-#if defined (__APPLE__)
-    #include <CoreFoundation/CoreFoundation.h>
-#endif
-
 
 // ARA IPC design overview
 //
@@ -120,90 +113,6 @@
 
 namespace ARA {
 namespace IPC {
-
-
-// plug-in side implementation of ARAIPCMessageHandler
-
-#if defined (_WIN32)
-// from https://devblogs.microsoft.com/oldnewthing/20141015-00/?p=43843
-BOOL ConvertToRealHandle(HANDLE h,
-                         BOOL bInheritHandle,
-                         HANDLE *phConverted)
-{
- return DuplicateHandle(GetCurrentProcess(), h,
-                        GetCurrentProcess(), phConverted,
-                        0, bInheritHandle, DUPLICATE_SAME_ACCESS);
-}
-
-HANDLE _GetRealCurrentThread ()
-{
-    HANDLE currentThread {};
-    auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
-    ARA_INTERNAL_ASSERT (success);
-    return currentThread;
-}
-
-#elif defined (__APPLE__)
-std::thread::id _getMainThreadID ()
-{
-    if (CFRunLoopGetMain () == CFRunLoopGetCurrent ())
-    {
-        return std::this_thread::get_id ();
-    }
-    else
-    {
-        __block std::thread::id result;
-        dispatch_sync (dispatch_get_main_queue (),
-                        ^{
-                            result = std::this_thread::get_id ();
-                        });
-        return result;
-    }
-}
-#endif
-
-ARAIPCProxyHostMessageHandler::ARAIPCProxyHostMessageHandler ()
-:
-#if defined (_WIN32)
-  _mainThreadID { std::this_thread::get_id () },
-  _mainThreadDispatchTarget { _GetRealCurrentThread () }
-#elif defined (__APPLE__)
-  _mainThreadID { _getMainThreadID () },
-  _mainThreadDispatchTarget { dispatch_get_main_queue () }
-#else
-    #error "not yet implemented on this platform"
-#endif
-{}
-
-ARAIPCMessageHandler::DispatchTarget ARAIPCProxyHostMessageHandler::getDispatchTargetForIncomingTransaction (ARAIPCMessageID /*messageID*/)
-{
-    return (std::this_thread::get_id () == _mainThreadID) ? nullptr : _mainThreadDispatchTarget;
-}
-
-void ARAIPCProxyHostMessageHandler::handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
-                                                           const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
-                                                           ARAIPCMessageEncoder* const replyEncoder)
-{
-    ARAIPCProxyHostCommandHandler (messageChannel, messageID, decoder, replyEncoder);
-}
-
-
-// host side implementation of ARAIPCMessageHandler
-ARAIPCMessageHandler::DispatchTarget ARAIPCProxyPlugInMessageHandler::getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID)
-{
-    ARA_INTERNAL_ASSERT ((messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples).getMessageID ()) ||
-                         ((ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback).getMessageID () <= messageID) &&
-                          (messageID <= ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestEnableCycle).getMessageID ())));
-    return nullptr;
-}
-
-void ARAIPCProxyPlugInMessageHandler::handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
-                                                             const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
-                                                             ARAIPCMessageEncoder* const replyEncoder)
-{
-    ARAIPCProxyPlugInCallbacksDispatcher (messageChannel, messageID, decoder, replyEncoder);
-}
-
 
 // generic thread handling for multi-threaded channels (i.e. messages are note received on the sending thread)
 

@@ -73,36 +73,6 @@ public:
                                         ARAIPCMessageEncoder* const replyEncoder) = 0;
 };
 
-// plug-in side implementation of ARAIPCMessageHandler
-class ARAIPCProxyHostMessageHandler : public ARAIPCMessageHandler
-{
-public:
-    ARAIPCProxyHostMessageHandler ();
-
-    DispatchTarget getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) override;
-
-    void handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
-                                const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
-                                ARAIPCMessageEncoder* const replyEncoder) override;
-
-private:
-    std::thread::id const _mainThreadID;
-    DispatchTarget const _mainThreadDispatchTarget;
-};
-
-// host side implementation of ARAIPCMessageHandler
-class ARAIPCProxyPlugInMessageHandler : public ARAIPCMessageHandler
-{
-public:
-    using ARAIPCMessageHandler::ARAIPCMessageHandler;
-
-    DispatchTarget getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) override;
-
-    void handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
-                                const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
-                                ARAIPCMessageEncoder* const replyEncoder) override;
-};
-
 //! implementation of the generic channel interface for IPC where incoming messages
 //! are not necessarily received on the thread(s) that send outgoing messages
 class MultiThreadedChannel : public ARAIPCMessageChannel

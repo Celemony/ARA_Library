@@ -19,7 +19,7 @@
 #ifndef ARAIPCProxyHost_h
 #define ARAIPCProxyHost_h
 
-#include "ARA_Library/IPC/ARAIPC.h"
+#include "ARA_Library/IPC/ARAIPCMultiThreadedChannel.h"
 
 
 #if ARA_ENABLE_IPC
@@ -28,6 +28,23 @@
 namespace ARA {
 namespace IPC {
 extern "C" {
+
+//! plug-in side implementation of ARAIPCMessageHandler
+class ARAIPCProxyHostMessageHandler : public ARAIPCMessageHandler
+{
+public:
+    ARAIPCProxyHostMessageHandler ();
+
+    DispatchTarget getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) override;
+
+    void handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
+                                const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
+                                ARAIPCMessageEncoder* const replyEncoder) override;
+
+private:
+    std::thread::id const _mainThreadID;
+    DispatchTarget const _mainThreadDispatchTarget;
+};
 #endif
 
 
@@ -42,10 +59,6 @@ void ARAIPCProxyHostAddFactory(const ARAFactory * factory);
 //! static configuration: set the callback to execute the binding of Companion API plug-in instances to ARA document controllers
 void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);
 
-//! static dispatcher: the host command handler that controls the proxy host
-void ARAIPCProxyHostCommandHandler(ARAIPCMessageChannel * messageChannel,
-                                   const ARAIPCMessageID messageID, const ARAIPCMessageDecoder * decoder,
-                                   ARAIPCMessageEncoder * replyEncoder);
 
 #if defined(__cplusplus)
 }   // extern "C"
