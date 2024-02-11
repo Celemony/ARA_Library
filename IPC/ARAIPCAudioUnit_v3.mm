@@ -155,7 +155,16 @@ public:
     : AudioUnitMessageChannel { this },
       _audioUnitChannel { audioUnitChannel }
     {
+        // \todo there's also QOS_CLASS_USER_INTERACTIVE which seems more appropriate but is undocumented...
+#if __has_feature(objc_arc)
+        if (!_readAudioQueue)
+#else
+        if (_instanceCount == 0)
+#endif
+            _readAudioQueue = dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1));
 #if !__has_feature(objc_arc)
+        ++_instanceCount;
+        
         [_audioUnitChannel retain];
 #endif
         _audioUnitChannel.callHostBlock =
@@ -171,7 +180,28 @@ public:
         _audioUnitChannel.callHostBlock = nil;
 #if !__has_feature(objc_arc)
         [_audioUnitChannel release];
+
+        --_instanceCount;
+        if (_instanceCount == 0)
+            dispatch_release (_readAudioQueue);
 #endif
+    }
+
+    DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override
+    {
+        // AUMessageChannel cannot be called back from the same thread it receives the message,
+        // so we dispatch to the main queue for playback requests and to a dedicated read samples queue for audio requests
+        // \todo maybe we should make this configurable, so hosts can set these queues if they already have appropriate ones?
+        if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples).getMessageID ())
+        {
+            return _readAudioQueue;
+        }
+        else
+        {
+            ARA_INTERNAL_ASSERT ((ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback).getMessageID () <= messageID) &&
+                                 (messageID <= ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestEnableCycle).getMessageID ()));
+            return dispatch_get_main_queue ();
+        }
     }
 
 protected:
@@ -183,7 +213,16 @@ protected:
 
 private:
     NSObject<AUMessageChannel> * __strong _Nonnull _audioUnitChannel;
+    static dispatch_queue_t _readAudioQueue;
+#if !__has_feature(objc_arc)
+    static int _instanceCount;
+#endif
 };
+
+dispatch_queue_t ProxyPlugInMessageChannel::_readAudioQueue { nullptr };
+#if !__has_feature(objc_arc)
+int ProxyPlugInMessageChannel::_instanceCount { 0 };
+#endif
 
 
 // host side: proxy plug-in message channel further specialization for plug-in extension messages
