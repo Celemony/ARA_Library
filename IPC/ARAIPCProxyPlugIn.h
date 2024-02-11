@@ -19,11 +19,13 @@
 #ifndef ARAIPCProxyPlugIn_h
 #define ARAIPCProxyPlugIn_h
 
-
 #include "ARA_Library/IPC/ARAIPCMessageChannel.h"
 
 #if ARA_ENABLE_IPC
 
+
+//! @addtogroup ARA_Library_IPC
+//! @{
 
 #if defined(__cplusplus)
 namespace ARA {
@@ -79,6 +81,8 @@ void ARAIPCProxyPlugInUninitializeARA(ARAIPCMessageChannel * messageChannel, con
 }   // namespace IPC
 }   // namespace ARA
 #endif
+
+//! @} ARA_Library_IPC
 
 
 #endif // ARA_ENABLE_IPC

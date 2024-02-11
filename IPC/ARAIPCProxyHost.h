@@ -19,11 +19,13 @@
 #ifndef ARAIPCProxyHost_h
 #define ARAIPCProxyHost_h
 
-
 #include "ARA_Library/IPC/ARAIPCMessageChannel.h"
 
 #if ARA_ENABLE_IPC
 
+
+//! @addtogroup ARA_Library_IPC
+//! @{
 
 #if defined(__cplusplus)
 namespace ARA {
@@ -66,6 +68,9 @@ void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);
 }   // namespace IPC
 }   // namespace ARA
 #endif
+
+//! @} ARA_Library_IPC
+
 
 #endif // ARA_ENABLE_IPC
 

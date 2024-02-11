@@ -21,9 +21,7 @@
 #ifndef ARAIPCMessageChannel_h
 #define ARAIPCMessageChannel_h
 
-
-#include "ARA_Library/IPC/ARAIPC.h"
-
+#include "ARA_Library/IPC/ARAIPCMessage.h"
 
 #if ARA_ENABLE_IPC
 
@@ -39,14 +37,15 @@
 #include <vector>
 
 
-#if defined(__cplusplus)
+//! @addtogroup ARA_Library_IPC
+//! @{
+
 namespace ARA {
 namespace IPC {
 
+
 class ARAIPCMessageChannel;
 
-//! @addtogroup ARA_Library_IPC
-//! @{
 
 //! delegate interface for processing messages received by an IPC message channel
 class ARAIPCMessageHandler
@@ -167,14 +166,12 @@ private:
 };
 //! @}
 
-//! @} ARA_Library_IPC
 
 }   // namespace IPC
 }   // namespace ARA
 
-#else
-typedef struct ARAIPCMessageChannel ARAIPCMessageChannel;
-#endif
+//! @} ARA_Library_IPC
+
 
 #endif // ARA_ENABLE_IPC
 

@@ -23,8 +23,8 @@
 
 #include "ARA_Library/IPC/ARAIPCMessageChannel.h"
 
+#if ARA_ENABLE_IPC
 
-#if ARA_ENABLE_IPC && defined(__cplusplus)
 
 #include "ARA_Library/Debug/ARADebug.h"
 #include "ARA_Library/Dispatch/ARAContentReader.h"
@@ -39,8 +39,12 @@
 #include <vector>
 
 
+//! @addtogroup ARA_Library_IPC
+//! @{
+
 namespace ARA {
 namespace IPC {
+
 
 //------------------------------------------------------------------------------
 // wrapper factories to efficiently handle sending and receiving raw bytes
@@ -1314,9 +1318,13 @@ private:
     ARAIPCMessageChannel* const _messageChannel;
 };
 
+
 }   // namespace IPC
 }   // namespace ARA
 
-#endif // ARA_ENABLE_IPC && defined(__cplusplus)
+//! @} ARA_Library_IPC
+
+
+#endif // ARA_ENABLE_IPC
 
 #endif // ARAIPCEncoding_h

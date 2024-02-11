@@ -19,16 +19,21 @@
 #ifndef ARAIPCCFEncoding_h
 #define ARAIPCCFEncoding_h
 
-#include "ARA_Library/IPC/ARAIPC.h"
+#include "ARA_Library/IPC/ARAIPCMessage.h"
 
+#if ARA_ENABLE_IPC
 
-#if ARA_ENABLE_IPC && defined(__APPLE__)
 
 #include <CoreFoundation/CoreFoundation.h>
 
 
+//! @addtogroup ARA_Library_IPC
+//! @{
+
+
 namespace ARA {
 namespace IPC {
+
 
 class ARAIPCCFMessageEncoder : public ARAIPCMessageEncoder
 {
@@ -51,6 +56,7 @@ public:
 private:
     CFMutableDictionaryRef const _dictionary;
 };
+
 
 class ARAIPCCFMessageDecoder : public ARAIPCMessageDecoder
 {
@@ -78,9 +84,12 @@ private:
     CFDictionaryRef const _dictionary;
 };
 
+
 }   // namespace IPC
 }   // namespace ARA
 
-#endif // ARA_ENABLE_IPC && defined(__APPLE__)
+//! @} ARA_Library_IPC
+
+#endif // ARA_ENABLE_IPC
 
 #endif // ARAIPCCFEncoding_h

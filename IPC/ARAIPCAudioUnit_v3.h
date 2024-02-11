@@ -19,7 +19,11 @@
 #import "ARA_API/ARAAudioUnit_v3.h"
 
 
-// using ARA IPC for Audio Units requires to compile for macOS 13 or higher
+//! @addtogroup ARA_Library_IPC
+//! @{
+
+
+//! using ARA IPC for Audio Units requires to compile for macOS 13 or higher
 #if defined(__MAC_13_0)
     #define ARA_AUDIOUNITV3_IPC_IS_AVAILABLE 1
 #else
@@ -36,11 +40,8 @@
 namespace ARA {
 namespace IPC {
 extern "C" {
-
-class ARAIPCMessageChannel;
-#else
-typedef struct ARAIPCMessageChannel ARAIPCMessageChannel;
 #endif
+
 
 API_AVAILABLE_BEGIN(macos(13.0))
 
@@ -106,5 +107,7 @@ API_AVAILABLE_END
 }   // namespace ARA
 #endif
 
+
+//! @} ARA_Library_IPC
 
 #endif // ARA_AUDIOUNITV3_IPC_IS_AVAILABLE
