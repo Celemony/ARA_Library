@@ -35,20 +35,20 @@ namespace ARA {
 namespace IPC {
 
 
-class ARAIPCCFMessageEncoder : public ARAIPCMessageEncoder
+class CFMessageEncoder : public MessageEncoder
 {
 public:
-    ARAIPCCFMessageEncoder ();
-    ~ARAIPCCFMessageEncoder () override;
+    CFMessageEncoder ();
+    ~CFMessageEncoder () override;
 
-    void appendInt32 (ARAIPCMessageKey argKey, int32_t argValue) override;
-    void appendInt64 (ARAIPCMessageKey argKey, int64_t argValue) override;
-    void appendSize (ARAIPCMessageKey argKey, size_t argValue) override;
-    void appendFloat (ARAIPCMessageKey argKey, float argValue) override;
-    void appendDouble (ARAIPCMessageKey argKey, double argValue) override;
-    void appendString (ARAIPCMessageKey argKey, const char * argValue) override;
-    void appendBytes (ARAIPCMessageKey argKey, const uint8_t * argValue, size_t argSize, bool copy) override;
-    ARAIPCMessageEncoder* appendSubMessage (ARAIPCMessageKey argKey) override;
+    void appendInt32 (MessageArgumentKey argKey, int32_t argValue) override;
+    void appendInt64 (MessageArgumentKey argKey, int64_t argValue) override;
+    void appendSize (MessageArgumentKey argKey, size_t argValue) override;
+    void appendFloat (MessageArgumentKey argKey, float argValue) override;
+    void appendDouble (MessageArgumentKey argKey, double argValue) override;
+    void appendString (MessageArgumentKey argKey, const char * argValue) override;
+    void appendBytes (MessageArgumentKey argKey, const uint8_t * argValue, size_t argSize, bool copy) override;
+    MessageEncoder* appendSubMessage (MessageArgumentKey argKey) override;
 
     __attribute__((cf_returns_retained)) CFMutableDictionaryRef copyDictionary () const;
     __attribute__((cf_returns_retained)) CFDataRef createMessageEncoderData ()  const;
@@ -58,27 +58,27 @@ private:
 };
 
 
-class ARAIPCCFMessageDecoder : public ARAIPCMessageDecoder
+class CFMessageDecoder : public MessageDecoder
 {
 public:
-    explicit ARAIPCCFMessageDecoder (CFDictionaryRef dictionary);
-    ~ARAIPCCFMessageDecoder () override;
+    explicit CFMessageDecoder (CFDictionaryRef dictionary);
+    ~CFMessageDecoder () override;
 
-    bool readInt32 (ARAIPCMessageKey argKey, int32_t* argValue) const override;
-    bool readInt64 (ARAIPCMessageKey argKey, int64_t* argValue) const override;
-    bool readSize (ARAIPCMessageKey argKey, size_t* argValue) const override;
-    bool readFloat (ARAIPCMessageKey argKey, float* argValue) const override;
-    bool readDouble (ARAIPCMessageKey argKey, double* argValue) const override;
-    bool readString (ARAIPCMessageKey argKey, const char ** argValue) const override;
-    bool readBytesSize (ARAIPCMessageKey argKey, size_t* argSize) const override;
-    void readBytes (ARAIPCMessageKey argKey, uint8_t* argValue) const override;
-    ARAIPCMessageDecoder* readSubMessage (ARAIPCMessageKey argKey) const override;
-    bool hasDataForKey (ARAIPCMessageKey argKey) const override;
+    bool readInt32 (MessageArgumentKey argKey, int32_t* argValue) const override;
+    bool readInt64 (MessageArgumentKey argKey, int64_t* argValue) const override;
+    bool readSize (MessageArgumentKey argKey, size_t* argValue) const override;
+    bool readFloat (MessageArgumentKey argKey, float* argValue) const override;
+    bool readDouble (MessageArgumentKey argKey, double* argValue) const override;
+    bool readString (MessageArgumentKey argKey, const char ** argValue) const override;
+    bool readBytesSize (MessageArgumentKey argKey, size_t* argSize) const override;
+    void readBytes (MessageArgumentKey argKey, uint8_t* argValue) const override;
+    MessageDecoder* readSubMessage (MessageArgumentKey argKey) const override;
+    bool hasDataForKey (MessageArgumentKey argKey) const override;
 
-    static ARAIPCCFMessageDecoder* createWithMessageData (CFDataRef messageData);
+    static CFMessageDecoder* createWithMessageData (CFDataRef messageData);
 
 private:
-    ARAIPCCFMessageDecoder (CFDictionaryRef dictionary, bool retain);
+    CFMessageDecoder (CFDictionaryRef dictionary, bool retain);
 
 private:
     CFDictionaryRef const _dictionary;

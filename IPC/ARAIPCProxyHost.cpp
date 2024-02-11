@@ -99,7 +99,7 @@ ARA_MAP_HOST_REF (RemoteHostContentReader, ARAContentReaderHostRef)
 class AudioAccessController : public Host::AudioAccessControllerInterface, protected RemoteCaller
 {
 public:
-    AudioAccessController (ARAIPCMessageChannel* messageChannel, ARAAudioAccessControllerHostRef remoteHostRef) noexcept
+    AudioAccessController (MessageChannel* messageChannel, ARAAudioAccessControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     ARAAudioReaderHostRef createAudioReaderForSource (ARAAudioSourceHostRef audioSourceHostRef, bool use64BitSamples) noexcept override;
@@ -189,7 +189,7 @@ bool AudioAccessController::readAudioSamples (ARAAudioReaderHostRef audioReaderH
     // custom decoding to deal with float data memory ownership
     bool success { false };
     CustomDecodeFunction customDecode {
-        [&success, &remoteAudioReader, &samplesPerChannel, &channelCount, &buffers] (const ARAIPCMessageDecoder* decoder) -> void
+        [&success, &remoteAudioReader, &samplesPerChannel, &channelCount, &buffers] (const MessageDecoder* decoder) -> void
         {
             const auto bufferSize { remoteAudioReader->sampleSize * static_cast<size_t> (samplesPerChannel) };
             std::vector<size_t> resultSizes;
@@ -240,7 +240,7 @@ void AudioAccessController::destroyAudioReader (ARAAudioReaderHostRef audioReade
 class ArchivingController : public Host::ArchivingControllerInterface, protected RemoteCaller
 {
 public:
-    ArchivingController (ARAIPCMessageChannel* messageChannel, ARAArchivingControllerHostRef remoteHostRef) noexcept
+    ArchivingController (MessageChannel* messageChannel, ARAArchivingControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     ARASize getArchiveSize (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept override;
@@ -335,7 +335,7 @@ void ArchivingController::notifyDocumentUnarchivingProgress (float value) noexce
 ARAPersistentID ArchivingController::getDocumentArchiveID (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
     CustomDecodeFunction customDecode {
-        [this] (const ARAIPCMessageDecoder* decoder) -> void
+        [this] (const MessageDecoder* decoder) -> void
         {
             ARAPersistentID persistentID;
             decodeReply (persistentID, decoder);
@@ -351,7 +351,7 @@ ARAPersistentID ArchivingController::getDocumentArchiveID (ARAArchiveReaderHostR
 class ContentAccessController : public Host::ContentAccessControllerInterface, protected RemoteCaller
 {
 public:
-    ContentAccessController (ARAIPCMessageChannel* messageChannel, ARAContentAccessControllerHostRef remoteHostRef) noexcept
+    ContentAccessController (MessageChannel* messageChannel, ARAContentAccessControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     bool isMusicalContextContentAvailable (ARAMusicalContextHostRef musicalContextHostRef, ARAContentType type) noexcept override;
@@ -434,7 +434,7 @@ const void* ContentAccessController::getContentReaderDataForEvent (ARAContentRea
     const auto contentReader { fromHostRef (contentReaderHostRef) };
     const void* result {};
     CustomDecodeFunction customDecode {
-        [&result, &contentReader] (const ARAIPCMessageDecoder* decoder) -> void
+        [&result, &contentReader] (const MessageDecoder* decoder) -> void
         {
             result = contentReader->decoder.decode (decoder);
         } };
@@ -456,7 +456,7 @@ void ContentAccessController::destroyContentReader (ARAContentReaderHostRef cont
 class ModelUpdateController : public Host::ModelUpdateControllerInterface, protected RemoteCaller
 {
 public:
-    ModelUpdateController (ARAIPCMessageChannel* messageChannel, ARAModelUpdateControllerHostRef remoteHostRef) noexcept
+    ModelUpdateController (MessageChannel* messageChannel, ARAModelUpdateControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     void notifyAudioSourceAnalysisProgress (ARAAudioSourceHostRef audioSourceHostRef, ARAAnalysisProgressState state, float value) noexcept override;
@@ -500,7 +500,7 @@ void ModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackRegio
 class PlaybackController : public Host::PlaybackControllerInterface, protected RemoteCaller
 {
 public:
-    PlaybackController (ARAIPCMessageChannel* messageChannel, ARAPlaybackControllerHostRef remoteHostRef) noexcept
+    PlaybackController (MessageChannel* messageChannel, ARAPlaybackControllerHostRef remoteHostRef) noexcept
     : RemoteCaller { messageChannel }, _remoteHostRef { remoteHostRef } {}
 
     void requestStartPlayback () noexcept override;
@@ -665,14 +665,14 @@ std::thread::id _getMainThreadID ()
     _Pragma ("GCC diagnostic ignored \"-Wunused-template\"")
 #endif
 
-ARA_MAP_IPC_REF (ARAIPCMessageChannel, ARAIPCMessageChannelRef)
+ARA_MAP_IPC_REF (MessageChannel, ARAIPCMessageChannelRef)
 
 #if defined (__GNUC__)
     _Pragma ("GCC diagnostic pop")
 #endif
 
 
-ARAIPCProxyHostMessageHandler::ARAIPCProxyHostMessageHandler ()
+ProxyHostMessageHandler::ProxyHostMessageHandler ()
 :
 #if defined (_WIN32)
   _mainThreadID { std::this_thread::get_id () },
@@ -685,16 +685,16 @@ ARAIPCProxyHostMessageHandler::ARAIPCProxyHostMessageHandler ()
 #endif
 {}
 
-ARAIPCMessageHandler::DispatchTarget ARAIPCProxyHostMessageHandler::getDispatchTargetForIncomingTransaction (ARAIPCMessageID /*messageID*/)
+MessageHandler::DispatchTarget ProxyHostMessageHandler::getDispatchTargetForIncomingTransaction (MessageID /*messageID*/)
 {
     return (std::this_thread::get_id () == _mainThreadID) ? nullptr : _mainThreadDispatchTarget;
 }
 
-void ARAIPCProxyHostMessageHandler::handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
-                                                           const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
-                                                           ARAIPCMessageEncoder* const replyEncoder)
+void ProxyHostMessageHandler::handleReceivedMessage (MessageChannel* messageChannel,
+                                                     const MessageID messageID, const MessageDecoder* const decoder,
+                                                     MessageEncoder* const replyEncoder)
 {
-//  ARA_LOG ("ARAIPCProxyHostMessageHandler handles message %s", decodePlugInMessageID (messageID));
+//  ARA_LOG ("ProxyHostMessageHandler handles message %s", decodePlugInMessageID (messageID));
 
     // ARAFactory
     if (messageID == kGetFactoriesCountMethodID)

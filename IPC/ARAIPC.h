@@ -65,7 +65,7 @@ extern "C" {
 #define ARA_IPC_REF(IPCRefType) struct IPCRefType##MarkupType * IPCRefType
 
 
-//! C-compatible wrapper of ARAIPCMessageChannel
+//! C-compatible wrapper of MessageChannel
 typedef ARA_IPC_REF(ARAIPCMessageChannelRef);
 
 

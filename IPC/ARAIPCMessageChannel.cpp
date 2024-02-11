@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//! \file       ARAIPCMessageChannel.cpp
+//! \file       MessageChannel.cpp
 //!             Base class implementation for both the ARA IPC proxy host and plug-in
 //!             Typically, this file is not included directly - either ARAIPCProxyHost.h
 //!             ARAIPCProxyPlugIn.h will be used instead.
@@ -103,8 +103,8 @@ namespace IPC {
 
 
 // keys to store the threading information in the IPC messages
-constexpr ARAIPCMessageKey sendThreadKey { -1 };
-constexpr ARAIPCMessageKey receiveThreadKey { -2 };
+constexpr MessageArgumentKey sendThreadKey { -1 };
+constexpr MessageArgumentKey receiveThreadKey { -2 };
 
 
 #if defined (_WIN32)
@@ -117,22 +117,22 @@ constexpr ARAIPCMessageKey receiveThreadKey { -2 };
 
 
 // actually a "static" member of ARAIPCChannel, but for some reason C++ doesn't allow this...
-thread_local ARAIPCMessageChannel::ThreadRef _remoteTargetThread { 0 };
+thread_local MessageChannel::ThreadRef _remoteTargetThread { 0 };
 
 
 struct PendingReplyHandler
 {
-    ARAIPCMessageChannel::ReplyHandler _replyHandler;
+    MessageChannel::ReplyHandler _replyHandler;
     void* _replyHandlerUserData;
 };
-// actually a "static" member of ARAIPCMessageChannel, but for some reason C++ doesn't allow this...
+// actually a "static" member of MessageChannel, but for some reason C++ doesn't allow this...
 thread_local const PendingReplyHandler* _pendingReplyHandler { nullptr };
 
 
-constexpr ARAIPCMessageChannel::ThreadRef ARAIPCMessageChannel::_invalidThread;
+constexpr MessageChannel::ThreadRef MessageChannel::_invalidThread;
 
 
-ARAIPCMessageChannel::ARAIPCMessageChannel (ARAIPCMessageHandler* handler)
+MessageChannel::MessageChannel (MessageHandler* handler)
 : _handler { handler }
 {
     static_assert (sizeof (std::thread::id) == sizeof (ThreadRef), "the current implementation relies on a specific thread ID size");
@@ -143,7 +143,7 @@ ARAIPCMessageChannel::ARAIPCMessageChannel (ARAIPCMessageHandler* handler)
     _routedMessages.resize (12);     // we shouldn't use more than a handful of threads concurrently for the IPC
 }
 
-ARAIPCMessageChannel::ThreadRef ARAIPCMessageChannel::_getCurrentThread ()
+MessageChannel::ThreadRef MessageChannel::_getCurrentThread ()
 {
     const auto thisThread { std::this_thread::get_id () };
     const auto result { *reinterpret_cast<const ThreadRef*> (&thisThread) };
@@ -151,7 +151,7 @@ ARAIPCMessageChannel::ThreadRef ARAIPCMessageChannel::_getCurrentThread ()
     return result;
 }
 
-void ARAIPCMessageChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
+void MessageChannel::sendMessage (MessageID messageID, MessageEncoder* encoder,
                                         ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     const auto currentThread { _getCurrentThread () };
@@ -208,9 +208,9 @@ void ARAIPCMessageChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessage
 #if defined (_WIN32)
 struct APCProcessReceivedMessageParams
 {
-    ARAIPCMessageChannel* channel;
-    ARAIPCMessageID messageID;
-    const ARAIPCMessageDecoder* decoder;
+    MessageChannel* channel;
+    MessageID messageID;
+    const MessageDecoder* decoder;
 };
 
 void APCRouteNewTransactionFunc (ULONG_PTR parameter)
@@ -221,7 +221,7 @@ void APCRouteNewTransactionFunc (ULONG_PTR parameter)
 }
 #endif
 
-ARAIPCMessageChannel::RoutedMessage* ARAIPCMessageChannel::_getRoutedMessageForThread (ThreadRef thread)
+MessageChannel::RoutedMessage* MessageChannel::_getRoutedMessageForThread (ThreadRef thread)
 {
     for (auto& message : _routedMessages)
     {
@@ -231,7 +231,7 @@ ARAIPCMessageChannel::RoutedMessage* ARAIPCMessageChannel::_getRoutedMessageForT
     return nullptr;
 }
 
-void ARAIPCMessageChannel::routeReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
+void MessageChannel::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     ThreadRef targetThread;
     if (decoder->readThreadRef (receiveThreadKey, &targetThread))
@@ -296,7 +296,7 @@ void ARAIPCMessageChannel::routeReceivedMessage (ARAIPCMessageID messageID, cons
     }
 }
 
-void ARAIPCMessageChannel::_handleReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
+void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     ARA_IPC_LOG ("handles received message with ID %i on thread %p", messageID, _getCurrentThread());
     ARA_INTERNAL_ASSERT (messageID != 0);
@@ -324,7 +324,7 @@ void ARAIPCMessageChannel::_handleReceivedMessage (ARAIPCMessageID messageID, co
     _remoteTargetThread = previousRemoteTargetThread;
 }
 
-void ARAIPCMessageChannel::_handleReply (const ARAIPCMessageDecoder* decoder, ReplyHandler replyHandler, void* replyHandlerUserData)
+void MessageChannel::_handleReply (const MessageDecoder* decoder, ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThread());
     if (replyHandler)

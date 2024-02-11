@@ -32,17 +32,17 @@ namespace ARA {
 namespace IPC {
 extern "C" {
 
-//! plug-in side implementation of ARAIPCMessageHandler
-class ARAIPCProxyHostMessageHandler : public ARAIPCMessageHandler
+//! plug-in side implementation of MessageHandler
+class ProxyHostMessageHandler : public MessageHandler
 {
 public:
-    ARAIPCProxyHostMessageHandler ();
+    ProxyHostMessageHandler ();
 
-    DispatchTarget getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID) override;
+    DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
 
-    void handleReceivedMessage (ARAIPCMessageChannel* messageChannel,
-                                const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
-                                ARAIPCMessageEncoder* const replyEncoder) override;
+    void handleReceivedMessage (MessageChannel* messageChannel,
+                                const MessageID messageID, const MessageDecoder* const decoder,
+                                MessageEncoder* const replyEncoder) override;
 
 private:
     std::thread::id const _mainThreadID;

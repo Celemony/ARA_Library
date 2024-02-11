@@ -190,7 +190,7 @@ ARA_MAP_HOST_REF (HostAudioReader, ARAAudioReaderHostRef)
     _Pragma ("GCC diagnostic ignored \"-Wunused-function\"")
 #endif
 
-ARA_MAP_IPC_REF (ARAIPCMessageChannel, ARAIPCMessageChannelRef)
+ARA_MAP_IPC_REF (MessageChannel, ARAIPCMessageChannelRef)
 
 #if defined (__GNUC__)
     _Pragma ("GCC diagnostic pop")
@@ -199,7 +199,7 @@ ARA_MAP_IPC_REF (ARAIPCMessageChannel, ARAIPCMessageChannelRef)
 class DocumentController : public PlugIn::DocumentControllerInterface, protected RemoteCaller, public InstanceValidator<DocumentController>
 {
 public:
-    DocumentController (ARAIPCMessageChannel * messageChannel, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept;
+    DocumentController (MessageChannel * messageChannel, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept;
 
 public:
     template <typename StructType>
@@ -336,7 +336,7 @@ ARA_MAP_HOST_REF (DocumentController, ARAAudioAccessControllerHostRef, ARAArchiv
 
 /*******************************************************************************/
 
-DocumentController::DocumentController (ARAIPCMessageChannel * messageChannel, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept
+DocumentController::DocumentController (MessageChannel * messageChannel, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept
 : RemoteCaller { messageChannel },
   _factory { factory },
   _hostAudioAccessController { instance },
@@ -479,7 +479,7 @@ bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostR
 
     bool success { false };
     CustomDecodeFunction customDecode {
-        [this, &success, &documentArchiveID, &openAutomatically] (const ARAIPCMessageDecoder* decoder) -> void
+        [this, &success, &documentArchiveID, &openAutomatically] (const MessageDecoder* decoder) -> void
         {
             StoreAudioSourceToAudioFileChunkReply reply;
             decodeReply (reply, decoder);
@@ -928,7 +928,7 @@ const void* DocumentController::getContentReaderDataForEvent (ARAContentReaderRe
 
     const void* result {};
     CustomDecodeFunction customDecode {
-        [&result, &contentReader] (const ARAIPCMessageDecoder* decoder) -> void
+        [&result, &contentReader] (const MessageDecoder* decoder) -> void
         {
             result = contentReader->_decoder.decode (decoder);
         } };
@@ -992,7 +992,7 @@ const ARAProcessingAlgorithmProperties* DocumentController::getProcessingAlgorit
     ARA_VALIDATE_API_ARGUMENT (this, isValidInstance (this));
 
     CustomDecodeFunction customDecode {
-        [this] (const ARAIPCMessageDecoder* decoder) -> void
+        [this] (const MessageDecoder* decoder) -> void
         {
             ARAProcessingAlgorithmProperties reply;
             decodeReply (reply, decoder);
@@ -1049,7 +1049,7 @@ bool DocumentController::isLicensedForCapabilities (bool runModalActivationDialo
 class PlaybackRenderer : public PlugIn::PlaybackRendererInterface, protected RemoteCaller, public InstanceValidator<PlaybackRenderer>
 {
 public:
-    explicit PlaybackRenderer (ARAIPCMessageChannel* messageChannel, ARAPlaybackRendererRef remoteRef) noexcept
+    explicit PlaybackRenderer (MessageChannel* messageChannel, ARAPlaybackRendererRef remoteRef) noexcept
     : RemoteCaller { messageChannel },
       _remoteRef { remoteRef }
     {}
@@ -1083,7 +1083,7 @@ private:
 class EditorRenderer : public PlugIn::EditorRendererInterface, protected RemoteCaller, public InstanceValidator<EditorRenderer>
 {
 public:
-    explicit EditorRenderer (ARAIPCMessageChannel* messageChannel, ARAEditorRendererRef remoteRef) noexcept
+    explicit EditorRenderer (MessageChannel* messageChannel, ARAEditorRendererRef remoteRef) noexcept
     : RemoteCaller { messageChannel },
       _remoteRef { remoteRef }
     {}
@@ -1132,7 +1132,7 @@ private:
 class EditorView : public PlugIn::EditorViewInterface, protected RemoteCaller, public InstanceValidator<EditorView>
 {
 public:
-    explicit EditorView (ARAIPCMessageChannel* messageChannel, ARAEditorViewRef remoteRef) noexcept
+    explicit EditorView (MessageChannel* messageChannel, ARAEditorViewRef remoteRef) noexcept
     : RemoteCaller { messageChannel },
       _remoteRef { remoteRef }
     {}
@@ -1168,7 +1168,7 @@ private:
 class PlugInExtension : public PlugIn::PlugInExtensionInstance, public RemoteCaller
 {
 public:
-    PlugInExtension (ARAIPCMessageChannel* messageChannel, ARAPlugInExtensionRef remoteExtensionRef,
+    PlugInExtension (MessageChannel* messageChannel, ARAPlugInExtensionRef remoteExtensionRef,
                      ARADocumentControllerRef documentControllerRef,
                      ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles) noexcept
     : PlugIn::PlugInExtensionInstance { (((knownRoles & kARAPlaybackRendererRole) == 0) || ((assignedRoles & kARAPlaybackRendererRole) != 0)) ?
@@ -1257,7 +1257,7 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageChannelRef me
 {
     RemoteFactory remoteFactory;
     RemoteCaller::CustomDecodeFunction customDecode {
-        [&remoteFactory] (const ARAIPCMessageDecoder* decoder) -> void
+        [&remoteFactory] (const MessageDecoder* decoder) -> void
         {
             decodeReply (remoteFactory._factory, decoder);
 
@@ -1360,7 +1360,7 @@ void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageChannelRef messageChannelRef
 
 /*******************************************************************************/
 
-ARAIPCMessageHandler::DispatchTarget ARAIPCProxyPlugInMessageHandler::getDispatchTargetForIncomingTransaction (ARAIPCMessageID messageID)
+MessageHandler::DispatchTarget ProxyPlugInMessageHandler::getDispatchTargetForIncomingTransaction (MessageID messageID)
 {
     ARA_INTERNAL_ASSERT ((messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples).getMessageID ()) ||
                          ((ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback).getMessageID () <= messageID) &&
@@ -1368,11 +1368,11 @@ ARAIPCMessageHandler::DispatchTarget ARAIPCProxyPlugInMessageHandler::getDispatc
     return nullptr;
 }
 
-void ARAIPCProxyPlugInMessageHandler::handleReceivedMessage (ARAIPCMessageChannel* /*messageChannel*/,
-                                                             const ARAIPCMessageID messageID, const ARAIPCMessageDecoder* const decoder,
-                                                             ARAIPCMessageEncoder* const replyEncoder)
+void ProxyPlugInMessageHandler::handleReceivedMessage (MessageChannel* /*messageChannel*/,
+                                                       const MessageID messageID, const MessageDecoder* const decoder,
+                                                       MessageEncoder* const replyEncoder)
 {
-//  ARA_LOG ("ARAIPCProxyPlugInMessageHandler handles message %s", decodeHostMessageID (messageID));
+//  ARA_LOG ("ProxyPlugInMessageHandler handles message %s", decodeHostMessageID (messageID));
 
     // ARAAudioAccessControllerInterface
     if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, createAudioReaderForSource))
