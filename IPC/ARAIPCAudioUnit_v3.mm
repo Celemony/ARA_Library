@@ -63,7 +63,7 @@ protected:
 public:
     ARAIPCMessageEncoder * createEncoder () override
     {
-        return ARAIPCCFCreateMessageEncoder ();
+        return new ARAIPCCFMessageEncoder {};
     }
 
     bool receiverEndianessMatches () override
@@ -75,22 +75,23 @@ public:
     void routeReceivedMessage (NSDictionary * _Nonnull message)
     {
         const ARAIPCMessageID messageID { [(NSNumber *) [message objectForKey:_messageIDKey] intValue] };
-        ARAIPCMessageDecoder* decoder { ARAIPCCFCreateMessageDecoderWithDictionary ((__bridge CFDictionaryRef) message) };
+        const auto decoder { new ARAIPCCFMessageDecoder { (__bridge CFDictionaryRef) message } };
         ARAIPCMessageChannel::routeReceivedMessage (messageID, decoder);
     }
 
     void _sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder * encoder) override
     {
+        const auto dictionary { static_cast<ARAIPCCFMessageEncoder *> (encoder)->copyDictionary () };
 #if !__has_feature(objc_arc)
-        auto message { (__bridge NSMutableDictionary *) ARAIPCCFCopyMessageEncoderDictionary (encoder) };
+        auto message { (__bridge NSMutableDictionary *) dictionary };
 #else
-        auto message { (__bridge_transfer NSMutableDictionary *) ARAIPCCFCopyMessageEncoderDictionary (encoder) };
+        auto message { (__bridge_transfer NSMutableDictionary *) dictionary };
 #endif
         [message setObject:[NSNumber numberWithInt: messageID] forKey:_messageIDKey];
         const auto reply { _sendMessage (message) };
         ARA_INTERNAL_ASSERT ([reply count] == 0);
 #if !__has_feature(objc_arc)
-        [message release];
+        CFRelease (dictionary);
 #endif
     }
 

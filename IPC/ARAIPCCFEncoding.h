@@ -27,27 +27,59 @@
 #include <CoreFoundation/CoreFoundation.h>
 
 
-#if defined(__cplusplus)
 namespace ARA {
 namespace IPC {
-extern "C" {
-#endif
 
+class ARAIPCCFMessageEncoder : public ARAIPCMessageEncoder
+{
+public:
+    ARAIPCCFMessageEncoder ();
+    ~ARAIPCCFMessageEncoder () override;
 
-ARAIPCMessageEncoder * ARAIPCCFCreateMessageEncoder(void);
-__attribute__((cf_returns_retained)) CFMutableDictionaryRef ARAIPCCFCopyMessageEncoderDictionary(ARAIPCMessageEncoder * encoder);
-__attribute__((cf_returns_retained)) CFDataRef ARAIPCCFCreateMessageEncoderData(ARAIPCMessageEncoder * encoder);
+    void appendInt32 (ARAIPCMessageKey argKey, int32_t argValue) override;
+    void appendInt64 (ARAIPCMessageKey argKey, int64_t argValue) override;
+    void appendSize (ARAIPCMessageKey argKey, size_t argValue) override;
+    void appendFloat (ARAIPCMessageKey argKey, float argValue) override;
+    void appendDouble (ARAIPCMessageKey argKey, double argValue) override;
+    void appendString (ARAIPCMessageKey argKey, const char * argValue) override;
+    void appendBytes (ARAIPCMessageKey argKey, const uint8_t * argValue, size_t argSize, bool copy) override;
+    ARAIPCMessageEncoder* appendSubMessage (ARAIPCMessageKey argKey) override;
 
-ARAIPCMessageDecoder * ARAIPCCFCreateMessageDecoderWithDictionary(CFDictionaryRef messageDictionary);
-ARAIPCMessageDecoder * ARAIPCCFCreateMessageDecoder(CFDataRef messageData);
+    __attribute__((cf_returns_retained)) CFMutableDictionaryRef copyDictionary () const;
+    __attribute__((cf_returns_retained)) CFDataRef createMessageEncoderData ()  const;
 
+private:
+    CFMutableDictionaryRef const _dictionary;
+};
 
-#if defined(__cplusplus)
-}   // extern "C"
+class ARAIPCCFMessageDecoder : public ARAIPCMessageDecoder
+{
+public:
+    explicit ARAIPCCFMessageDecoder (CFDictionaryRef dictionary);
+    ~ARAIPCCFMessageDecoder () override;
+
+    bool readInt32 (ARAIPCMessageKey argKey, int32_t* argValue) const override;
+    bool readInt64 (ARAIPCMessageKey argKey, int64_t* argValue) const override;
+    bool readSize (ARAIPCMessageKey argKey, size_t* argValue) const override;
+    bool readFloat (ARAIPCMessageKey argKey, float* argValue) const override;
+    bool readDouble (ARAIPCMessageKey argKey, double* argValue) const override;
+    bool readString (ARAIPCMessageKey argKey, const char ** argValue) const override;
+    bool readBytesSize (ARAIPCMessageKey argKey, size_t* argSize) const override;
+    void readBytes (ARAIPCMessageKey argKey, uint8_t* argValue) const override;
+    ARAIPCMessageDecoder* readSubMessage (ARAIPCMessageKey argKey) const override;
+    bool hasDataForKey (ARAIPCMessageKey argKey) const override;
+
+    static ARAIPCCFMessageDecoder* createWithMessageData (CFDataRef messageData);
+
+private:
+    ARAIPCCFMessageDecoder (CFDictionaryRef dictionary, bool retain);
+
+private:
+    CFDictionaryRef const _dictionary;
+};
+
 }   // namespace IPC
 }   // namespace ARA
-#endif
-
 
 #endif // ARA_ENABLE_IPC && defined(__APPLE__)
 
