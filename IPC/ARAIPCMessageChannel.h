@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//! \file       ARAIPCMultiThreadedChannel.h
+//! \file       ARAIPCMessageChannel.h
 //!             Base class implementation for both the ARA IPC proxy host and plug-in
 //!             Typically, this file is not included directly - either ARAIPCProxyHost.h
 //!             ARAIPCProxyPlugIn.h will be used instead.
@@ -18,8 +18,8 @@
 //!             limitations under the License.
 //------------------------------------------------------------------------------
 
-#ifndef ARAIPCMultiThreadedChannel_h
-#define ARAIPCMultiThreadedChannel_h
+#ifndef ARAIPCMessageChannel_h
+#define ARAIPCMessageChannel_h
 
 
 #include "ARA_Library/IPC/ARAIPC.h"
@@ -38,8 +38,11 @@
 #include <thread>
 
 
+#if defined(__cplusplus)
 namespace ARA {
 namespace IPC {
+
+class ARAIPCMessageChannel;
 
 //! @addtogroup ARA_Library_IPC
 //! @{
@@ -73,19 +76,40 @@ public:
                                         ARAIPCMessageEncoder* const replyEncoder) = 0;
 };
 
-//! implementation of the generic channel interface for IPC where incoming messages
-//! are not necessarily received on the thread(s) that send outgoing messages
-class MultiThreadedChannel : public ARAIPCMessageChannel
+
+//! IPC message channel: gateway for sending and receiving messages
+//! @{
+class ARAIPCMessageChannel
 {
 public:
-    void sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData) override;
+    virtual ~ARAIPCMessageChannel ();
+
+    //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
+    //! decoder will be nullptr if incoming message was empty
+    typedef void (ARA_CALL *ReplyHandler) (const ARAIPCMessageDecoder* decoder, void* userData);
+
+    //! send an encoded messages to the receiving process
+    //! The encoder will be deleted after sending the message.
+    //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
+    //! This method can be called from any thread, concurrent calls will be serialized.
+    //! The calling thread will be blocked until the receiver has processed the message and
+    //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
+    void sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
+                      ReplyHandler replyHandler, void* replyHandlerUserData);
+
+    //! implemented by subclasses: generate an encoder to encode a new message,
+    //! later passed to sendMessage(), which will destroy the encoder after sending
+    virtual ARAIPCMessageEncoder* createEncoder () = 0;
+
+    //! implemented by subclasses: indicate byte order mismatch between sending
+    //! and receiving machine
+    virtual bool receiverEndianessMatches () = 0;
 
 protected:
-    explicit MultiThreadedChannel (ARAIPCMessageHandler* handler);
-    ~MultiThreadedChannel () override;
+    explicit ARAIPCMessageChannel (ARAIPCMessageHandler* handler);
 
-    // called by subclass implementations to route an incoming message to the correct target thread
-    // takes ownership of the decoder and will eventually delete it
+    //! called by subclass implementations to route an incoming message to the correct target thread
+    //! takes ownership of the decoder and will eventually delete it
     void routeReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder);
 
     //! implemented by subclasses to lock the channel for starting a new transaction
@@ -134,12 +158,17 @@ private:
     dispatch_semaphore_t const _receivedMessageSemaphore;
 #endif
 };
+//! @}
 
 //! @} ARA_Library_IPC
 
 }   // namespace IPC
 }   // namespace ARA
 
+#else
+typedef struct ARAIPCMessageChannel ARAIPCMessageChannel;
+#endif
+
 #endif // ARA_ENABLE_IPC
 
-#endif // ARAIPCMultiThreadedChannel_h
+#endif // ARAIPCMessageChannel_h

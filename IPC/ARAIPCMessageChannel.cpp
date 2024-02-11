@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//! \file       ARAIPCMultiThreadedChannel.cpp
+//! \file       ARAIPCMessageChannel.cpp
 //!             Base class implementation for both the ARA IPC proxy host and plug-in
 //!             Typically, this file is not included directly - either ARAIPCProxyHost.h
 //!             ARAIPCProxyPlugIn.h will be used instead.
@@ -18,7 +18,7 @@
 //!             limitations under the License.
 //------------------------------------------------------------------------------
 
-#include "ARAIPCMultiThreadedChannel.h"
+#include "ARAIPCMessageChannel.h"
 
 
 #if ARA_ENABLE_IPC
@@ -116,9 +116,9 @@ namespace IPC {
 
 // generic thread handling for multi-threaded channels (i.e. messages are note received on the sending thread)
 
-thread_local bool _isReceivingOnThisThread { false };   // actually a "static" member of MultiThreadedChannel, but for some reason C++ doesn't allow this...
+thread_local bool _isReceivingOnThisThread { false };   // actually a "static" member of ARAIPCMessageChannel, but for some reason C++ doesn't allow this...
 
-MultiThreadedChannel::MultiThreadedChannel (ARAIPCMessageHandler* handler)
+ARAIPCMessageChannel::ARAIPCMessageChannel (ARAIPCMessageHandler* handler)
 : _handler { handler },
 #if defined (_WIN32)
   _receivedMessageSemaphore { ::CreateSemaphoreA (nullptr, 0, LONG_MAX, nullptr) }
@@ -129,7 +129,7 @@ MultiThreadedChannel::MultiThreadedChannel (ARAIPCMessageHandler* handler)
     ARA_INTERNAL_ASSERT (_receivedMessageSemaphore != nullptr);
 }
 
-MultiThreadedChannel::~MultiThreadedChannel ()
+ARAIPCMessageChannel::~ARAIPCMessageChannel ()
 {
     ARA_INTERNAL_ASSERT (_sendingThread.load (std::memory_order_acquire) == std::thread::id {});
 #if defined (_WIN32)
@@ -139,7 +139,7 @@ MultiThreadedChannel::~MultiThreadedChannel ()
 #endif
 }
 
-void MultiThreadedChannel::_signalReceivedMessage (std::thread::id /*activeThread*/)
+void ARAIPCMessageChannel::_signalReceivedMessage (std::thread::id /*activeThread*/)
 {
     std::atomic_thread_fence (std::memory_order_release);
 #if defined (_WIN32)
@@ -149,7 +149,7 @@ void MultiThreadedChannel::_signalReceivedMessage (std::thread::id /*activeThrea
 #endif
 }
 
-void MultiThreadedChannel::_waitForReceivedMessage ()
+void ARAIPCMessageChannel::_waitForReceivedMessage ()
 {
 #if defined (_WIN32)
     const auto waitResult { ::WaitForSingleObject (_receivedMessageSemaphore, INFINITE) };
@@ -160,7 +160,7 @@ void MultiThreadedChannel::_waitForReceivedMessage ()
     std::atomic_thread_fence (std::memory_order_acquire);
 }
 
-void MultiThreadedChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
+void ARAIPCMessageChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
                                         ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     const auto thisThread { std::this_thread::get_id () };
@@ -207,7 +207,7 @@ void MultiThreadedChannel::sendMessage (ARAIPCMessageID messageID, ARAIPCMessage
 #if defined (_WIN32)
 struct APCProcessReceivedMessageParams
 {
-    MultiThreadedChannel* channel;
+    ARAIPCMessageChannel* channel;
     ARAIPCMessageID messageID;
     const ARAIPCMessageDecoder* decoder;
 };
@@ -220,7 +220,7 @@ void APCRouteNewTransactionFunc (ULONG_PTR parameter)
 }
 #endif
 
-void MultiThreadedChannel::routeReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
+void ARAIPCMessageChannel::routeReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
 {
     const auto sendingThread { _sendingThread.load (std::memory_order_acquire) };
     if (sendingThread != std::thread::id {})
@@ -258,7 +258,7 @@ void MultiThreadedChannel::routeReceivedMessage (ARAIPCMessageID messageID, cons
     }
 }
 
-void MultiThreadedChannel::_handleReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
+void ARAIPCMessageChannel::_handleReceivedMessage (ARAIPCMessageID messageID, const ARAIPCMessageDecoder* decoder)
 {
     ARA_INTERNAL_ASSERT (messageID != 0);
 

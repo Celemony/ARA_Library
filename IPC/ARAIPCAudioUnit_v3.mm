@@ -25,9 +25,9 @@
 #import "ARA_Library/Debug/ARADebug.h"
 #import "ARA_Library/IPC/ARAIPCEncoding.h"
 #import "ARA_Library/IPC/ARAIPCCFEncoding.h"
+#import "ARA_Library/IPC/ARAIPCMessageChannel.h"
 #import "ARA_Library/IPC/ARAIPCProxyHost.h"
 #import "ARA_Library/IPC/ARAIPCProxyPlugIn.h"
-#import "ARA_Library/IPC/ARAIPCMultiThreadedChannel.h"
 #if !ARA_ENABLE_IPC
     #error "configuration mismatch: enabling ARA_AUDIOUNITV3_IPC_IS_AVAILABLE requires enabling ARA_ENABLE_IPC too"
 #endif
@@ -53,11 +53,11 @@ constexpr NSString * _transactionLockKey { @"transactionLock" };
 
 
 // message channel base class for both proxy implementations
-class ARAIPCAUMessageChannel : public MultiThreadedChannel
+class ARAIPCAUMessageChannel : public ARAIPCMessageChannel
 {
 protected:
     ARAIPCAUMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, ARAIPCMessageHandler * messageHandler)
-    : MultiThreadedChannel { messageHandler },
+    : ARAIPCMessageChannel { messageHandler },
       _audioUnitChannel { audioUnitChannel }
     {}
 
@@ -79,7 +79,7 @@ public:
         ARAIPCMessageDecoder* decoder {};
         if ([message count] > 1)
             decoder = ARAIPCCFCreateMessageDecoderWithDictionary ((__bridge CFDictionaryRef) message);
-        MultiThreadedChannel::routeReceivedMessage (messageID, decoder);
+        ARAIPCMessageChannel::routeReceivedMessage (messageID, decoder);
     }
 
     void _sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder * encoder) override

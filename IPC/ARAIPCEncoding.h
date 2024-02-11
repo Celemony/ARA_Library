@@ -21,7 +21,7 @@
 #ifndef ARAIPCEncoding_h
 #define ARAIPCEncoding_h
 
-#include "ARA_Library/IPC/ARAIPC.h"
+#include "ARA_Library/IPC/ARAIPCMessageChannel.h"
 
 
 #if ARA_ENABLE_IPC && defined(__cplusplus)

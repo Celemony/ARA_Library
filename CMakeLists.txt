@@ -171,8 +171,8 @@ configure_ARA_Library_target(ARA_PlugIn_Library)
 add_library(ARA_IPC_Library ${ARA_LIBRARY_TARGET_TYPE}
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPC.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCEncoding.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCMultiThreadedChannel.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCMultiThreadedChannel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCMessageChannel.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCMessageChannel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyHost.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyHost.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyPlugIn.h"

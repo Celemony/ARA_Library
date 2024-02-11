@@ -143,41 +143,6 @@ typedef struct ARAIPCMessageDecoder ARAIPCMessageDecoder;
 //! @}
 
 
-
-//! Message Channel: gateway for sending messages
-//! @{
-#if defined(__cplusplus)
-class ARAIPCMessageChannel
-{
-public:
-    //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
-    //! decoder will be nullptr if incoming message was empty
-    typedef void (ARA_CALL *ReplyHandler) (const ARAIPCMessageDecoder* decoder, void* userData);
-
-    virtual ~ARAIPCMessageChannel () = default;
-
-    //! generate an encoder to encode a new message, later passed to
-    //! sendMessage() which will destroy the encoder after sending
-    virtual ARAIPCMessageEncoder* createEncoder () = 0;
-
-    //! send an encoded messages to the receiving process
-    //! The encoder will be deleted after sending the message.
-    //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
-    //! This method can be called from any thread, concurrent calls will be serialized.
-    //! The calling thread will be blocked until the receiver has processed the message and
-    //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
-    virtual void sendMessage (ARAIPCMessageID messageID, ARAIPCMessageEncoder* encoder,
-                              ReplyHandler replyHandler, void* replyHandlerUserData) = 0;
-
-    //! indicate byte order mismatch between sending and receiving machine
-    virtual bool receiverEndianessMatches () = 0;
-};
-#else
-typedef struct ARAIPCMessageChannel ARAIPCMessageChannel;
-#endif
-//! @}
-
-
 //! Companion API: opaque encapsulation
 //! @{
 //! to keep the IPC decoupled from the Companion API in use, the IPC code uses an opaque token to represent a plug-in instance

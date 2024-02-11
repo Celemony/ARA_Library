@@ -19,10 +19,11 @@
 #ifndef ARAIPCProxyHost_h
 #define ARAIPCProxyHost_h
 
-#include "ARA_Library/IPC/ARAIPCMultiThreadedChannel.h"
 
+#include "ARA_Library/IPC/ARAIPCMessageChannel.h"
 
 #if ARA_ENABLE_IPC
+
 
 #if defined(__cplusplus)
 namespace ARA {

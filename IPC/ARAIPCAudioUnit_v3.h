@@ -36,8 +36,11 @@
 namespace ARA {
 namespace IPC {
 extern "C" {
-#endif
 
+class ARAIPCMessageChannel;
+#else
+typedef struct ARAIPCMessageChannel ARAIPCMessageChannel;
+#endif
 
 API_AVAILABLE_BEGIN(macos(13.0))
 
