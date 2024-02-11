@@ -44,6 +44,13 @@ namespace ARA {
 namespace IPC {
 extern "C" {
 
+#if !defined (ARA_MAP_IPC_REF)
+    #define ARA_MAP_IPC_REF(IPCClassType, FirstIPCRefType, ...) \
+        static inline ARA::ToRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__> toIPCRef (const IPCClassType* ptr) noexcept { return ARA::ToRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__> { ptr }; } \
+        template <typename DesiredIPCClassType = IPCClassType, typename IPCRefType, typename std::enable_if<std::is_constructible<ARA::FromRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__>, IPCRefType>::value, bool>::type = true> \
+        static inline DesiredIPCClassType* fromIPCRef (IPCRefType ref) noexcept { IPCClassType* object { ARA::FromRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__> (ref) }; return static_cast<DesiredIPCClassType*> (object); }
+#endif
+
     //! helper define to properly insert ARA::IPC namespace into C compatible headers
     #define ARA_IPC_NAMESPACE ARA::IPC::
 #else
@@ -51,18 +58,20 @@ extern "C" {
 #endif
 
 
-//! Companion API: opaque encapsulation
-//! @{
-//! to keep the IPC decoupled from the Companion API in use, the IPC code uses an opaque token to represent a plug-in instance
-typedef size_t ARAIPCPlugInInstanceRef;
-//! @}
+//! IPC reference markup type identifier. \br\br
+//! Examples:                           \br
+//! ::ARAIPCPlugInInstanceRef           \br
+//! ::ARAIPCMessageChannelRef           \br
+#define ARA_IPC_REF(IPCRefType) struct IPCRefType##MarkupType * IPCRefType
 
 
-#if defined(__cplusplus)
-class ARAIPCMessageChannel;
-#else
-typedef struct ARAIPCMessageChannel ARAIPCMessageChannel;
-#endif
+//! C-compatible wrapper of ARAIPCMessageChannel
+typedef ARA_IPC_REF(ARAIPCMessageChannelRef);
+
+
+//! to keep the IPC decoupled from the Companion API in use, the IPC code uses
+//! an opaque encapsulation to represent a Companion API plug-in instance
+typedef ARA_IPC_REF(ARAIPCPlugInInstanceRef);
 
 
 #if defined(__cplusplus)

@@ -48,32 +48,32 @@ public:
 
 
 //! counts the factories available through the given message channel
-size_t ARAIPCProxyPlugInGetFactoriesCount(ARAIPCMessageChannel * messageChannel);
+size_t ARAIPCProxyPlugInGetFactoriesCount(ARAIPCMessageChannelRef messageChannelRef);
 
 //! get a static copy of the remote factory data, with all function calls removed
 //! index must be smaller than the result of ARAIPCProxyPlugInGetFactoriesCount()
-const ARAFactory * ARAIPCProxyPlugInGetFactoryAtIndex(ARAIPCMessageChannel * messageChannel, size_t index);
+const ARAFactory * ARAIPCProxyPlugInGetFactoryAtIndex(ARAIPCMessageChannelRef messageChannelRef, size_t index);
 
 //! proxy initialization call, to be used instead of ARAFactory.initializeARAWithConfiguration()
 // \todo we're currently not supporting propagating ARA assertions through IPC...
-void ARAIPCProxyPlugInInitializeARA(ARAIPCMessageChannel * messageChannel, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration);
+void ARAIPCProxyPlugInInitializeARA(ARAIPCMessageChannelRef messageChannelRef, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration);
 
 //! proxy document controller creation call, to be used instead of ARAFactory.createDocumentControllerWithDocument()
-const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCMessageChannel * messageChannel,
+const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCMessageChannelRef messageChannelRef,
                                                                                             const ARAPersistentID factoryID,
                                                                                             const ARADocumentControllerHostInstance * hostInstance,
                                                                                             const ARADocumentProperties * properties);
 
 //! create the proxy plug-in extension when performing the binding to the remote plug-in instance
 const ARAPlugInExtensionInstance * ARAIPCProxyPlugInBindToDocumentController(ARAIPCPlugInInstanceRef remoteRef,
-                                                                             ARAIPCMessageChannel * messageChannel, ARADocumentControllerRef documentControllerRef,
+                                                                             ARAIPCMessageChannelRef messageChannelRef, ARADocumentControllerRef documentControllerRef,
                                                                              ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
 
 //! trigger proper teardown of proxy plug-in extension upon destroying a remote plug-in instance that has been bound to ARA
 void ARAIPCProxyPlugInCleanupBinding(const ARAPlugInExtensionInstance * plugInExtension);
 
 //! proxy uninitialization call, to be used instead of ARAFactory.uninitializeARA()
-void ARAIPCProxyPlugInUninitializeARA(ARAIPCMessageChannel * messageChannel, const ARAPersistentID factoryID);
+void ARAIPCProxyPlugInUninitializeARA(ARAIPCMessageChannelRef messageChannelRef, const ARAPersistentID factoryID);
 
 
 #if defined(__cplusplus)

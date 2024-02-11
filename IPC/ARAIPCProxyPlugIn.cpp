@@ -185,6 +185,17 @@ ARA_MAP_HOST_REF (HostAudioReader, ARAAudioReaderHostRef)
 /*******************************************************************************/
 // Implementation of DocumentControllerInterface that channels all calls through IPC
 
+#if defined (__GNUC__)
+    _Pragma ("GCC diagnostic push")
+    _Pragma ("GCC diagnostic ignored \"-Wunused-function\"")
+#endif
+
+ARA_MAP_IPC_REF (ARAIPCMessageChannel, ARAIPCMessageChannelRef)
+
+#if defined (__GNUC__)
+    _Pragma ("GCC diagnostic pop")
+#endif
+
 class DocumentController : public PlugIn::DocumentControllerInterface, protected RemoteCaller, public InstanceValidator<DocumentController>
 {
 public:
@@ -1234,15 +1245,15 @@ using namespace ProxyPlugIn;
 /*******************************************************************************/
 
 
-size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCMessageChannel* messageChannel)
+size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCMessageChannelRef messageChannelRef)
 {
     size_t count;
-    RemoteCaller { messageChannel }.remoteCall (count, kGetFactoriesCountMethodID);
+    RemoteCaller { fromIPCRef (messageChannelRef) }.remoteCall (count, kGetFactoriesCountMethodID);
     ARA_INTERNAL_ASSERT (count > 0);
     return count;
 }
 
-const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageChannel* messageChannel, size_t index)
+const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageChannelRef messageChannelRef, size_t index)
 {
     RemoteFactory remoteFactory;
     RemoteCaller::CustomDecodeFunction customDecode {
@@ -1282,7 +1293,7 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageChannel* mess
             remoteFactory._factory.analyzeableContentTypes = remoteFactory._analyzableTypes.data ();
         } };
 
-    RemoteCaller { messageChannel }.remoteCall (customDecode, kGetFactoryMethodID, index);
+    RemoteCaller { fromIPCRef (messageChannelRef) }.remoteCall (customDecode, kGetFactoryMethodID, index);
 
     const auto result { _factories.insert (std::make_pair (remoteFactory._strings.factoryID, remoteFactory)) };
     if (result.second)
@@ -1306,14 +1317,14 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCMessageChannel* mess
     return &result.first->second._factory;
 }
 
-void ARAIPCProxyPlugInInitializeARA (ARAIPCMessageChannel* messageChannel, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration)
+void ARAIPCProxyPlugInInitializeARA (ARAIPCMessageChannelRef messageChannelRef, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration)
 {
     ARA_INTERNAL_ASSERT (desiredApiGeneration >= kARAAPIGeneration_2_0_Final);
-    RemoteCaller { messageChannel }.remoteCall (kInitializeARAMethodID, factoryID, desiredApiGeneration);
+    RemoteCaller { fromIPCRef (messageChannelRef) }.remoteCall (kInitializeARAMethodID, factoryID, desiredApiGeneration);
 }
 
 const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWithDocument (
-                                            ARAIPCMessageChannel* messageChannel, const ARAPersistentID factoryID,
+                                            ARAIPCMessageChannelRef messageChannelRef, const ARAPersistentID factoryID,
                                             const ARADocumentControllerHostInstance* hostInstance, const ARADocumentProperties* properties)
 {
     const auto cached { _factories.find (std::string { factoryID }) };
@@ -1321,19 +1332,19 @@ const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWi
     if (cached == _factories.end ())
         return nullptr;
 
-    auto result { new DocumentController { messageChannel, &cached->second._factory, hostInstance, properties } };
+    auto result { new DocumentController { fromIPCRef (messageChannelRef), &cached->second._factory, hostInstance, properties } };
     return result->getInstance ();
 }
 
-const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARAIPCPlugInInstanceRef remoteRef, ARAIPCMessageChannel* messageChannel, ARADocumentControllerRef documentControllerRef,
+const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARAIPCPlugInInstanceRef remoteRef, ARAIPCMessageChannelRef messageChannelRef, ARADocumentControllerRef documentControllerRef,
                                                                             ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
 {
     const auto remoteDocumentControllerRef { static_cast<DocumentController*> (PlugIn::fromRef (documentControllerRef))->getRemoteRef () };
 
     size_t remoteExtensionRef {};
-    RemoteCaller { messageChannel }.remoteCall (remoteExtensionRef, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
+    RemoteCaller { fromIPCRef (messageChannelRef) }.remoteCall (remoteExtensionRef, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
 
-    return new PlugInExtension { messageChannel, reinterpret_cast<ARAPlugInExtensionRef> (remoteExtensionRef), documentControllerRef, knownRoles, assignedRoles };
+    return new PlugInExtension { fromIPCRef (messageChannelRef), reinterpret_cast<ARAPlugInExtensionRef> (remoteExtensionRef), documentControllerRef, knownRoles, assignedRoles };
 }
 
 void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInExtensionInstance)
@@ -1341,9 +1352,9 @@ void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInEx
     delete static_cast<const PlugInExtension*> (plugInExtensionInstance);
 }
 
-void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageChannel* messageChannel, const ARAPersistentID factoryID)
+void ARAIPCProxyPlugInUninitializeARA (ARAIPCMessageChannelRef messageChannelRef, const ARAPersistentID factoryID)
 {
-    RemoteCaller { messageChannel }.remoteCall (kUninitializeARAMethodID, factoryID);
+    RemoteCaller { fromIPCRef (messageChannelRef) }.remoteCall (kUninitializeARAMethodID, factoryID);
 }
 
 

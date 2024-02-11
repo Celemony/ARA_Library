@@ -37,7 +37,6 @@
 
 namespace ARA {
 namespace IPC {
-extern "C" {
 
 
 _Pragma ("GCC diagnostic push")
@@ -106,6 +105,18 @@ protected:
 private:
     NSObject<AUMessageChannel> * __unsafe_unretained _Nonnull _audioUnitChannel;    // avoid "retain" cycle: the AUMessageChannel implementation manages this object
 };
+
+
+#if defined (__GNUC__)
+    _Pragma ("GCC diagnostic push")
+    _Pragma ("GCC diagnostic ignored \"-Wunguarded-availability\"")
+#endif
+
+ARA_MAP_IPC_REF (ARAIPCAUMessageChannel, ARA::IPC::ARAIPCMessageChannelRef)
+
+#if defined (__GNUC__)
+    _Pragma ("GCC diagnostic pop")
+#endif
 
 
 // plug-in side: proxy host message channel specialization
@@ -183,9 +194,9 @@ public:
                                                                                 ARADocumentControllerRef _Nonnull documentControllerRef,
                                                                                 ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
     {
-        auto result { new ARAIPCAUPlugInExtensionMessageChannel { audioUnitChannel } };
-        result->_plugInExtensionInstance = ARAIPCProxyPlugInBindToDocumentController (0, result, documentControllerRef, knownRoles, assignedRoles);
-        return result;
+        auto messageChannel { new ARAIPCAUPlugInExtensionMessageChannel { audioUnitChannel } };
+        messageChannel->_plugInExtensionInstance = ARAIPCProxyPlugInBindToDocumentController (nullptr, toIPCRef (messageChannel), documentControllerRef, knownRoles, assignedRoles);
+        return messageChannel;
     }
 
     ~ARAIPCAUPlugInExtensionMessageChannel () override
@@ -205,6 +216,9 @@ private:
 
 
 
+extern "C" {
+
+
 // host side: proxy plug-in C adapter
 NSObject<AUMessageChannel> * _Nullable ARAIPCAUGetMessageChannel (AUAudioUnit * _Nonnull audioUnit, NSString * _Nonnull identifier)
 {
@@ -215,19 +229,19 @@ NSObject<AUMessageChannel> * _Nullable ARAIPCAUGetMessageChannel (AUAudioUnit * 
     return (NSObject<AUMessageChannel> *) [audioUnit messageChannelFor:identifier];
 }
 
-ARAIPCMessageChannel * _Nullable ARA_CALL ARAIPCAUProxyPlugInInitializeFactoryMessageChannel (AUAudioUnit * _Nonnull audioUnit)
+ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitializeFactoryMessageChannel (AUAudioUnit * _Nonnull audioUnit)
 {
     auto factoryChannel { ARAIPCAUGetMessageChannel (audioUnit, ARA_AUDIOUNIT_FACTORY_CUSTOM_MESSAGES_UTI) };
     if (!factoryChannel)
         return nullptr;
 
-    return new ARAIPCAUPlugInMessageChannel { (NSObject<AUMessageChannel> * _Nonnull) factoryChannel };
+    return toIPCRef (new ARAIPCAUPlugInMessageChannel { (NSObject<AUMessageChannel> * _Nonnull) factoryChannel });
 }
 
-const ARAFactory * _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory (ARAIPCMessageChannel * _Nonnull messageChannel)
+const ARAFactory * _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory (ARAIPCMessageChannelRef _Nonnull messageChannelRef)
 {
-    ARA_VALIDATE_API_CONDITION (ARAIPCProxyPlugInGetFactoriesCount (messageChannel) == 1);
-    const ARAFactory * result { ARAIPCProxyPlugInGetFactoryAtIndex (messageChannel, 0) };
+    ARA_VALIDATE_API_CONDITION (ARAIPCProxyPlugInGetFactoriesCount (messageChannelRef) == 1);
+    const ARAFactory * result { ARAIPCProxyPlugInGetFactoryAtIndex (messageChannelRef, 0) };
     ARA_VALIDATE_API_CONDITION (result != nullptr);
     return result;
 }
@@ -236,28 +250,29 @@ const ARAPlugInExtensionInstance * _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToD
                                                                                                    ARADocumentControllerRef _Nonnull documentControllerRef,
                                                                                                    ARAPlugInInstanceRoleFlags knownRoles,
                                                                                                    ARAPlugInInstanceRoleFlags assignedRoles,
-                                                                                                   ARAIPCMessageChannel * _Nullable * _Nonnull messageChannel)
+                                                                                                   ARAIPCMessageChannelRef _Nullable * _Nonnull messageChannelRef)
 {
     auto audioUnitChannel { ARAIPCAUGetMessageChannel (audioUnit, ARA_AUDIOUNIT_PLUGINEXTENSION_CUSTOM_MESSAGES_UTI) };
     if (!audioUnitChannel)
     {
-        *messageChannel = nullptr;
+        *messageChannelRef = nullptr;
         return nullptr;
     }
 
-    *messageChannel = ARAIPCAUPlugInExtensionMessageChannel::bindAndCreateMessageChannel ((NSObject<AUMessageChannel> * _Nonnull) audioUnitChannel,
-                                                                                          documentControllerRef, knownRoles, assignedRoles);
-    return static_cast<ARAIPCAUPlugInExtensionMessageChannel *> (*messageChannel)->getPlugInExtensionInstance ();
+    const auto messageChannel { ARAIPCAUPlugInExtensionMessageChannel::bindAndCreateMessageChannel ((NSObject<AUMessageChannel> * _Nonnull) audioUnitChannel,
+                                                                                                    documentControllerRef, knownRoles, assignedRoles) };
+    *messageChannelRef = toIPCRef (messageChannel);
+    return messageChannel->getPlugInExtensionInstance ();
 }
 
-void ARA_CALL ARAIPCAUProxyPlugInCleanupBinding (ARAIPCMessageChannel * messageChannel)
+void ARA_CALL ARAIPCAUProxyPlugInCleanupBinding (ARAIPCMessageChannelRef messageChannelRef)
 {
-    delete messageChannel;
+    delete fromIPCRef (messageChannelRef);
 }
 
-void ARA_CALL ARAIPCAUProxyPlugInUninitializeFactoryMessageChannel (ARAIPCMessageChannel * _Nonnull messageChannel)
+void ARA_CALL ARAIPCAUProxyPlugInUninitializeFactoryMessageChannel (ARAIPCMessageChannelRef _Nonnull messageChannelRef)
 {
-    delete messageChannel;
+    delete fromIPCRef (messageChannelRef);
 }
 
 
@@ -270,11 +285,11 @@ void ARA_CALL ARAIPCAUProxyHostAddFactory (const ARAFactory * _Nonnull factory)
     ARAIPCProxyHostAddFactory (factory);
 }
 
-const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandler (ARAIPCMessageChannel * messageChannel, ARAIPCPlugInInstanceRef /*plugInInstanceRef*/,
+const ARAPlugInExtensionInstance * ARA_CALL ARAIPCAUBindingHandler (ARAIPCMessageChannelRef messageChannelRef, ARAIPCPlugInInstanceRef /*plugInInstanceRef*/,
                                                                     ARADocumentControllerRef controllerRef,
                                                                     ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
 {
-    auto audioUnit { static_cast<ARAIPCAUHostMessageChannel *>(messageChannel)->getAudioUnit () };
+    auto audioUnit { static_cast<ARAIPCAUHostMessageChannel *> (fromIPCRef (messageChannelRef))->getAudioUnit () };
     return [(AUAudioUnit<ARAAudioUnit> *) audioUnit bindToDocumentController:controllerRef withRoles:assignedRoles knownRoles:knownRoles];
 }
 
@@ -285,21 +300,21 @@ void ARA_CALL ARAIPCAUProxyHostInitialize (NSObject<AUMessageChannel> * _Nonnull
     ARAIPCProxyHostSetBindingHandler (ARAIPCAUBindingHandler);
 }
 
-ARAIPCMessageChannel * _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel (AUAudioUnit * _Nonnull audioUnit,
-                                                                                     NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
+ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel (AUAudioUnit * _Nonnull audioUnit,
+                                                                                      NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
 {
-    return new ARAIPCAUHostMessageChannel { audioUnitChannel, audioUnit };
+    return toIPCRef (new ARAIPCAUHostMessageChannel { audioUnitChannel, audioUnit });
 }
 
-NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageChannel * _Nonnull messageChannel, NSDictionary * _Nonnull message)
+NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message)
 {
-    ((ARAIPCAUHostMessageChannel *) messageChannel)->routeReceivedMessage (message);
+    static_cast<ARAIPCAUHostMessageChannel *> (fromIPCRef (messageChannelRef))->routeReceivedMessage (message);
     return [NSDictionary dictionary];   // \todo it would yield better performance if -callAudioUnit: would allow nil as return value
 }
 
-void ARA_CALL ARAIPCAUProxyHostUninitializeMessageChannel (ARAIPCMessageChannel * _Nonnull messageChannel)
+void ARA_CALL ARAIPCAUProxyHostUninitializeMessageChannel (ARAIPCMessageChannelRef _Nonnull messageChannelRef)
 {
-    delete messageChannel;
+    delete fromIPCRef (messageChannelRef);
 }
 
 void ARA_CALL ARAIPCAUProxyHostUninitialize (void)
