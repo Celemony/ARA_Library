@@ -196,7 +196,7 @@ ARA_MAP_IPC_REF (MessageChannel, ARAIPCMessageChannelRef)
     _Pragma ("GCC diagnostic pop")
 #endif
 
-class DocumentController : public PlugIn::DocumentControllerInterface, protected RemoteCaller, public InstanceValidator<DocumentController>
+class DocumentController : public PlugIn::DocumentControllerInterface, public RemoteCaller, public InstanceValidator<DocumentController>
 {
 public:
     DocumentController (MessageChannel * messageChannel, const ARAFactory* factory, const ARADocumentControllerHostInstance* instance, const ARADocumentProperties* properties) noexcept;
@@ -1336,15 +1336,16 @@ const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWi
     return result->getInstance ();
 }
 
-const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARAIPCPlugInInstanceRef remoteRef, ARAIPCMessageChannelRef messageChannelRef, ARADocumentControllerRef documentControllerRef,
-                                                                            ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
+const ARAPlugInExtensionInstance* ARAIPCProxyPlugInBindToDocumentController (ARAIPCPlugInInstanceRef remoteRef, ARADocumentControllerRef documentControllerRef,
+                                                                             ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles)
 {
-    const auto remoteDocumentControllerRef { static_cast<DocumentController*> (PlugIn::fromRef (documentControllerRef))->getRemoteRef () };
+    auto documentController { static_cast<DocumentController*> (PlugIn::fromRef (documentControllerRef)) };
+    const auto remoteDocumentControllerRef { documentController->getRemoteRef () };
 
     size_t remoteExtensionRef {};
-    RemoteCaller { fromIPCRef (messageChannelRef) }.remoteCall (remoteExtensionRef, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
+    documentController->remoteCall (remoteExtensionRef, kBindToDocumentControllerMethodID, remoteRef, remoteDocumentControllerRef, knownRoles, assignedRoles);
 
-    return new PlugInExtension { fromIPCRef (messageChannelRef), reinterpret_cast<ARAPlugInExtensionRef> (remoteExtensionRef), documentControllerRef, knownRoles, assignedRoles };
+    return new PlugInExtension { documentController->getMessageChannel (), reinterpret_cast<ARAPlugInExtensionRef> (remoteExtensionRef), documentControllerRef, knownRoles, assignedRoles };
 }
 
 void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInExtensionInstance)

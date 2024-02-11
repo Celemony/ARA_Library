@@ -660,17 +660,6 @@ std::thread::id _getMainThreadID ()
 }
 #endif
 
-#if defined (__GNUC__)
-    _Pragma ("GCC diagnostic push")
-    _Pragma ("GCC diagnostic ignored \"-Wunused-template\"")
-#endif
-
-ARA_MAP_IPC_REF (MessageChannel, ARAIPCMessageChannelRef)
-
-#if defined (__GNUC__)
-    _Pragma ("GCC diagnostic pop")
-#endif
-
 
 ProxyHostMessageHandler::ProxyHostMessageHandler ()
 :
@@ -762,7 +751,7 @@ void ProxyHostMessageHandler::handleReceivedMessage (MessageChannel* messageChan
         ARAPlugInInstanceRoleFlags knownRoles;
         ARAPlugInInstanceRoleFlags assignedRoles;
         decodeArguments (decoder, plugInInstanceRef, controllerRef, knownRoles, assignedRoles);
-        const auto plugInExtensionInstance { _bindingHandler (toIPCRef (messageChannel), plugInInstanceRef, fromRef (controllerRef)->getRef (), knownRoles, assignedRoles) };
+        const auto plugInExtensionInstance { _bindingHandler (plugInInstanceRef, fromRef (controllerRef)->getRef (), knownRoles, assignedRoles) };
         const ARAPlugInExtensionRef plugInExtensionRef { toRef ( new PlugInExtension { plugInExtensionInstance } )};
         ARA_INTERNAL_ASSERT (plugInExtensionInstance->plugInExtensionRef == nullptr);   // plugInExtensionRef must not be used when ARA 2 is active
         const_cast<ARAPlugInExtensionInstance*> (plugInExtensionInstance)->plugInExtensionRef = plugInExtensionRef;

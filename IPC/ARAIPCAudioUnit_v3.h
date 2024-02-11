@@ -61,17 +61,14 @@ const ARAFactory * _Nonnull ARA_CALL ARAIPCAUProxyPlugInGetFactory(ARAIPCMessage
 //! host side: create the plug-in extension when performing the binding to the remote plug-in instance
 //! also initializes the message channel, which remains valid until ARAIPCAUProxyPlugInCleanupBinding() is called
 //! the document controller must be created through a factory obtained through ARAIPCAUProxyPlugInGetFactory()
-//! will return NULL if the Audio Unit does not implement [AUAudioUnit messageChannelFor:],
-//! leaving messageChannel uninitialized in that case
+//! will return NULL if the Audio Unit does not implement [AUAudioUnit messageChannelFor:]
 const ARAPlugInExtensionInstance * _Nullable ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController(AUAudioUnit * _Nonnull audioUnit,
                                                                                                   ARADocumentControllerRef _Nonnull documentControllerRef,
                                                                                                   ARAPlugInInstanceRoleFlags knownRoles,
-                                                                                                  ARAPlugInInstanceRoleFlags assignedRoles,
-                                                                                                  ARAIPCMessageChannelRef _Nullable * _Nonnull messageChannelRef);
+                                                                                                  ARAPlugInInstanceRoleFlags assignedRoles);
 
 //! host side: trigger proper teardown of proxy plug-in extension when Companion API instance is destroyed
-//! the message channel must have been initialized by ARAIPCAUProxyPlugInBindToDocumentController() and will be uninitialized
-void ARA_CALL ARAIPCAUProxyPlugInCleanupBinding(ARAIPCMessageChannelRef _Nonnull messageChannelRef);
+void ARA_CALL ARAIPCAUProxyPlugInCleanupBinding(const ARAPlugInExtensionInstance * _Nonnull plugInExtension);
 
 //! host side: uninitialize the channel set up in ARAIPCAUProxyPlugInInitializeFactoryMessageChannel()
 void ARA_CALL ARAIPCAUProxyPlugInUninitializeFactoryMessageChannel(ARAIPCMessageChannelRef _Nonnull messageChannelRef);
@@ -85,8 +82,7 @@ void ARA_CALL ARAIPCAUProxyHostAddFactory(const ARAFactory * _Nonnull factory);
 void ARA_CALL ARAIPCAUProxyHostInitialize(NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel);
 
 //! plug-in side:implementation for AUMessageChannel<NSObject> -init...
-ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel(AUAudioUnit * _Nonnull audioUnit,
-                                                                                     NSObject<AUMessageChannel> * _Nonnull audioUnitChannel);
+ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel(NSObject<AUMessageChannel> * _Nonnull audioUnitChannel);
 
 //! plug-in side: implementation for AUMessageChannel<NSObject> -callAudioUnit:
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler(ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message);

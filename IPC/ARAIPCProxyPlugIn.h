@@ -65,8 +65,7 @@ const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerW
                                                                                             const ARADocumentProperties * properties);
 
 //! create the proxy plug-in extension when performing the binding to the remote plug-in instance
-const ARAPlugInExtensionInstance * ARAIPCProxyPlugInBindToDocumentController(ARAIPCPlugInInstanceRef remoteRef,
-                                                                             ARAIPCMessageChannelRef messageChannelRef, ARADocumentControllerRef documentControllerRef,
+const ARAPlugInExtensionInstance * ARAIPCProxyPlugInBindToDocumentController(ARAIPCPlugInInstanceRef remoteRef, ARADocumentControllerRef documentControllerRef,
                                                                              ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
 
 //! trigger proper teardown of proxy plug-in extension upon destroying a remote plug-in instance that has been bound to ARA

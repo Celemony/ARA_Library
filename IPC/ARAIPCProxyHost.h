@@ -52,7 +52,7 @@ private:
 
 
 //! callback that the proxy uses to execute the binding of an opaque Companion API plug-in instance to the given document controller
-typedef const ARAPlugInExtensionInstance * (*ARAIPCBindingHandler) (ARAIPCMessageChannelRef messageChannelRef, ARAIPCPlugInInstanceRef plugInInstanceRef,
+typedef const ARAPlugInExtensionInstance * (*ARAIPCBindingHandler) (ARAIPCPlugInInstanceRef plugInInstanceRef,
                                                                     ARADocumentControllerRef controllerRef,
                                                                     ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
 
