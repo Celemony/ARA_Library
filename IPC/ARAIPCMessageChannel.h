@@ -82,13 +82,27 @@ public:
 class Connection
 {
 protected:
-    explicit Connection (MessageHandler* messageHandler, MessageChannel* mainChannel)
-    : _messageHandler { messageHandler },
-      _mainChannel { mainChannel }
-    {}
+    //! creation requires a message handler, a channel for all main thread
+    //! communication and a channel for all communication on other threads
+    //! The connections takes ownership of the channels and deletes them upon teardown.
+    Connection (MessageHandler* messageHandler, MessageChannel* mainChannel, MessageChannel* otherChannel);
+
+    //! alternate creation when mainChannel and otherThreadsChannel cannot be
+    //! provided at construction time
+    explicit Connection (MessageHandler* messageHandler);
 
 public:
     virtual ~Connection ();
+
+    //! set the message channel for all main thread communication
+    //! Must be done before sending or receiving the first message on any channel.
+    //! The connections takes ownership of the channels and deletes them upon teardown.
+    void setMainThreadChannel (MessageChannel* mainChannel);
+
+    //! set the message channel for all non-main thread communication
+    //! Must be done before sending or receiving the first message on any channel.
+    //! The connections takes ownership of the channels and deletes them upon teardown.
+    void setOtherThreadsChannel (MessageChannel* otherChannel);
 
     //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
     //! decoder will be nullptr if incoming message was empty
@@ -124,7 +138,9 @@ protected:
 
 private:
     MessageHandler* const _messageHandler;
-    MessageChannel* const _mainChannel;
+    MessageChannel* _mainChannel {};
+    MessageChannel* _otherChannel {};
+    std::thread::id const _creationThreadID;
 };
 //! @}
 

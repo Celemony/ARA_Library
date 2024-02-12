@@ -68,7 +68,8 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize(ARAIPCConnectionRef _Nonnull proxy
 //! plug-in side:implementation for AUMessageChannel<NSObject> -init...
 //! will initialize the proxy on demand - make sure to add all factories via ARAIPCProxyHostAddFactory()
 //! before the first call to this function and to call ARAIPCAUProxyHostUninitialize() if the call was made
-ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel(NSObject<AUMessageChannel> * _Nonnull audioUnitChannel);
+ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel(NSObject<AUMessageChannel> * _Nonnull audioUnitChannel,
+                                                                                     bool isMainThreadChannel);
 
 //! plug-in side: implementation for AUMessageChannel<NSObject> -callAudioUnit:
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler(ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message);

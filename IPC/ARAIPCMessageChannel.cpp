@@ -335,14 +335,40 @@ void MessageChannel::_handleReply (const MessageDecoder* decoder, Connection::Re
 }
 
 
+Connection::Connection (MessageHandler* messageHandler, MessageChannel* mainChannel, MessageChannel* otherChannel)
+: Connection { messageHandler }
+{
+    setMainThreadChannel (mainChannel);
+    setOtherThreadsChannel (otherChannel);
+}
+
+Connection::Connection (MessageHandler* messageHandler)
+: _messageHandler { messageHandler },
+  _creationThreadID { std::this_thread::get_id () }
+{}
+
 Connection::~Connection ()
 {
+    delete _otherChannel;
     delete _mainChannel;
+}
+
+void Connection::setMainThreadChannel (MessageChannel* mainChannel)
+{
+    _mainChannel = mainChannel;
+}
+
+void Connection::setOtherThreadsChannel (MessageChannel* otherChannel)
+{
+    _otherChannel = otherChannel;
 }
 
 void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
 {
-    _mainChannel->sendMessage(messageID, encoder, replyHandler, replyHandlerUserData);
+    if (std::this_thread::get_id () == _creationThreadID)
+        _mainChannel->sendMessage(messageID, encoder, replyHandler, replyHandlerUserData);
+    else
+        _otherChannel->sendMessage(messageID, encoder, replyHandler, replyHandlerUserData);
 }
 
 MessageHandler::DispatchTarget Connection::getDispatchTargetForIncomingTransaction (MessageID messageID)

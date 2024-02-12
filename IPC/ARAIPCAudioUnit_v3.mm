@@ -185,11 +185,15 @@ public:
         if (![audioUnit respondsToSelector:@selector(messageChannelFor:)])
             return nullptr;
 
-        auto factoryChannel { [audioUnit messageChannelFor:ARA_AUDIOUNIT_FACTORY_CUSTOM_MESSAGES_UTI] };
-        if (!factoryChannel)
+        auto mainChannel { [audioUnit messageChannelFor:ARA_AUDIOUNIT_MAIN_THREAD_MESSAGES_UTI] };
+        if (!mainChannel)
             return nullptr;
 
-        return new AUProxyPlugIn { static_cast<NSObject<AUMessageChannel>*> (factoryChannel) };
+        auto otherChannel { [audioUnit messageChannelFor:ARA_AUDIOUNIT_OTHER_THREADS_MESSAGES_UTI] };
+        if (!otherChannel)
+            return nullptr;
+
+        return new AUProxyPlugIn { static_cast<NSObject<AUMessageChannel>*> (mainChannel), static_cast<NSObject<AUMessageChannel>*> (otherChannel) };
     }
 
     ~AUProxyPlugIn () override
@@ -218,9 +222,10 @@ protected:
     }
 
 private:
-    AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel)
+    AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel, NSObject<AUMessageChannel> * _Nonnull otherChannel)
     : ProxyPlugIn { this },
-      AUConnection { this, new ProxyPlugInMessageChannel { factoryMessageChannel, this } },
+      AUConnection { this, new ProxyPlugInMessageChannel { mainChannel, this },
+                           new ProxyPlugInMessageChannel { otherChannel, this } },
       // \todo there's also QOS_CLASS_USER_INTERACTIVE which seems more appropriate but is undocumented...
       _readAudioQueue { dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1)) }
     {}
@@ -276,9 +281,9 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCConnectionRef _Nonnull prox
 class AUProxyHost : public ProxyHost, public AUConnection
 {
 public:
-    AUProxyHost (NSObject<AUMessageChannel> * _Nonnull factoryMessageChannel)
+    AUProxyHost ()
     : ProxyHost { this },
-      AUConnection { this, new ProxyHostMessageChannel { factoryMessageChannel, this } }
+      AUConnection { this }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
     }
@@ -296,12 +301,30 @@ private:
 AUProxyHost* _proxyHost;
 
 
-ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
+ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel,
+                                                                                      bool isMainThreadChannel)
 {
-    if (!_proxyHost)
-        _proxyHost = new AUProxyHost { audioUnitChannel };
+    // \todo the connection currently stores the creation thread as main thread for Windows compatibility,
+    //       so we need to make sure the proxy is created on the main thread
+    auto createProxyIfNeeded {
+             ^void ()
+             {
+                 if (!_proxyHost)
+                     _proxyHost = new AUProxyHost {};
+             }};
+     
+     if ([NSThread isMainThread])
+         createProxyIfNeeded ();
+     else
+         dispatch_sync (dispatch_get_main_queue (), createProxyIfNeeded);
 
-    return toIPCRef (new ProxyHostMessageChannel { audioUnitChannel, _proxyHost });
+    auto result { new ProxyHostMessageChannel { audioUnitChannel, _proxyHost } };
+    if (isMainThreadChannel)
+        _proxyHost->setMainThreadChannel (result);
+    else
+        _proxyHost->setOtherThreadsChannel (result);
+
+    return toIPCRef (result);
 }
 
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message)
