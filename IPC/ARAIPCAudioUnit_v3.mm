@@ -160,6 +160,13 @@ public:
                 routeReceivedMessage (message);
                 return [NSDictionary dictionary];   // \todo it would yield better performance if the callHostBlock would allow nil as return value
             };
+
+        // \todo macOS as of 14.3.1 does not forward the above assignment of callHostBlock to the
+        //       remote side until the first message is sent. However, if another channel is assigned
+        //       its (same) callHostBlock, then the pending callHostBlock for the first channel is
+        //       lost for some reason. We need to send an empty dummy message to work around this bug,
+        //       which them must be filtered in ARAIPCAUProxyHostCommandHandler().
+        [audioUnitChannel callAudioUnit:[NSDictionary dictionary]];
     }
 
     ~ProxyPlugInMessageChannel () override
@@ -329,7 +336,8 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
 
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message)
 {
-    static_cast<ProxyHostMessageChannel *> (fromIPCRef (messageChannelRef))->routeReceivedMessage (message);
+    if ([message count])    // \todo filter dummy message sent in ProxyPlugInMessageChannel(), see there
+        static_cast<ProxyHostMessageChannel *> (fromIPCRef (messageChannelRef))->routeReceivedMessage (message);
     return [NSDictionary dictionary];   // \todo it would yield better performance if -callAudioUnit: would allow nil as return value
 }
 
