@@ -213,7 +213,8 @@ private:
 private:
     Connection* const _connection;
 
-    std::mutex _lock;
+    std::mutex _sendLock;
+    std::mutex _routeLock;
 
     // incoming data is stored in _routedMessages by the receive handler for the
     // sending threads waiting to pick it up (signaled via _routeReceiveCondition)

@@ -159,14 +159,13 @@ void MessageChannel::sendMessage (MessageID messageID, MessageEncoder* encoder,
     if (_remoteTargetThread != _invalidThread)
         encoder->appendThreadRef (receiveThreadKey, _remoteTargetThread);
 
-    _lock.lock ();
+    _sendLock.lock ();
     ARA_IPC_LOG ("sends message with ID %i on thread %p%s", messageID, currentThread, (_remoteTargetThread == _invalidThread) ? " (starting new transaction)" : "");
     _sendMessage (messageID, encoder);
+    _sendLock.unlock ();
 
     if (runsReceiveLoopOnCurrentThread ())
     {
-        _lock.unlock ();
-
         const PendingReplyHandler* previousPendingReplyHandler { _pendingReplyHandler };
         PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData };
         _pendingReplyHandler = &pendingReplyHandler;
@@ -178,9 +177,9 @@ void MessageChannel::sendMessage (MessageID messageID, MessageEncoder* encoder,
     }
     else
     {
-        std::unique_lock <std::mutex> lock { _lock, std::adopt_lock };
         while (true)
         {
+            std::unique_lock <std::mutex> lock { _routeLock };
             _routeReceiveCondition.wait (lock, [this, &currentThread]
                                     { return _getRoutedMessageForThread (currentThread) != nullptr; });
             RoutedMessage* message = _getRoutedMessageForThread (currentThread);
@@ -192,7 +191,6 @@ void MessageChannel::sendMessage (MessageID messageID, MessageEncoder* encoder,
             if (receivedMessageID != 0)
             {
                 _handleReceivedMessage (receivedMessageID, receivedDecoder);        // will also delete receivedDecoder
-                lock.lock ();
             }
             else
             {
@@ -258,7 +256,7 @@ void MessageChannel::routeReceivedMessage (MessageID messageID, const MessageDec
             else
                 ARA_IPC_LOG ("dispatches received reply from thread %p to sending thread %p", _getCurrentThread(), targetThread);
 
-            _lock.lock ();
+            _routeLock.lock ();
             RoutedMessage* message = _getRoutedMessageForThread (_invalidThread);
             if (message == nullptr)
             {
@@ -269,7 +267,7 @@ void MessageChannel::routeReceivedMessage (MessageID messageID, const MessageDec
             message->_decoder = decoder;
             message->_targetThread = targetThread;
             _routeReceiveCondition.notify_all ();
-            _lock.unlock ();
+            _routeLock.unlock ();
         }
     }
     else
@@ -314,10 +312,10 @@ void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageD
     if (remoteTargetThread != _invalidThread)
         replyEncoder->appendThreadRef (receiveThreadKey, remoteTargetThread);
 
-    _lock.lock ();
+    _sendLock.lock ();
     ARA_IPC_LOG ("replies to message with ID %i on thread %p", messageID, _getCurrentThread());
     _sendMessage (0, replyEncoder);
-    _lock.unlock ();
+    _sendLock.unlock ();
 
     delete replyEncoder;
 
