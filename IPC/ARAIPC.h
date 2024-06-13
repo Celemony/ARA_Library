@@ -74,8 +74,8 @@ typedef ARA_IPC_REF(ARAIPCConnectionRef);
 typedef ARA_IPC_REF(ARAIPCMessageChannelRef);
 
 
-//! to keep the IPC decoupled from the Companion API in use, the IPC code uses
-//! an opaque encapsulation to represent a Companion API plug-in instance
+//! to keep the IPC decoupled from the companion API in use, the IPC code uses
+//! an opaque encapsulation to represent a companion API plug-in instance
 typedef ARA_IPC_REF(ARAIPCPlugInInstanceRef);
 
 

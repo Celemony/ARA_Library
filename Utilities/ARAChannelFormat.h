@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //! \file       ARAChannelFormat.h
-//!             utility class dealing with the Companion-API-dependent surround channel arrangements
+//!             utility class dealing with the companion-API-dependent surround channel arrangements
 //! \project    ARA SDK Library
 //! \copyright  Copyright (c) 2021-2024, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@ namespace ARA {
 //! @addtogroup ARA_Library_Utility_Channel_Arrangement
 //! @{
 
-//! Helper class to parse the opaque, Companion-API-dependent channel arrangement information.
+//! Helper class to parse the opaque, companion-API-dependent channel arrangement information.
 class ChannelFormat
 {
 public:
@@ -63,7 +63,7 @@ public:
     //! Returns the channel arrangement data type.
     ARAChannelArrangementDataType getChannelArrangementDataType () const noexcept { return _channelArrangementDataType; }
 
-    //! Returns the Companion-API-dependent channel arrangement data.
+    //! Returns the companion-API-dependent channel arrangement data.
     const void* getChannelArrangement () const noexcept { return _channelArrangement; }
 
     //! Returns the size of the opaque channel arrangement data.

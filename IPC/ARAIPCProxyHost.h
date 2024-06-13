@@ -56,7 +56,7 @@ private:
 #endif
 
 
-//! callback that the proxy uses to execute the binding of an opaque Companion API plug-in instance to the given document controller
+//! callback that the proxy uses to execute the binding of an opaque companion API plug-in instance to the given document controller
 typedef const ARAPlugInExtensionInstance * (*ARAIPCBindingHandler) (ARAIPCPlugInInstanceRef plugInInstanceRef,
                                                                     ARADocumentControllerRef controllerRef,
                                                                     ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles);
@@ -64,7 +64,7 @@ typedef const ARAPlugInExtensionInstance * (*ARAIPCBindingHandler) (ARAIPCPlugIn
 //! static configuration: add the ARA factories that the proxy host will wrap
 void ARAIPCProxyHostAddFactory(const ARAFactory * factory);
 
-//! static configuration: set the callback to execute the binding of Companion API plug-in instances to ARA document controllers
+//! static configuration: set the callback to execute the binding of companion API plug-in instances to ARA document controllers
 void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);
 
 

@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //! \file       ARAChannelFormat.cpp
-//!             utility class dealing with the Companion-API-dependent surround channel arrangements
+//!             utility class dealing with the companion-API-dependent surround channel arrangements
 //! \project    ARA SDK Library
 //! \copyright  Copyright (c) 2021-2024, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
