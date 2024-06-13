@@ -717,6 +717,13 @@ void HostModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackR
         getInterface ()->notifyPlaybackRegionContentChanged (getRef (), playbackRegionHostRef, range, scopeFlags);
 }
 
+void HostModelUpdateController::notifyDocumentDataChanged () noexcept
+{
+    // notifyDocumentDataChanged was added in ARA 2.3 draft, so check its presence here
+    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARAModelUpdateControllerInterface, notifyDocumentDataChanged)> ())
+        getInterface ()->notifyDocumentDataChanged (getRef ());
+}
+
 /*******************************************************************************/
 // PlaybackController
 /*******************************************************************************/

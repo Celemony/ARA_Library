@@ -464,6 +464,8 @@ public:
     //! \copydoc ARAModelUpdateControllerInterface::notifyPlaybackRegionContentChanged
     void notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef,
                                              const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept;
+    //! \copydoc ARAModelUpdateControllerInterface::notifyDocumentDataChanged
+    void notifyDocumentDataChanged () noexcept;
 };
 
 /*******************************************************************************/

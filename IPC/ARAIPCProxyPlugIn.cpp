@@ -1709,6 +1709,16 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
 
         documentController->getHostModelUpdateController ()->notifyPlaybackRegionContentChanged (playbackRegionHostRef, (range.second) ? &range.first : nullptr, scopeFlags);
     }
+    else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAModelUpdateControllerInterface, notifyDocumentDataChanged))
+    {
+        ARAModelUpdateControllerHostRef controllerHostRef;
+        decodeArguments (decoder, controllerHostRef);
+
+        auto documentController { fromHostRef (controllerHostRef) };
+        ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
+
+        documentController->getHostModelUpdateController ()->notifyDocumentDataChanged ();
+    }
 
     // ARAPlaybackControllerInterface
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback))

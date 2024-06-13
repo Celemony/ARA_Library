@@ -463,6 +463,7 @@ public:
     void notifyAudioSourceContentChanged (ARAAudioSourceHostRef audioSourceHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept override;
     void notifyAudioModificationContentChanged (ARAAudioModificationHostRef audioModificationHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept override;
     void notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept override;
+    void notifyDocumentDataChanged () noexcept override;
 
 private:
     ARAModelUpdateControllerHostRef _remoteHostRef;
@@ -492,6 +493,12 @@ void ModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackRegio
 {
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAModelUpdateControllerInterface, notifyPlaybackRegionContentChanged),
                 _remoteHostRef, playbackRegionHostRef, range, scopeFlags);
+}
+
+void ModelUpdateController::notifyDocumentDataChanged () noexcept
+{
+    remoteCall (ARA_IPC_HOST_METHOD_ID (ARAModelUpdateControllerInterface, notifyDocumentDataChanged),
+                _remoteHostRef);
 }
 
 

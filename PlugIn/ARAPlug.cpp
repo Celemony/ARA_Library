@@ -1117,6 +1117,10 @@ void DocumentController::notifyModelUpdates () noexcept
         hostModelUpdateController->notifyPlaybackRegionContentChanged (playbackRegionUpdate.first->getHostRef (), nullptr, playbackRegionUpdate.second);
     _playbackRegionContentUpdates.clear ();
 
+    if (_documentDataChanged)
+        hostModelUpdateController->notifyDocumentDataChanged ();
+    _documentDataChanged = false;
+        
     didNotifyModelUpdates ();
 }
 
@@ -2310,6 +2314,11 @@ void DocumentController::notifyPlaybackRegionContentChanged (PlaybackRegion* pla
 {
     if (getHostModelUpdateController ())
         _playbackRegionContentUpdates[playbackRegion] += scopeFlags;
+}
+
+void DocumentController::notifyDocumentDataChanged () noexcept
+{
+    _documentDataChanged = true;
 }
 
 /*******************************************************************************/
