@@ -58,7 +58,7 @@ extern "C"
 #endif
 
 //------------------------------------------------------------------------------
-#if ARA_ENABLE_INTERNAL_ASSERTS
+#if ARA_ENABLE_INTERNAL_ASSERTS || ARA_ENABLE_DEBUG_OUTPUT
 static ARABool IsDebuggerAttached(void);
 static ARABool IsDebuggerAttached(void)
 {
@@ -120,7 +120,7 @@ static ARABool IsDebuggerAttached(void)
     return kARAFalse;
 #endif
 }
-#endif    // ARA_ENABLE_INTERNAL_ASSERTS
+#endif    // ARA_ENABLE_INTERNAL_ASSERTS || ARA_ENABLE_DEBUG_OUTPUT
 
 //void BreakIntoDebugger();
 //We use a macro instead of a function here to suppress the extra call stack frame displayed by the debugger.
