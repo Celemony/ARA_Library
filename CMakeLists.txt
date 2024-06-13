@@ -36,8 +36,7 @@ include("${ARA_API_DIR}/ARA_Version.cmake")
 
 project(ARA_Library
     DESCRIPTION "ARA Audio Random Access: Implementation Library"
-    #only added in CMake 3.12:
-    #HOMEPAGE_URL https://www.celemony.com/ara
+    HOMEPAGE_URL "https://github.com/Celemony/ARA_Library"
     VERSION ${ARA_MAJOR_VERSION}.${ARA_MINOR_VERSION}.${ARA_PATCH_VERSION}.${ARA_BUILD_VERSION}
     LANGUAGES C CXX
 )
