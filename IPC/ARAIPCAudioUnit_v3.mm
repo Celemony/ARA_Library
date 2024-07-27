@@ -259,8 +259,16 @@ extern "C" {
 
 
 // host side: proxy plug-in C adapter
+
+AUAudioUnit * __strong _initAU = nil;   // workaround for macOS 14: keep the AU that vends the message channels alive, otherwise the channels will eventually stop working
+
 ARAIPCConnectionRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit)
 {
+    ARA_INTERNAL_ASSERT(_initAU == nil);
+    _initAU = audioUnit;
+#if !__has_feature(objc_arc)
+    [_initAU retain];
+#endif
     return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit));
 }
 
@@ -278,6 +286,11 @@ const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDo
 
 void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCConnectionRef _Nonnull proxyRef)
 {
+    ARA_INTERNAL_ASSERT(_initAU != nil);
+#if !__has_feature(objc_arc)
+    [_initAU release];
+#endif
+    _initAU = nil;
     delete fromIPCRef (proxyRef);
 }
 
