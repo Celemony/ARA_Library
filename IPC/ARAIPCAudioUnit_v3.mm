@@ -200,13 +200,14 @@ public:
         if (!otherChannel)
             return nullptr;
 
-        return new AUProxyPlugIn { static_cast<NSObject<AUMessageChannel>*> (mainChannel), static_cast<NSObject<AUMessageChannel>*> (otherChannel) };
+        return new AUProxyPlugIn { static_cast<NSObject<AUMessageChannel>*> (mainChannel), static_cast<NSObject<AUMessageChannel>*> (otherChannel), audioUnit };
     }
 
     ~AUProxyPlugIn () override
     {
 #if !__has_feature(objc_arc)
         dispatch_release (_readAudioQueue);
+        [_initAU release];
 #endif
     }
 
@@ -229,16 +230,23 @@ protected:
     }
 
 private:
-    AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel, NSObject<AUMessageChannel> * _Nonnull otherChannel)
+    AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel, NSObject<AUMessageChannel> * _Nonnull otherChannel, AUAudioUnit * _Nonnull initAU)
     : ProxyPlugIn { this },
       AUConnection { this, new ProxyPlugInMessageChannel { mainChannel, this },
                            new ProxyPlugInMessageChannel { otherChannel, this } },
       // \todo there's also QOS_CLASS_USER_INTERACTIVE which seems more appropriate but is undocumented...
-      _readAudioQueue { dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1)) }
-    {}
+      _readAudioQueue { dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1)) },
+      _initAU { initAU }
+    {
+#if !__has_feature(objc_arc)
+        [_initAU retain];
+#endif
+    }
 
 private:
-    dispatch_queue_t _readAudioQueue { nullptr };
+    const dispatch_queue_t _readAudioQueue;
+    const AUAudioUnit * __strong _initAU;   // workaround for macOS 14: keep the AU that vends the message channels alive, otherwise the channels will eventually stop working
+                                            // \todo once this is fixed in macOS, we only need to store this on older macOS versions
 };
 
 
@@ -259,6 +267,7 @@ extern "C" {
 
 
 // host side: proxy plug-in C adapter
+
 ARAIPCConnectionRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit)
 {
     return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit));
