@@ -18,8 +18,6 @@
 
 #include "ARAPlug.h"
 
-#include "ARA_Library/Utilities/ARAChannelFormat.h"
-
 #include <sstream>
 
 namespace ARA {

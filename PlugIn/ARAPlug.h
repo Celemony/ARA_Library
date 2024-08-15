@@ -453,6 +453,7 @@ public:
     ARASampleCount getSampleCount () const noexcept { return _sampleCount; }                   //!< See ARAAudioSourceProperties::sampleCount.
     ARATimeDuration getDuration () const noexcept { return timeAtSamplePosition (_sampleCount, _sampleRate); }  //!< The duration of the audio source in seconds; sampleRate / sampleCount.
     ARAChannelCount getChannelCount () const noexcept { return _channelFormat.getChannelCount (); }             //!< See ARAAudioSourceProperties::channelCount.
+    const ChannelFormat& getChannelFormat () const noexcept { return _channelFormat; }         //!< Derived from ARAAudioSourceProperties::channelArrangement.
     bool merits64BitSamples () const noexcept { return _merits64BitSamples; }                  //!< See ARAAudioSourceProperties::merits64BitSamples.
 //@}
 
