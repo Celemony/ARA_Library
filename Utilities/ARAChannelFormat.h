@@ -41,7 +41,12 @@ public:
     ChannelFormat (const ARAChannelCount channelCount,
                    const ARAChannelArrangementDataType channelArrangementDataType,
                    const void* const channelArrangement)
-    : ChannelFormat { channelCount } { update (channelCount, channelArrangementDataType, channelArrangement); }
+    : ChannelFormat { channelCount }
+    { update (channelCount, channelArrangementDataType, channelArrangement); }
+
+    ChannelFormat (const ChannelFormat& other)
+    : ChannelFormat { other.getChannelCount () }
+    { update (other.getChannelCount (), other.getChannelArrangementDataType (), other.getChannelArrangement ()); }
 
     ~ChannelFormat () { update (_channelCount, kARAChannelArrangementUndefined, nullptr); }
 
