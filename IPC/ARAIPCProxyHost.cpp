@@ -26,10 +26,6 @@
 #include "ARA_Library/Dispatch/ARAPlugInDispatch.h"
 #include "ARA_Library/Utilities/ARAStdVectorUtilities.h"
 
-#if ARA_VALIDATE_API_CALLS
-    #include "ARA_Library/Debug/ARAContentValidator.h"
-#endif
-
 #include <cstring>
 #include <string>
 #include <vector>
@@ -144,6 +140,7 @@ void _swapBuffer (void* buffer, ARASampleCount sampleCount)
 
 ARAAudioReaderHostRef AudioAccessController::createAudioReaderForSource (ARAAudioSourceHostRef audioSourceHostRef, bool use64BitSamples) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     auto remoteAudioReader { new RemoteAudioReader };
     remoteAudioReader->audioSource = fromHostRef (audioSourceHostRef);
     remoteAudioReader->sampleSize = (use64BitSamples) ? sizeof (double) : sizeof (float);
@@ -159,6 +156,8 @@ ARAAudioReaderHostRef AudioAccessController::createAudioReaderForSource (ARAAudi
 bool AudioAccessController::readAudioSamples (ARAAudioReaderHostRef audioReaderHostRef, ARASamplePosition samplePosition,
                                               ARASampleCount samplesPerChannel, void* const buffers[]) noexcept
 {
+// this function can be called from other threads!
+//  ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     auto remoteAudioReader { fromHostRef (audioReaderHostRef) };
     const auto channelCount { static_cast<size_t> (remoteAudioReader->audioSource->channelCount) };
 
@@ -229,6 +228,7 @@ bool AudioAccessController::readAudioSamples (ARAAudioReaderHostRef audioReaderH
 
 void AudioAccessController::destroyAudioReader (ARAAudioReaderHostRef audioReaderHostRef) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     auto remoteAudioReader { fromHostRef (audioReaderHostRef) };
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, destroyAudioReader), _remoteHostRef, remoteAudioReader->mainHostRef);
     delete remoteAudioReader;
@@ -259,6 +259,7 @@ private:
 
 ARASize ArchivingController::getArchiveSize (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARASize size;
     remoteCall (size, ARA_IPC_HOST_METHOD_ID (ARAArchivingControllerInterface, getArchiveSize), _remoteHostRef, archiveReaderHostRef);
     return size;
@@ -266,6 +267,8 @@ ARASize ArchivingController::getArchiveSize (ARAArchiveReaderHostRef archiveRead
 
 bool ArchivingController::readBytesFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, ARASize position, ARASize length, ARAByte buffer[]) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
+
     // recursively limit message size to keep IPC responsive
     if (length > 131072)
     {
@@ -302,6 +305,8 @@ bool ArchivingController::readBytesFromArchive (ARAArchiveReaderHostRef archiveR
 
 bool ArchivingController::writeBytesToArchive (ARAArchiveWriterHostRef archiveWriterHostRef, ARASize position, ARASize length, const ARAByte buffer[]) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
+
     // recursively limit message size to keep IPC responsive
     if (length > 131072)
     {
@@ -324,16 +329,19 @@ bool ArchivingController::writeBytesToArchive (ARAArchiveWriterHostRef archiveWr
 
 void ArchivingController::notifyDocumentArchivingProgress (float value) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAArchivingControllerInterface, notifyDocumentArchivingProgress), _remoteHostRef, value);
 }
 
 void ArchivingController::notifyDocumentUnarchivingProgress (float value) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAArchivingControllerInterface, notifyDocumentUnarchivingProgress), _remoteHostRef, value);
 }
 
 ARAPersistentID ArchivingController::getDocumentArchiveID (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     CustomDecodeFunction customDecode {
         [this] (const MessageDecoder* decoder) -> void
         {
@@ -372,6 +380,7 @@ private:
 
 bool ContentAccessController::isMusicalContextContentAvailable (ARAMusicalContextHostRef musicalContextHostRef, ARAContentType type) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARABool result;
     remoteCall (result, ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, isMusicalContextContentAvailable),
                 _remoteHostRef, musicalContextHostRef, type);
@@ -380,6 +389,7 @@ bool ContentAccessController::isMusicalContextContentAvailable (ARAMusicalContex
 
 ARAContentGrade ContentAccessController::getMusicalContextContentGrade (ARAMusicalContextHostRef musicalContextHostRef, ARAContentType type) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARAContentGrade grade;
     remoteCall (grade, ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, getMusicalContextContentGrade),
                 _remoteHostRef, musicalContextHostRef, type);
@@ -388,6 +398,7 @@ ARAContentGrade ContentAccessController::getMusicalContextContentGrade (ARAMusic
 
 ARAContentReaderHostRef ContentAccessController::createMusicalContextContentReader (ARAMusicalContextHostRef musicalContextHostRef, ARAContentType type, const ARAContentTimeRange* range) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARAContentReaderHostRef contentReaderHostRef;
     remoteCall (contentReaderHostRef, ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, createMusicalContextContentReader),
                 _remoteHostRef, musicalContextHostRef, type, range);
@@ -397,6 +408,7 @@ ARAContentReaderHostRef ContentAccessController::createMusicalContextContentRead
 
 bool ContentAccessController::isAudioSourceContentAvailable (ARAAudioSourceHostRef audioSourceHostRef, ARAContentType type) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARABool result;
     remoteCall (result, ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, isAudioSourceContentAvailable),
                 _remoteHostRef, fromHostRef (audioSourceHostRef)->mainHostRef, type);
@@ -405,6 +417,7 @@ bool ContentAccessController::isAudioSourceContentAvailable (ARAAudioSourceHostR
 
 ARAContentGrade ContentAccessController::getAudioSourceContentGrade (ARAAudioSourceHostRef audioSourceHostRef, ARAContentType type) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARAContentGrade grade;
     remoteCall (grade, ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, getAudioSourceContentGrade),
                 _remoteHostRef, fromHostRef (audioSourceHostRef)->mainHostRef, type);
@@ -413,6 +426,7 @@ ARAContentGrade ContentAccessController::getAudioSourceContentGrade (ARAAudioSou
 
 ARAContentReaderHostRef ContentAccessController::createAudioSourceContentReader (ARAAudioSourceHostRef audioSourceHostRef, ARAContentType type, const ARAContentTimeRange* range) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARAContentReaderHostRef contentReaderHostRef;
     remoteCall (contentReaderHostRef, ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, createAudioSourceContentReader),
                 _remoteHostRef, fromHostRef (audioSourceHostRef)->mainHostRef, type, range);
@@ -422,6 +436,7 @@ ARAContentReaderHostRef ContentAccessController::createAudioSourceContentReader 
 
 ARAInt32 ContentAccessController::getContentReaderEventCount (ARAContentReaderHostRef contentReaderHostRef) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto contentReader { fromHostRef (contentReaderHostRef) };
     ARAInt32 count;
     remoteCall (count, ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, getContentReaderEventCount),
@@ -431,6 +446,7 @@ ARAInt32 ContentAccessController::getContentReaderEventCount (ARAContentReaderHo
 
 const void* ContentAccessController::getContentReaderDataForEvent (ARAContentReaderHostRef contentReaderHostRef, ARAInt32 eventIndex) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto contentReader { fromHostRef (contentReaderHostRef) };
     const void* result {};
     CustomDecodeFunction customDecode {
@@ -445,6 +461,7 @@ const void* ContentAccessController::getContentReaderDataForEvent (ARAContentRea
 
 void ContentAccessController::destroyContentReader (ARAContentReaderHostRef contentReaderHostRef) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto contentReader { fromHostRef (contentReaderHostRef) };
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, destroyContentReader), _remoteHostRef, contentReader->remoteHostRef);
     delete contentReader;
@@ -473,30 +490,35 @@ private:
 
 void ModelUpdateController::notifyAudioSourceAnalysisProgress (ARAAudioSourceHostRef audioSourceHostRef, ARAAnalysisProgressState state, float value) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAModelUpdateControllerInterface, notifyAudioSourceAnalysisProgress),
                 _remoteHostRef, fromHostRef (audioSourceHostRef)->mainHostRef, state, value);
 }
 
 void ModelUpdateController::notifyAudioSourceContentChanged (ARAAudioSourceHostRef audioSourceHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAModelUpdateControllerInterface, notifyAudioSourceContentChanged),
                 _remoteHostRef, fromHostRef (audioSourceHostRef)->mainHostRef, range, scopeFlags);
 }
 
 void ModelUpdateController::notifyAudioModificationContentChanged (ARAAudioModificationHostRef audioModificationHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAModelUpdateControllerInterface, notifyAudioModificationContentChanged),
                 _remoteHostRef, audioModificationHostRef, range, scopeFlags);
 }
 
 void ModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAModelUpdateControllerInterface, notifyPlaybackRegionContentChanged),
                 _remoteHostRef, playbackRegionHostRef, range, scopeFlags);
 }
 
 void ModelUpdateController::notifyDocumentDataChanged () noexcept
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAModelUpdateControllerInterface, notifyDocumentDataChanged),
                 _remoteHostRef);
 }
@@ -524,26 +546,36 @@ private:
 
 void PlaybackController::requestStartPlayback () noexcept
 {
+// this function can be called from other threads!
+//  ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback), _remoteHostRef);
 }
 
 void PlaybackController::requestStopPlayback () noexcept
 {
+// this function can be called from other threads!
+//  ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStopPlayback), _remoteHostRef);
 }
 
 void PlaybackController::requestSetPlaybackPosition (ARATimePosition timePosition) noexcept
 {
+// this function can be called from other threads!
+//  ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestSetPlaybackPosition), _remoteHostRef, timePosition);
 }
 
 void PlaybackController::requestSetCycleRange (ARATimePosition startTime, ARATimeDuration duration) noexcept
 {
+// this function can be called from other threads!
+//  ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestSetCycleRange), _remoteHostRef, startTime, duration);
 }
 
 void PlaybackController::requestEnableCycle (bool enable) noexcept
 {
+// this function can be called from other threads!
+//  ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     remoteCall (ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestEnableCycle), _remoteHostRef, (enable) ? kARATrue : kARAFalse);
 }
 

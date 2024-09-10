@@ -22,6 +22,7 @@
 #define ARAIPCMessageChannel_h
 
 #include "ARA_Library/IPC/ARAIPCMessage.h"
+#include "ARA_Library/Debug/ARADebug.h"
 
 #if ARA_ENABLE_IPC
 
@@ -124,6 +125,10 @@ public:
     //! implemented by subclasses: indicate byte order mismatch between sending
     //! and receiving machine
     virtual bool receiverEndianessMatches () = 0;
+
+#if ARA_ENABLE_INTERNAL_ASSERTS
+    bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
+#endif
 
 protected:
     MessageChannel* getMainChannel () const
