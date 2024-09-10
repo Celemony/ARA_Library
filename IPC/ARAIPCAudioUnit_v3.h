@@ -43,7 +43,7 @@ extern "C" {
 #endif
 
 
-API_AVAILABLE_BEGIN(macos(13.0))
+API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 
 //! host side: initialize proxy plug-in component and its internal the message channels
 //! will return nullptr if the Audio Unit does not implement [AUAudioUnit messageChannelFor:]

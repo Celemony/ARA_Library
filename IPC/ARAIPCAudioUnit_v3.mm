@@ -43,7 +43,7 @@ _Pragma ("GCC diagnostic push")
 _Pragma ("GCC diagnostic ignored \"-Wold-style-cast\"") // __bridge casts can only be done old-style
 
 
-API_AVAILABLE_BEGIN(macos(13.0))
+API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 
 
 // key for transaction locking through the IPC channel
