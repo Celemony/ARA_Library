@@ -35,12 +35,24 @@
 #include <atomic>
 
 
+// JUCE hotfix: because JUCE directly includes the .cpp/.mm files from this SDK instead of properly
+//              compiling the ARA_IPC_Library, these switches allow for skipping the host- or the
+//              plug-in side of the code, depending on which side is being compiled.
+#if !defined(ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY)
+    #define ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY 0
+#endif
+#if !defined(ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY)
+    #define ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY 0
+#endif
+
+
 namespace ARA {
 namespace IPC {
 
 
 _Pragma ("GCC diagnostic push")
-_Pragma ("GCC diagnostic ignored \"-Wold-style-cast\"") // __bridge casts can only be done old-style
+_Pragma ("GCC diagnostic ignored \"-Wold-style-cast\"")             // __bridge casts can only be done old-style
+_Pragma ("GCC diagnostic ignored \"-Wnullability-completeness\"")   // \todo add proper nullability annotation
 
 
 API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
@@ -123,6 +135,7 @@ protected:
 
 
 // plug-in side: proxy host message channel specialization
+#if !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
 class ProxyHostMessageChannel : public AudioUnitMessageChannel
 {
 public:
@@ -145,9 +158,11 @@ protected:
         }
     }
 };
+#endif  // !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
 
 
 // host side: proxy plug-in message channel specialization
+#if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 class ProxyPlugInMessageChannel : public AudioUnitMessageChannel
 {
 public:
@@ -181,8 +196,10 @@ protected:
         return reply;
     }
 };
+#endif // !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
-// message channel base class for both proxy implementations
+// host side: proxy plug-in implementation
+#if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 class AUProxyPlugIn : public ProxyPlugIn, public AUConnection
 {
 public:
@@ -248,6 +265,7 @@ private:
     const AUAudioUnit * __strong _initAU;   // workaround for macOS 14: keep the AU that vends the message channels alive, otherwise the channels will eventually stop working
                                             // \todo once this is fixed in macOS, we only need to store this on older macOS versions
 };
+#endif // !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
 
 #if defined (__GNUC__)
@@ -267,6 +285,7 @@ extern "C" {
 
 
 // host side: proxy plug-in C adapter
+#if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
 ARAIPCConnectionRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit)
 {
@@ -290,9 +309,11 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCConnectionRef _Nonnull prox
     delete fromIPCRef (proxyRef);
 }
 
+#endif // !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
 
 // plug-in side: proxy host C adapter
+#if !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
 
 class AUProxyHost : public ProxyHost, public AUConnection
 {
@@ -361,6 +382,7 @@ void ARA_CALL ARAIPCAUProxyHostUninitialize (void)
         delete _proxyHost;
 }
 
+#endif // !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
 
 API_AVAILABLE_END
 
