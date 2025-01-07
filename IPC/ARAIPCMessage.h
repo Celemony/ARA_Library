@@ -31,10 +31,12 @@ namespace ARA {
 namespace IPC {
 
 
-//! ID type for messages, IDs must be >= kMessageIDRangeStart and < kMessageIDRangeEnd
+//! ID type for messages
 typedef ARAInt32 MessageID;
-constexpr MessageID kMessageIDRangeStart { 1 };
-constexpr MessageID kMessageIDRangeEnd { 8*16*16 - 1 };
+
+//! the implementation reserves this range of IDs, any custom messages must be >= kMessageIDRangeStart and < kMessageIDRangeEnd
+constexpr MessageID kReservedMessageIDRangeStart { 1 };
+constexpr MessageID kReservedMessageIDRangeEnd { 8*16*16 - 1 };
 
 
 //! key type for message dictionaries - negative keys are reserved for the implementation
