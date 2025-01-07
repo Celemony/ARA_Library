@@ -30,10 +30,6 @@
 #include <string>
 #include <vector>
 
-#if defined (__APPLE__)
-    #include <CoreFoundation/CoreFoundation.h>
-#endif
-
 
 #if ARA_SUPPORT_VERSION_1
     #error "The ARA IPC proxy host implementation does not support ARA 1."
@@ -661,61 +657,18 @@ const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
 
 /*******************************************************************************/
 
-#if defined (_WIN32)
-// from https://devblogs.microsoft.com/oldnewthing/20141015-00/?p=43843
-BOOL ConvertToRealHandle(HANDLE h,
-                         BOOL bInheritHandle,
-                         HANDLE *phConverted)
-{
- return DuplicateHandle(GetCurrentProcess(), h,
-                        GetCurrentProcess(), phConverted,
-                        0, bInheritHandle, DUPLICATE_SAME_ACCESS);
-}
-
-HANDLE _GetRealCurrentThread ()
-{
-    HANDLE currentThread {};
-    auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
-    ARA_INTERNAL_ASSERT (success);
-    return currentThread;
-}
-
-#elif defined (__APPLE__)
-std::thread::id _getMainThreadID ()
-{
-    if (CFRunLoopGetMain () == CFRunLoopGetCurrent ())
-    {
-        return std::this_thread::get_id ();
-    }
-    else
-    {
-        __block std::thread::id result;
-        dispatch_sync (dispatch_get_main_queue (),
-                        ^{
-                            result = std::this_thread::get_id ();
-                        });
-        return result;
-    }
-}
-#endif
-
-
 ProxyHost::ProxyHost (Connection* connection)
-: RemoteCaller (connection),
-#if defined (_WIN32)
-  _mainThreadID { std::this_thread::get_id () },
-  _mainThreadDispatchTarget { _GetRealCurrentThread () }
-#elif defined (__APPLE__)
-  _mainThreadID { _getMainThreadID () },
-  _mainThreadDispatchTarget { dispatch_get_main_queue () }
-#else
-    #error "not yet implemented on this platform"
-#endif
+: RemoteCaller (connection)
 {}
 
-ProxyHost::DispatchTarget ProxyHost::getDispatchTargetForIncomingTransaction (MessageID /*messageID*/)
+ProxyHost::DispatchTarget ProxyHost::getDispatchTargetForIncomingTransaction (MessageID messageID)
 {
-    return (std::this_thread::get_id () == _mainThreadID) ? nullptr : _mainThreadDispatchTarget;
+    // getPlaybackRegionHeadAndTailTime() is valid on any thread, so we can directly serve it from
+    // the current IPC thread. For all other calls, we call the inherited default implementation to
+    // dispatch to the creation thread.
+    if (messageID == ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getPlaybackRegionHeadAndTailTime))
+        return nullptr;
+    return MessageHandler::getDispatchTargetForIncomingTransaction (messageID);
 }
 
 void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,

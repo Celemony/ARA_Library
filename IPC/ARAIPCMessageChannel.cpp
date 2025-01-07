@@ -29,6 +29,11 @@
 
 #include <utility>
 
+#if defined (__APPLE__)
+    #include <CoreFoundation/CoreFoundation.h>
+#endif
+
+
 // ARA IPC design overview
 //
 // ARA API calls can be stacked multiple times.
@@ -330,6 +335,51 @@ void MessageChannel::_handleReply (const MessageDecoder* decoder, Connection::Re
     else
         ARA_INTERNAL_ASSERT (!decoder->hasDataForKey(0));   // replies should be empty when not handled (i.e. void)
     delete decoder;
+}
+
+
+#if defined (_WIN32)
+// from https://devblogs.microsoft.com/oldnewthing/20141015-00/?p=43843
+BOOL ConvertToRealHandle(HANDLE h,
+                         BOOL bInheritHandle,
+                         HANDLE *phConverted)
+{
+ return DuplicateHandle(GetCurrentProcess(), h,
+                        GetCurrentProcess(), phConverted,
+                        0, bInheritHandle, DUPLICATE_SAME_ACCESS);
+}
+
+HANDLE _GetRealCurrentThread ()
+{
+    HANDLE currentThread {};
+    auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
+    ARA_INTERNAL_ASSERT (success);
+    return currentThread;
+}
+#endif
+
+
+MessageHandler::MessageHandler ()
+: _creationThreadID { std::this_thread::get_id () },
+#if defined (_WIN32)
+  _creationThreadDispatchTarget { _GetRealCurrentThread () }
+#elif defined (__APPLE__)
+  _creationThreadDispatchTarget { dispatch_get_main_queue () }
+#else
+    #error "not yet implemented on this platform"
+#endif
+{
+#if defined (__APPLE__)
+    // since there is no way to create a dispatch queue associated with the current thread,
+    // we require this is called on the main thread on Apple platforms, which has the only
+    // well-defined dispatch queue on the system.
+    ARA_INTERNAL_ASSERT (CFRunLoopGetMain () == CFRunLoopGetCurrent ());
+#endif
+}
+
+MessageHandler::DispatchTarget MessageHandler::getDispatchTargetForIncomingTransaction (MessageID /*messageID*/)
+{
+    return (std::this_thread::get_id () == _creationThreadID) ? nullptr : _creationThreadDispatchTarget;
 }
 
 

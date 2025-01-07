@@ -52,6 +52,7 @@ class MessageChannel;
 class MessageHandler
 {
 public:
+    MessageHandler ();
     virtual ~MessageHandler () = default;
 
     //! type returned from getDispatchTargetForIncomingTransaction()
@@ -68,12 +69,18 @@ public:
     //! used for handling an incoming transaction. Returning nullptr results in the
     //! current thread being used, otherwise the call will be forwarded to the
     //! returned target thread.
-    virtual DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) = 0;
+    //! The default implementation dispatches to the thread where the MessageHandler
+    //! was created, which can be utilized by overrides of this method.
+    virtual DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID);
 
     //! IPC connections will call this method for incoming messages after
     //! after filtering replies and routing them to the correct thread.
     virtual void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                         MessageEncoder* const replyEncoder) = 0;
+
+private:
+    std::thread::id const _creationThreadID;
+    DispatchTarget const _creationThreadDispatchTarget;
 };
 
 
