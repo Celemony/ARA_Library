@@ -2,7 +2,7 @@
 //! \file       ARAIPCAudioUnit_v3.h
 //!             Implementation of ARA IPC message sending through AUMessageChannel
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2021-2024, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2021-2025, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
