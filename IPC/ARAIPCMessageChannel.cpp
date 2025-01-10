@@ -137,8 +137,8 @@ thread_local const PendingReplyHandler* _pendingReplyHandler { nullptr };
 constexpr MessageChannel::ThreadRef MessageChannel::_invalidThread;
 
 
-MessageChannel::MessageChannel (Connection* connection)
-: _connection { connection }
+MessageChannel::MessageChannel (MessageHandler* messageHandler)
+: _messageHandler { messageHandler }
 {
     static_assert (sizeof (std::thread::id) == sizeof (ThreadRef), "the current implementation relies on a specific thread ID size");
 // unfortunately at least in clang std::thread::id's c'tor isn't constexpr
@@ -278,7 +278,7 @@ void MessageChannel::routeReceivedMessage (MessageID messageID, const MessageDec
     else
     {
         ARA_INTERNAL_ASSERT (messageID != 0);
-        if (const auto dispatchTarget { _connection->getDispatchTargetForIncomingTransaction (messageID) })
+        if (const auto dispatchTarget { _messageHandler->getDispatchTargetForIncomingTransaction (messageID) })
         {
             ARA_IPC_LOG ("dispatches received message with ID %i (new transaction)", messageID);
 #if defined (_WIN32)
@@ -310,8 +310,7 @@ void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageD
     ARA_INTERNAL_ASSERT (success);
     _remoteTargetThread = remoteTargetThread;
 
-    auto replyEncoder { _connection->createEncoder () };
-    _connection->handleReceivedMessage (messageID, decoder, replyEncoder);
+    auto replyEncoder { _messageHandler->handleReceivedMessage (messageID, decoder) };
     delete decoder;
 
     if (remoteTargetThread != _invalidThread)
@@ -383,16 +382,8 @@ MessageHandler::DispatchTarget MessageHandler::getDispatchTargetForIncomingTrans
 }
 
 
-Connection::Connection (MessageHandler* messageHandler, MessageChannel* mainChannel, MessageChannel* otherChannel)
-: Connection { messageHandler }
-{
-    setMainThreadChannel (mainChannel);
-    setOtherThreadsChannel (otherChannel);
-}
-
-Connection::Connection (MessageHandler* messageHandler)
-: _messageHandler { messageHandler },
-  _creationThreadID { std::this_thread::get_id () }
+Connection::Connection ()
+: _creationThreadID { std::this_thread::get_id () }
 {}
 
 Connection::~Connection ()
@@ -417,16 +408,6 @@ void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, Repl
         _mainChannel->sendMessage(messageID, encoder, replyHandler, replyHandlerUserData);
     else
         _otherChannel->sendMessage(messageID, encoder, replyHandler, replyHandlerUserData);
-}
-
-MessageHandler::DispatchTarget Connection::getDispatchTargetForIncomingTransaction (MessageID messageID)
-{
-    return _messageHandler->getDispatchTargetForIncomingTransaction (messageID);
-}
-
-void Connection::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder, MessageEncoder* const replyEncoder)
-{
-    _messageHandler->handleReceivedMessage (messageID, decoder, replyEncoder);
 }
 
 }   // namespace IPC
