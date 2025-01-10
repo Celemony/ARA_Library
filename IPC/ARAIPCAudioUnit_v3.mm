@@ -85,9 +85,8 @@ public:
 class AudioUnitMessageChannel : public MessageChannel
 {
 protected:
-    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, MessageHandler * messageHandler)
-    : MessageChannel { messageHandler },
-      _audioUnitChannel { audioUnitChannel }
+    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
+    : _audioUnitChannel { audioUnitChannel }
     {
 #if !__has_feature(objc_arc)
         [_audioUnitChannel retain];
@@ -107,10 +106,10 @@ public:
     {
         const MessageID messageID { [(NSNumber *) [message objectForKey:_messageIDKey] intValue] };
         const auto decoder { new CFMessageDecoder { (__bridge CFDictionaryRef) message } };
-        MessageChannel::routeReceivedMessage (messageID, decoder);
+        getMessageDispatcher ()->routeReceivedMessage (messageID, decoder);
     }
 
-    void _sendMessage (MessageID messageID, MessageEncoder * encoder) override
+    void sendMessage (MessageID messageID, MessageEncoder * encoder) override
     {
         const auto dictionary { static_cast<CFMessageEncoder *> (encoder)->copyDictionary () };
 #if !__has_feature(objc_arc)
@@ -139,8 +138,8 @@ protected:
 class ProxyHostMessageChannel : public AudioUnitMessageChannel
 {
 public:
-    ProxyHostMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, MessageHandler * messageHandler)
-    : AudioUnitMessageChannel { audioUnitChannel, messageHandler }
+    ProxyHostMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
+    : AudioUnitMessageChannel { audioUnitChannel }
     {}
 
 protected:
@@ -166,8 +165,8 @@ protected:
 class ProxyPlugInMessageChannel : public AudioUnitMessageChannel
 {
 public:
-    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, MessageHandler * messageHandler)
-    : AudioUnitMessageChannel { audioUnitChannel, messageHandler }
+    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
+    : AudioUnitMessageChannel { audioUnitChannel }
     {
         _audioUnitChannel.callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
@@ -247,8 +246,8 @@ private:
       _readAudioQueue { dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1)) },
       _initAU { initAU }
     {
-        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel, this });
-        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel, this });
+        setupMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel }, this);
+        setupOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel }, this);
 #if !__has_feature(objc_arc)
         [_initAU retain];
 #endif
@@ -348,11 +347,11 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
      else
          dispatch_sync (dispatch_get_main_queue (), createProxyIfNeeded);
 
-    auto result { new ProxyHostMessageChannel { audioUnitChannel, _proxyHost } };
+    auto result { new ProxyHostMessageChannel { audioUnitChannel } };
     if (isMainThreadChannel)
-        _proxyHost->setMainThreadChannel (result);
+        _proxyHost->setupMainThreadChannel (result, _proxyHost);
     else
-        _proxyHost->setOtherThreadsChannel (result);
+        _proxyHost->setupOtherThreadsChannel (result, _proxyHost);
 
     return toIPCRef (result);
 }
