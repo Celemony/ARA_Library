@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//! \file       MessageChannel.cpp
+//! \file       ARAIPCMessageChannel.cpp
 //!             Base class implementation for both the ARA IPC proxy host and plug-in
 //!             Typically, this file is not included directly - either ARAIPCProxyHost.h
 //!             ARAIPCProxyPlugIn.h will be used instead.
@@ -40,60 +40,68 @@
 // For example, when the plug-in has completed analyzing an audio source, it will
 // inform the host about the updated content information the next time the host
 // calls notifyModelUpdates() by invoking notifyAudioSourceContentChanged().
-// From that method, the host now tests which content types are available and
-// eventually call createAudioSourceContentReader() to read the content data.
-// In the code below, such a stack of messages is referred to as a "transaction".
+// From that method, the host now queries isAudioSourceContentAvailable() for the
+// relevant content types and calls createAudioSourceContentReader() etc. to read
+// the relevant content data.
+// Such a stack of multiple messages is referred to as a "transaction" here.
 //
 // However, many IPC APIs including Audio Unit message channels cannot be stacked,
 // i.e. each message has to completely be processed before the next one can be sent.
-// Therefore, each ARA API calls is split into two IPC messages:
+// Therefore, each ARA API calls needs to be split into two IPC messages:
 // the actual call message that does not return any result just yet, and a matching
 // reply message that returns the result (even if it is void, because the caller
 // needs to know when the call has completed).
 // After sending the actual call message, the sender loops while listening for
 // incoming messages, which might either be a stacked callback that is processed
-// accordingly, or the result reply which ends the loop.
+// accordingly, or the reply message which ends the loop.
 //
-// In this loop, extra efforts must be done to handle threading:
-// When e.g. using Audio Unit message channels, Grand Central Dispatch will deliver
-// the incoming IPC messages on some undefined thread, from which they need to be
-// transferred to the sending thread for proper handling.
-// In such cases, instead of looping the sending thread waits on a condition
-// variable that the receive thread awakes when a message comes in.
+// In this loop, extra efforts might be necessary to handle the IPC threading:
+// When e.g. using Audio Unit AUMessageChannel, Grand Central Dispatch will deliver
+// the incoming IPC messages on some undefined thread. In such cases, a dispatch
+// from the receiving thread to the target thread is necessary, implemented via
+// a condition variable that the receive thread awakes when a message comes in.
+// Instead of looping, a sending thread will then wait on this condition for the reply.
 //
 // While most ARA communication is happening on the main thread, there are
-// some calls that may be made from other threads. This poses several challenges
+// several calls that may be made from other threads. This poses several challenges
 // when tunnelling everything through a single(threaded) IPC channel.
-// First of all, there needs to be a lock around actually accessing the channel.
-// Both hosts and plug-ins will need to carefully evaluate their existing ARA
-// code to check for potential deadlocks or priority inversion caused by this.
 //
-// Another challenge when using IPC between host and plug-in is that for each
+// First of all, there needs to be some locking mechanism around actually accessing
+// the IPC. This adds a dependency between previously independent threads, so both
+// hosts and plug-ins will need to carefully evaluate their existing ARA code to check
+// for potential deadlocks or priority inversion caused by this.
+// To reduce the potential impact of this, the implementation uses two IPC channels
+// in parallel: one for all main thread communication (which can work lockless) and
+// another one that is used for all other threads.
+//
+// Further, calls that are using IPC are no longer realtime safe. This means that calls
+// like getPlaybackRegionHeadAndTailTime(), which could previously be executed on render
+// threads, now need to be moved to other threads. Accordingly, hosts need to cache data
+// like the head and tail times from the main thread and update them there whenever
+// notifyPlaybackRegionContentChanged() is received.
+//
+// Another challenge when injecting IPC into the ARA communication is that for each
 // message that comes in, an appropriate thread has to be selected to process it.
-// The implementation therefore adds a thread token to each message to that is
-// passed back along the reply or any stacked call so that these can be routed
-// to the sending thread.
-// However if an incoming call starts a new transaction, some appropriate thread
-// has to be chosen on the receiving end. Fortunately, the current threading
-// restrictions of ARA allow for a fairly simple pattern to address this:
-// All transactions that the host initiates are processed on the plug-in's main
-// thread because the vast majority of calls is restricted to the main thread
-// anyways, and the few calls that may be made on other threads are all allowed
-// on the main thread, too. A particular noteworthy example for this is
-// getPlaybackRegionHeadAndTailTime(), which is allowed to be called on render
-// threads: when the host decides to use XPC, it should not poll this at realtime
-// but rather update it whenever there's a notifyPlaybackRegionContentChanged().
-// All transactions started from the plug-in (readAudioSamples() and the
-// functions in ARAPlaybackControllerInterface) are calls that can come from
-// any thread and thus are directly processed on the IPC thread in the host.
-// (Remember, the side that started a transaction will see all calls on the
-// thread that started it.)
+// For the main thread channel, this is trivial.
 //
-// Finally, the actual ARA code is agnostic to IPC being used, so when any ARA API
-// call is made on any thread, the IPC implementation needs to figure out whether
-// this call is part of a potentially ongoing transaction, or starting a new one.
-// It does so by using thread local storage to indicate when a thread is currently
-// processing a received message and is thus participating in an ongoing transaction.
+// For the channel that handles all communication on other threads, the implementation
+// adds a token to each call message that identifies the sending thread. The reply message
+// or any stacked call the receiver might make in response to the message will pass back
+// this thread token, enabling proper routing back to the original sending thread.
+// Since the actual ARA code is agnostic to IPC being used, the receiving side uses
+// thread local storage to make the sender's thread token available for all stacked calls
+// that the ARA code might make in response to the message.
+//
+// If a message is received that does not contain the token, this message indicates
+// the start of a transaction that was initiated on the other side. For this new
+// transaction, a proper thread has to be selected. This is done based on the message ID -
+// the current implementation dispatches audio reading to a dedicated dispatch queue and
+// handles the remaining calls directly on the IPC receive thread.
+//
+// Note that there is a crucial difference between the dispatch of a new transaction and
+// the dispatch of any follow-up messages in the transaction: the initial message is dispatched
+// to a thread that is potentially executing other code as well in some form of run loop,
+// whereas the follow-ups need to dispatch to a thread that is currently blocking inside ARA code.
 
 
 #if 0
