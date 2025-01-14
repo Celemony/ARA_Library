@@ -1451,7 +1451,7 @@ ProxyPlugIn::DispatchTarget ProxyPlugIn::getDispatchTargetForIncomingTransaction
 void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                          MessageEncoder* const replyEncoder)
 {
-//  ARA_LOG ("ProxyPlugIn handles '%s'", decodePlugInMessageID (messageID));
+    ARA_IPC_LOG ("ProxyPlugIn handles '%s'", decodePlugInMessageID (messageID));
 
     // ARAAudioAccessControllerInterface
     if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, createAudioReaderForSource))
