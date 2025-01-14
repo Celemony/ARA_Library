@@ -20,7 +20,7 @@
 #define ARAIPCProxyHost_h
 
 #if defined(__cplusplus)
-#include "ARA_Library/IPC/ARAIPCMessageChannel.h"
+#include "ARA_Library/IPC/ARAIPCConnection.h"
 #include "ARA_Library/IPC/ARAIPCEncoding.h"
 #else
 #include "ARA_Library/IPC/ARAIPC.h"

@@ -1,8 +1,6 @@
 //------------------------------------------------------------------------------
-//! \file       ARAIPCMessageChannel.h
-//!             Base class implementation for both the ARA IPC proxy host and plug-in
-//!             Typically, this file is not included directly - either ARAIPCProxyHost.h
-//!             ARAIPCProxyPlugIn.h will be used instead.
+//! \file       ARAIPCConnection.h
+//!             Connection to another process to pass messages to/receive messages from it
 //! \project    ARA SDK Library
 //! \copyright  Copyright (c) 2021-2025, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +16,8 @@
 //!             limitations under the License.
 //------------------------------------------------------------------------------
 
-#ifndef ARAIPCMessageChannel_h
-#define ARAIPCMessageChannel_h
+#ifndef ARAIPCConnection_h
+#define ARAIPCConnection_h
 
 #include "ARA_Library/IPC/ARAIPCMessage.h"
 #include "ARA_Library/Debug/ARADebug.h"
@@ -261,4 +259,4 @@ private:
 
 #endif // ARA_ENABLE_IPC
 
-#endif // ARAIPCMessageChannel_h
+#endif // ARAIPCConnection_h
