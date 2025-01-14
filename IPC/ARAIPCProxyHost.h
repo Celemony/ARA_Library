@@ -39,7 +39,7 @@ extern "C" {
 
 //! plug-in side implementation of MessageHandler
 //! the plug-in uses the C interface below, but this class will be subclassed by specialized implementations
-class ProxyHost : public MessageHandler, protected RemoteCaller
+class ProxyHost : public MessageHandler, public RemoteCaller
 {
 protected:
     explicit ProxyHost (Connection* connection);
@@ -47,7 +47,8 @@ protected:
 public:
     DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
 
-    MessageEncoder* handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder) override;
+    void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
+                                MessageEncoder* const replyEncoder) override;
 };
 #endif
 

@@ -40,14 +40,15 @@ extern "C" {
 
 //! host side implementation of MessageHandler
 //! the host uses the C interface below, but this class will be subclassed by specialized implementations
-class ProxyPlugIn : public MessageHandler, protected RemoteCaller
+class ProxyPlugIn : public MessageHandler, public RemoteCaller
 {
 public:
     using RemoteCaller::RemoteCaller;
 
     DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
 
-    MessageEncoder* handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder) override;
+    void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
+                                MessageEncoder* const replyEncoder) override;
 };
 #endif
 

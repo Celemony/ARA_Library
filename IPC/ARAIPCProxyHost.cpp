@@ -671,10 +671,10 @@ ProxyHost::DispatchTarget ProxyHost::getDispatchTargetForIncomingTransaction (Me
     return MessageHandler::getDispatchTargetForIncomingTransaction (messageID);
 }
 
-MessageEncoder* ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder)
+void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
+                                       MessageEncoder* const replyEncoder)
 {
 //  ARA_LOG ("ProxyHost handles '%s'", decodeHostMessageID (messageID));
-    auto replyEncoder { getConnection ()->createEncoder () };
 
     // ARAFactory
     if (messageID == kGetFactoriesCountMethodID)
@@ -1341,13 +1341,10 @@ MessageEncoder* ProxyHost::handleReceivedMessage (const MessageID messageID, con
 
         fromRef (editorViewRef)->getEditorView ()->notifyHideRegionSequences (regionSequenceRefs.size (), regionSequenceRefs.data ());
     }
-
     else
     {
         ARA_INTERNAL_ASSERT (false && "unhandled message ID");
     }
-    
-    return replyEncoder;
 }
 
 }   // namespace IPC
