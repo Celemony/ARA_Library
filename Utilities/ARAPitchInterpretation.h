@@ -115,7 +115,7 @@ public:
 
     //! Returns the name of the root note of \p keySignature (useful if getNameForKeySignature() fails).
     //! If usesASCIISymbols() is false, the returned std::string may contain ::ARAUtf8Char (potentially multi-byte) symbols.
-    std::string getRootNoteNameForKeySignature (const ARAContentKeySignature& keySignature) const { return getNoteNameForCircleOfFifthIndex(keySignature.root); }
+    std::string getRootNoteNameForKeySignature (const ARAContentKeySignature& keySignature) const { return getNoteNameForCircleOfFifthIndex (keySignature.root); }
 };
 
 //! @} ARA_Library_Utility_Pitch_Interpretation

@@ -48,7 +48,7 @@ typedef ARAInt32 MessageArgumentKey;
 class MessageEncoder
 {
 public:
-    virtual ~MessageEncoder() = default;
+    virtual ~MessageEncoder () = default;
 
     //! number types
     //! The "size" variant will also be used for the pointer-sized ARA (host) refs.
