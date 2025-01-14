@@ -661,16 +661,6 @@ ProxyHost::ProxyHost (Connection* connection)
 : RemoteCaller (connection)
 {}
 
-ProxyHost::DispatchTarget ProxyHost::getDispatchTargetForIncomingTransaction (MessageID messageID)
-{
-    // getPlaybackRegionHeadAndTailTime() is valid on any thread, so we can directly serve it from
-    // the current IPC thread. For all other calls, we call the inherited default implementation to
-    // dispatch to the creation thread.
-    if (messageID == ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getPlaybackRegionHeadAndTailTime))
-        return nullptr;
-    return MessageHandler::getDispatchTargetForIncomingTransaction (messageID);
-}
-
 void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                        MessageEncoder* const replyEncoder)
 {

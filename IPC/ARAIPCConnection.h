@@ -58,35 +58,12 @@ class MessageDispatcher;
 class MessageHandler
 {
 public:
-    MessageHandler ();
     virtual ~MessageHandler () = default;
-
-    //! type returned from getDispatchTargetForIncomingTransaction()
-#if defined (_WIN32)
-    using DispatchTarget = HANDLE;
-    friend void APCProcessReceivedMessageFunc (ULONG_PTR parameter);
-#elif defined (__APPLE__)
-    using DispatchTarget = dispatch_queue_t;
-#else
-    #error "not yet implemented on this platform"
-#endif
-
-    //! IPC connections will call this method to determine which thread should be
-    //! used for handling an incoming transaction. Returning nullptr results in the
-    //! current thread being used, otherwise the call will be forwarded to the
-    //! returned target thread.
-    //! The default implementation dispatches to the thread where the MessageHandler
-    //! was created, which can be utilized by overrides of this method.
-    virtual DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID);
 
     //! IPC connections will call this method for incoming messages after
     //! after filtering replies and routing them to the correct thread.
     virtual void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                         MessageEncoder* const replyEncoder) = 0;
-
-private:
-    std::thread::id const _creationThreadID;
-    DispatchTarget const _creationThreadDispatchTarget;
 };
 
 
@@ -139,15 +116,24 @@ public:
 
     MessageHandler* getMessageHandler () { return _messageHandler; }
 
-#if ARA_ENABLE_INTERNAL_ASSERTS
     bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
+
+#if defined (_WIN32)
+    using DispatchTarget = HANDLE;
+    friend void APCProcessReceivedMessageFunc (ULONG_PTR parameter);
+#elif defined (__APPLE__)
+    using DispatchTarget = dispatch_queue_t;
+#else
+    #error "not yet implemented on this platform"
 #endif
+    DispatchTarget getCreationThreadDispatchTarget () { return _creationThreadDispatchTarget; }
 
 private:
     MessageDispatcher* _mainDispatcher {};
     MessageDispatcher* _otherDispatcher {};
     MessageHandler* _messageHandler {};
     std::thread::id const _creationThreadID;
+    DispatchTarget const _creationThreadDispatchTarget;
 };
 //! @}
 
@@ -200,8 +186,9 @@ private:
         const MessageDecoder* _decoder { nullptr };
         ThreadRef _targetThread { _invalidThread };
     };
-
     RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
+
+    bool _isSingleThreaded () { return _sendLock == nullptr; }
 
 private:
     Connection* const _connection;
