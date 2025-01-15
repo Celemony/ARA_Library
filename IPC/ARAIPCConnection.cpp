@@ -27,7 +27,9 @@
 
 #include <utility>
 
-#if defined (__APPLE__)
+#if defined (_WIN32)
+    #include <Windows.h>
+#elif defined (__APPLE__)
     #include <CoreFoundation/CoreFoundation.h>
 #endif
 
@@ -35,13 +37,15 @@
 // ARA IPC design overview
 //
 // ARA API calls can be stacked multiple times.
-// For example, when the plug-in has completed analyzing an audio source, it will
-// inform the host about the updated content information the next time the host
-// calls notifyModelUpdates() by invoking notifyAudioSourceContentChanged().
-// From that method, the host now queries isAudioSourceContentAvailable() for the
-// relevant content types and calls createAudioSourceContentReader() etc. to read
-// the relevant content data.
-// Such a stack of multiple messages is referred to as a "transaction" here.
+// One example for this is the creation of a new audio source: from the creation
+// call or from the concluding endEditing(), the plug-in can call back into the host
+// and query what content information it can provide for the newly created source.
+// Another example with one more layer stacked can happen when the plug-in has completed
+// analyzing an audio source. The next time the host calls notifyModelUpdates(), the
+// plug-in will inform the host about the updated content information by invoking
+// notifyAudioSourceContentChanged(). From that method, the host now queries
+// isAudioSourceContentAvailable() for the relevant content types and then calls
+// createAudioSourceContentReader() etc. to read the relevant content data.
 //
 // However, many IPC APIs including Audio Unit message channels cannot be stacked,
 // i.e. each message has to completely be processed before the next one can be sent.
@@ -55,58 +59,64 @@
 //
 // In this loop, extra efforts might be necessary to handle the IPC threading:
 // When e.g. using Audio Unit AUMessageChannel, Grand Central Dispatch will deliver
-// the incoming IPC messages on some undefined thread. In such cases, a dispatch
-// from the receiving thread to the target thread is necessary, implemented via
-// a condition variable that the receive thread awakes when a message comes in.
-// Instead of looping, a sending thread will then wait on this condition for the reply.
+// the incoming IPC messages on some undefined thread. In such cases, replies need
+// to be dispatched from the receiving thread to the thread that is waiting for a
+// particular reply.
+// Each call message therefore includes a token that identifies the sending thread.
+// The receiving side sends this token back with the reply message, allowing the
+// threads in the sender to wait via a condition for any incoming replies and identify
+// the matching reply via the token.
 //
-// While most ARA communication is happening on the main thread, there are
-// several calls that may be made from other threads. This poses several challenges
-// when tunnelling everything through a single(threaded) IPC channel.
+// Stacked calls on the other hand may need to be dispatched to some pre-allocated
+// thread that can process the callback, so that the receive thread can return in
+// order to no longer block the message channel, so that potentially further stacked
+// calls can be sent across.
+// As a result, code that was previously running e.g. on the main thread is now
+// distributed across multiple threads, but of all theses threads only one is executing
+// at any point in time. This decouples the logical flow of execution from the actual
+// OS-level thread of execution, which is very similar to how e.g. Swift actors work.
+// While this means that the high-level logic will keep working as-is, any test about
+// being on a specific OS thread (usually the main thread) no longer work.
+// Any such test now must include testing for the IPC threads, and API that has a
+// hard requirement to e.g. be run on the main thread can no longer be used directly
+// from ARA calls. Both hosts and plug-ins need to adapt to this, which can be quite
+// challenging depending on the structure of the given code.
+//
+// While most ARA communication is happening on the main thread, there are several
+// calls that may be made from other threads. This means that the IPC implementation
+// must deal with thread concurrency, which introduces several additional challenges.
 //
 // First of all, there needs to be some locking mechanism around actually accessing
 // the IPC. This adds a dependency between previously independent threads, so both
 // hosts and plug-ins will need to carefully evaluate their existing ARA code to check
 // for potential deadlocks or priority inversion caused by this.
 // To reduce the potential impact of this, the implementation uses two IPC channels
-// in parallel: one for all main thread communication (which can work lockless) and
-// another one that is used for all other threads.
+// in parallel: one for all main thread communication, which can work lockless, and
+// another one that is used for all other threads and uses a lock.
+// When an ARA IPC call is made, the implementation checks whether this is happening
+// on the main thread(s) or on any other thread, and chooses the appropriate channel
+// accordingly.
+// On the receiving side, calls coming in on the main thread channel are forwarded to
+// the main channel thread pool, and for the other threads the code is executed directly
+// on the receive thread.
+// (Note that currently, stacking calls is only supported on the main thread in order
+// to save resources - it could however be trivially enabled there as well if needed.)
 //
 // Further, calls that are using IPC are no longer realtime safe. This means that calls
 // like getPlaybackRegionHeadAndTailTime(), which could previously be executed on render
 // threads, now need to be moved to other threads. Accordingly, hosts need to cache data
 // like the head and tail times from the main thread and update them there whenever
 // notifyPlaybackRegionContentChanged() is received.
-//
-// Another challenge when injecting IPC into the ARA communication is that for each
-// message that comes in, an appropriate thread has to be selected to process it.
-// When a new transaction is initiated, the implementation checks whether this is happening
-// on the main thread or on any other thread, and chooses the appropriate channel accordingly.
-// On the receiving side, calls coming in on the main thread channel are forwarded to the main
-// thread (unless the receive code already runs there), and for the other threads the code is
-// executed directly on the receive thread.
-//
-// Replies or callbacks are routed back to the originating thread in the sender. This is done
-// by adding a token when sending a message that identifies the sending thread, and replies and
-// callbacks pass this token back to allow for proper dispatching from the receive thread to the
-// thread that initiated the transaction.
-// Since the actual ARA code is agnostic to IPC being used, the receiving side uses
-// thread local storage to make the sender's thread token available for all stacked calls
-// that the ARA code might make in response to the message.
-//
-// Note that there is a crucial difference between the dispatch of a new transaction and
-// the dispatch of any follow-up messages in the transaction: the initial message is dispatched
-// to a thread that is potentially executing other code as well in some form of run loop,
-// whereas the follow-ups need to dispatch to a thread that is currently blocking inside ARA code.
 
 
 namespace ARA {
 namespace IPC {
 
 
-// keys to store the threading information in the IPC messages
-constexpr MessageArgumentKey sendThreadKey { -1 };
-constexpr MessageArgumentKey receiveThreadKey { -2 };
+// key to store the threading information in the IPC messages
+// when sending a message, this contains the sending thread. the receiving side stores this
+// and sends it back with the matching reply so that the sending thread can be woken up.
+constexpr MessageArgumentKey kSendThreadKey { -1 };
 
 
 #if defined (_WIN32)
@@ -119,7 +129,7 @@ constexpr MessageArgumentKey receiveThreadKey { -2 };
 
 
 // actually a "static" member of ARAIPCChannel, but for some reason C++ doesn't allow this...
-thread_local MessageDispatcher::ThreadRef _remoteTargetThread { 0 };
+thread_local bool _actsAsMainThread { false };
 
 
 struct PendingReplyHandler
@@ -143,9 +153,11 @@ MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* me
 //  static_assert (std::thread::id {} == *reinterpret_cast<const std::thread::id*>(&_invalidThread), "the current implementation relies on invalid thread IDs being 0");
     ARA_INTERNAL_ASSERT (std::thread::id {} == *reinterpret_cast<const std::thread::id*>(&_invalidThread));
     
-    _routedMessages.resize (12);     // we shouldn't use more than a handful of threads concurrently for the IPC
+    _routedMessages.resize (12);    // we shouldn't use more than a handful of threads concurrently for the IPC
 
-    if (!singleThreaded)
+    if (singleThreaded)
+        _addRecursionThread ();     // prepare for at least one level of recursion, this is typically enough
+    else
         _sendLock = new std::mutex;
 
     _messageChannel->setMessageDispatcher (this);
@@ -153,16 +165,27 @@ MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* me
 
 MessageDispatcher::~MessageDispatcher ()
 {
-    if (!_isSingleThreaded ())
+    if (_isSingleThreaded ())
+    {
+        _shutDown = true;
+        _routeReceiveCondition.notify_all ();
+        for (auto thread : _recursionThreads)
+        {
+            thread->join ();
+            delete thread;
+        }
+    }
+    else
+    {
         delete _sendLock;
+    }
 
     delete _messageChannel;
 }
 
-MessageDispatcher::ThreadRef MessageDispatcher::_getCurrentThread ()
+MessageDispatcher::ThreadRef MessageDispatcher::_getThreadRefForThreadID (std::thread::id threadID)
 {
-    const auto thisThread { std::this_thread::get_id () };
-    const auto result { *reinterpret_cast<const ThreadRef*> (&thisThread) };
+    const auto result { *reinterpret_cast<const ThreadRef*> (&threadID) };
     ARA_INTERNAL_ASSERT (result != _invalidThread);
     return result;
 }
@@ -170,17 +193,17 @@ MessageDispatcher::ThreadRef MessageDispatcher::_getCurrentThread ()
 void MessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encoder,
                                      Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
-    const auto currentThread { _getCurrentThread () };
-    encoder->appendThreadRef (sendThreadKey, currentThread);
-    if (_remoteTargetThread != _invalidThread)
-        encoder->appendThreadRef (receiveThreadKey, _remoteTargetThread);
+    const auto currentThread { _getCurrentThreadRef () };
+    encoder->appendThreadRef (kSendThreadKey, currentThread);
 
     if (!_isSingleThreaded ())
         _sendLock->lock ();
-    ARA_IPC_LOG ("sends message with ID %i on thread %p%s", messageID, currentThread, (_remoteTargetThread == _invalidThread) ? " (starting new transaction)" : "");
+    ARA_IPC_LOG ("sends message with ID %i on thread %p", messageID, currentThread);
     _messageChannel->sendMessage (messageID, encoder);
     if (!_isSingleThreaded ())
         _sendLock->unlock ();
+
+    delete encoder;
 
     if (_messageChannel->runsReceiveLoopOnCurrentThread ())
     {
@@ -195,47 +218,18 @@ void MessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encode
     }
     else
     {
-        while (true)
-        {
-            std::unique_lock <std::mutex> lock { _routeLock };
-            _routeReceiveCondition.wait (lock, [this, &currentThread]
-                                    { return _getRoutedMessageForThread (currentThread) != nullptr; });
-            RoutedMessage* message = _getRoutedMessageForThread (currentThread);
-            const auto receivedMessageID { message->_messageID };
-            const auto receivedDecoder { message->_decoder };
-            message->_targetThread = _invalidThread;
-            lock.unlock ();
+        std::unique_lock <std::mutex> lock { _routeLock };
+        _routeReceiveCondition.wait (lock, [this, &currentThread]
+                                { return _getRoutedMessageForThread (currentThread) != nullptr; });
+        RoutedMessage* message = _getRoutedMessageForThread (currentThread);
+        ARA_INTERNAL_ASSERT (message->_messageID == 0);
+        const auto receivedDecoder { message->_decoder };
+        message->_targetThread = _invalidThread;
+        lock.unlock ();
 
-            if (receivedMessageID != 0)
-            {
-                _handleReceivedMessage (receivedMessageID, receivedDecoder);        // will also delete receivedDecoder
-            }
-            else
-            {
-                _handleReply (receivedDecoder, replyHandler, replyHandlerUserData); // will also delete receivedDecoder
-                break;
-            }
-        }
+        _handleReply (receivedDecoder, replyHandler, replyHandlerUserData); // will also delete receivedDecoder
     }
-
-    delete encoder;
 }
-
-#if defined (_WIN32)
-struct APCProcessReceivedMessageParams
-{
-    MessageDispatcher* dispatcher;
-    MessageID messageID;
-    const MessageDecoder* decoder;
-};
-
-void APCRouteNewTransactionFunc (ULONG_PTR parameter)
-{
-    auto params { reinterpret_cast<APCProcessReceivedMessageParams*> (parameter) };
-    params->dispatcher->_handleReceivedMessage (params->messageID, params->decoder);
-    delete params;
-}
-#endif
 
 MessageDispatcher::RoutedMessage* MessageDispatcher::_getRoutedMessageForThread (ThreadRef thread)
 {
@@ -249,103 +243,91 @@ MessageDispatcher::RoutedMessage* MessageDispatcher::_getRoutedMessageForThread 
 
 void MessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
-    ThreadRef targetThread;
-    if (decoder->readThreadRef (receiveThreadKey, &targetThread))
+    if (messageID != 0)
     {
-        ARA_INTERNAL_ASSERT (targetThread != _invalidThread);
-        if (targetThread == _getCurrentThread ())
+        if (_isSingleThreaded ())
         {
-            ARA_INTERNAL_ASSERT (_messageChannel->runsReceiveLoopOnCurrentThread ());
-            if (messageID != 0)
-            {
-                _handleReceivedMessage (messageID, decoder);
-            }
-            else
-            {
-                ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
-                _handleReply (decoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
-                _pendingReplyHandler = nullptr;
-            }
-        }
-        else
-        {
-            if (messageID != 0)
-                ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to sending thread %p", messageID, _getCurrentThread(), targetThread);
-            else
-                ARA_IPC_LOG ("dispatches received reply from thread %p to sending thread %p", _getCurrentThread(), targetThread);
+            if (_nextRecursionThreadIndex == _recursionThreads.size ())
+                _addRecursionThread ();
+            auto targetThread { _getThreadRefForThreadID (_recursionThreads[_nextRecursionThreadIndex]->get_id ()) };
+            ++_nextRecursionThreadIndex;
 
-            _routeLock.lock ();
-            RoutedMessage* message = _getRoutedMessageForThread (_invalidThread);
-            if (message == nullptr)
-            {
-                _routedMessages.push_back ({});
-                message = &_routedMessages.back ();
-            }
-            message->_messageID = messageID;
-            message->_decoder = decoder;
-            message->_targetThread = targetThread;
-            _routeReceiveCondition.notify_all ();
-            _routeLock.unlock ();
-        }
-    }
-    else
-    {
-        ARA_INTERNAL_ASSERT (messageID != 0);
-        if (_isSingleThreaded () &&
-            !_connection->wasCreatedOnCurrentThread ())
-        {
-            ARA_IPC_LOG ("dispatches received message with ID %i (new transaction)", messageID);
-#if defined (_WIN32)
-            auto params { new APCProcessReceivedMessageParams { this, messageID, decoder } };
-            const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, _connection->getCreationThreadDispatchTarget (), reinterpret_cast<ULONG_PTR> (params)) };
-            ARA_INTERNAL_ASSERT (result != 0);
-#elif defined (__APPLE__)
-            dispatch_async (_connection->getCreationThreadDispatchTarget (),
-                ^{
-                    _handleReceivedMessage (messageID, decoder);
-                });
-#endif
+            ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to handling thread %p", messageID, _getCurrentThreadRef (), targetThread);
+            _routeMessageToThread (messageID, decoder, targetThread);
         }
         else
         {
             _handleReceivedMessage (messageID, decoder);
         }
     }
+    else
+    {
+        ThreadRef targetThread;
+        const auto success { decoder->readThreadRef (kSendThreadKey, &targetThread) };
+        ARA_INTERNAL_ASSERT (success);
+        ARA_INTERNAL_ASSERT (targetThread != _invalidThread);
+        if (targetThread == _getCurrentThreadRef ())
+        {
+            ARA_INTERNAL_ASSERT (_messageChannel->runsReceiveLoopOnCurrentThread ());
+            ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
+            _handleReply (decoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
+            _pendingReplyHandler = nullptr;
+        }
+        else
+        {
+            ARA_IPC_LOG ("dispatches received reply from thread %p to sending thread %p", _getCurrentThreadRef (), targetThread);
+            _routeMessageToThread (0, decoder, targetThread);
+        }
+    }
+}
+
+void MessageDispatcher::_routeMessageToThread (MessageID messageID, const MessageDecoder* decoder, ThreadRef targetThread)
+{
+    _routeLock.lock ();
+
+    RoutedMessage* message = _getRoutedMessageForThread (_invalidThread);
+    if (message == nullptr)
+    {
+        _routedMessages.push_back ({});
+        message = &_routedMessages.back ();
+    }
+
+    message->_messageID = messageID;
+    message->_decoder = decoder;
+    message->_targetThread = targetThread;
+    _routeReceiveCondition.notify_all ();
+
+    _routeLock.unlock ();
 }
 
 void MessageDispatcher::_handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
-    ARA_IPC_LOG ("handles received message with ID %i on thread %p", messageID, _getCurrentThread());
+    ARA_IPC_LOG ("handles received message with ID %i on thread %p", messageID, _getCurrentThreadRef ());
     ARA_INTERNAL_ASSERT (messageID != 0);
 
-    const auto previousRemoteTargetThread { _remoteTargetThread };
-    ThreadRef remoteTargetThread;
-    const auto success { decoder->readThreadRef (sendThreadKey, &remoteTargetThread) };
-    ARA_INTERNAL_ASSERT (success);
-    _remoteTargetThread = remoteTargetThread;
-
     auto replyEncoder { _connection->createEncoder () };
+
+    ThreadRef remoteTargetThread;
+    const auto success { decoder->readThreadRef (kSendThreadKey, &remoteTargetThread) };
+    ARA_INTERNAL_ASSERT (success);
+    replyEncoder->appendThreadRef (kSendThreadKey, remoteTargetThread);
+
     _connection->getMessageHandler ()->handleReceivedMessage (messageID, decoder, replyEncoder);
     delete decoder;
 
-    if (remoteTargetThread != _invalidThread)
-        replyEncoder->appendThreadRef (receiveThreadKey, remoteTargetThread);
-
     if (!_isSingleThreaded ())
         _sendLock->lock ();
-    ARA_IPC_LOG ("replies to message with ID %i on thread %p", messageID, _getCurrentThread());
+    ARA_IPC_LOG ("replies to message with ID %i on thread %p", messageID, _getCurrentThreadRef ());
     _messageChannel->sendMessage (0, replyEncoder);
     if (!_isSingleThreaded ())
         _sendLock->unlock ();
 
     delete replyEncoder;
-
-    _remoteTargetThread = previousRemoteTargetThread;
 }
 
 void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
-    ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThread());
+    ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThreadRef ());
     if (replyHandler)
         (replyHandler) (decoder, replyHandlerUserData);
     else
@@ -353,37 +335,35 @@ void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection:
     delete decoder;
 }
 
-
-#if defined (_WIN32)
-// from https://devblogs.microsoft.com/oldnewthing/20141015-00/?p=43843
-BOOL ConvertToRealHandle(HANDLE h,
-                         BOOL bInheritHandle,
-                         HANDLE *phConverted)
+void MessageDispatcher::_addRecursionThread ()
 {
- return DuplicateHandle(GetCurrentProcess(), h,
-                        GetCurrentProcess(), phConverted,
-                        0, bInheritHandle, DUPLICATE_SAME_ACCESS);
-}
+    _recursionThreads.emplace_back (new std::thread { [this] () {
+        const auto currentThread { _getCurrentThreadRef () };
+        _actsAsMainThread = true;
+        while (true)
+        {
+            std::unique_lock <std::mutex> lock { _routeLock };
+            _routeReceiveCondition.wait (lock, [this, &currentThread]
+                                    { return (_getRoutedMessageForThread (currentThread) != nullptr) || _shutDown; });
+            if (_shutDown)
+                return;
 
-HANDLE _GetRealCurrentThread ()
-{
-    HANDLE currentThread {};
-    auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
-    ARA_INTERNAL_ASSERT (success);
-    return currentThread;
-}
-#endif
+            RoutedMessage* message = _getRoutedMessageForThread (currentThread);
+            const auto receivedMessageID { message->_messageID };
+            const auto receivedDecoder { message->_decoder };
+            message->_targetThread = _invalidThread;
+            lock.unlock ();
 
+            ARA_INTERNAL_ASSERT (receivedMessageID != 0);
+            _handleReceivedMessage (receivedMessageID, receivedDecoder);        // will also delete receivedDecoder
+
+            ARA_INTERNAL_ASSERT (_nextRecursionThreadIndex != 0);
+            --_nextRecursionThreadIndex;
+        }
+    } });
+}
 
 Connection::Connection ()
-: _creationThreadID { std::this_thread::get_id () },
-#if defined (_WIN32)
-  _creationThreadDispatchTarget { _GetRealCurrentThread () }
-#elif defined (__APPLE__)
-  _creationThreadDispatchTarget { dispatch_get_main_queue () }
-#else
-    #error "not yet implemented on this platform"
-#endif
 {
 #if defined (__APPLE__)
     // since there is no way to create a dispatch queue associated with the current thread,
@@ -391,6 +371,8 @@ Connection::Connection ()
     // well-defined dispatch queue on the system.
     ARA_INTERNAL_ASSERT (CFRunLoopGetMain () == CFRunLoopGetCurrent ());
 #endif
+
+    _actsAsMainThread = true;
 }
 
 Connection::~Connection ()
@@ -420,10 +402,15 @@ void Connection::setMessageHandler (MessageHandler* messageHandler)
 void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_INTERNAL_ASSERT ((_mainDispatcher != nullptr) && (_otherDispatcher != nullptr) && (_messageHandler != nullptr));
-    if (wasCreatedOnCurrentThread ())
+    if (_actsAsMainThread)
         _mainDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
     else
         _otherDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
+}
+
+bool Connection::currentThreadActsAsMainThread ()
+{
+    return _actsAsMainThread;
 }
 
 }   // namespace IPC

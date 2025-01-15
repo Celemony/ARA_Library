@@ -24,13 +24,6 @@
 
 #if ARA_ENABLE_IPC
 
-
-#if defined (_WIN32)
-    #include <Windows.h>
-#elif defined (__APPLE__)
-    #include <dispatch/dispatch.h>
-#endif
-
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -116,24 +109,12 @@ public:
 
     MessageHandler* getMessageHandler () { return _messageHandler; }
 
-    bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
-
-#if defined (_WIN32)
-    using DispatchTarget = HANDLE;
-    friend void APCProcessReceivedMessageFunc (ULONG_PTR parameter);
-#elif defined (__APPLE__)
-    using DispatchTarget = dispatch_queue_t;
-#else
-    #error "not yet implemented on this platform"
-#endif
-    DispatchTarget getCreationThreadDispatchTarget () { return _creationThreadDispatchTarget; }
+    static bool currentThreadActsAsMainThread ();
 
 private:
     MessageDispatcher* _mainDispatcher {};
     MessageDispatcher* _otherDispatcher {};
     MessageHandler* _messageHandler {};
-    std::thread::id const _creationThreadID;
-    DispatchTarget const _creationThreadDispatchTarget;
 };
 //! @}
 
@@ -173,12 +154,8 @@ public:
 private:
     void _handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder);
     void _handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
-
-    static ThreadRef _getCurrentThread ();
-
-#if defined (_WIN32)
-    friend void APCRouteNewTransactionFunc (ULONG_PTR parameter);
-#endif
+    void _routeMessageToThread (MessageID messageID, const MessageDecoder* decoder, ThreadRef targetThread);
+    void _addRecursionThread ();
 
     struct RoutedMessage
     {
@@ -189,6 +166,9 @@ private:
     RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
 
     bool _isSingleThreaded () { return _sendLock == nullptr; }
+
+    static ThreadRef _getThreadRefForThreadID (std::thread::id threadID);
+    static ThreadRef _getCurrentThreadRef () { return _getThreadRefForThreadID (std::this_thread::get_id ()); }
 
 private:
     Connection* const _connection;
@@ -201,6 +181,10 @@ private:
     // sending threads waiting to pick it up (signalled via _routeReceiveCondition)
     std::condition_variable _routeReceiveCondition;
     std::vector<RoutedMessage> _routedMessages;
+
+    size_t _nextRecursionThreadIndex { 0 };
+    bool _shutDown { false };
+    std::vector<std::thread*> _recursionThreads;
 };
 
 

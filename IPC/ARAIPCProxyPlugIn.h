@@ -79,6 +79,12 @@ void ARAIPCProxyPlugInCleanupBinding(const ARAPlugInExtensionInstance * plugInEx
 void ARAIPCProxyPlugInUninitializeARA(ARAIPCConnectionRef connectionRef, const ARAPersistentID factoryID);
 
 
+//! some companion APIs enforce processing the ARA IPC calls on threads other than the main thread -
+//! this call returns true when the current thread is the actual main thread or some IPC thread
+//! that acts on behalf of the main thread (similar to Swift MainActor)
+ARA_DRAFT ARABool ARAIPCProxyPlugInCurrentThreadActsAsMainThread ();
+
+
 #if defined(__cplusplus)
 }   // extern "C"
 }   // namespace IPC

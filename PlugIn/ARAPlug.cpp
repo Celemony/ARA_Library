@@ -18,6 +18,8 @@
 
 #include "ARAPlug.h"
 
+#include "ARA_Library/IPC/ARAIPCConnection.h"
+
 #include <sstream>
 
 namespace ARA {
@@ -904,6 +906,10 @@ bool DocumentController::isValidEditorView (const EditorView* editorView) const 
 
 bool DocumentController::wasCreatedOnCurrentThread () const noexcept
 {
+#if ARA_ENABLE_IPC
+    if (ARA::IPC::Connection::currentThreadActsAsMainThread ())
+        return true;
+#endif
     return _creationThreadID == std::this_thread::get_id ();
 }
 

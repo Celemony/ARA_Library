@@ -63,6 +63,12 @@ void ARAIPCProxyHostAddFactory(const ARAFactory * factory);
 void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);
 
 
+//! some companion APIs enforce processing the ARA IPC calls on threads other than the main thread -
+//! this call returns true when the current thread is the actual main thread or some IPC thread
+//! that acts on behalf of the main thread (similar to Swift MainActor)
+ARA_DRAFT ARABool ARAIPCProxyHostCurrentThreadActsAsMainThread ();
+
+
 #if defined(__cplusplus)
 }   // extern "C"
 }   // namespace IPC
