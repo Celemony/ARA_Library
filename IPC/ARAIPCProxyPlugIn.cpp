@@ -25,8 +25,10 @@
 #include "ARA_Library/Dispatch/ARAPlugInDispatch.h"
 #include "ARA_Library/Dispatch/ARAHostDispatch.h"
 
+#include <condition_variable>
 #include <cstring>
 #include <map>
+#include <mutex>
 #include <set>
 #include <string>
 
@@ -1296,6 +1298,115 @@ struct RemoteFactory
 std::map<std::string, RemoteFactory> _factories {};
 
 
+class DistributedMainThreadLock
+{
+private:
+// for some reason, Xcode thinks this is no constant expression...
+//  static constexpr ARAIPCConnectionRef _dummyLocalConnectionRef { reinterpret_cast<ARAIPCConnectionRef> (-1) };
+    const ARAIPCConnectionRef _dummyLocalConnectionRef { reinterpret_cast<ARAIPCConnectionRef> (-1) };
+
+    template<bool tryLock>
+    bool _lockImpl (ARAIPCConnectionRef connectionRef)
+    {
+        std::unique_lock <std::mutex> lock { _lock };
+        if (_lockingConnection == nullptr)
+        {
+            ARA_INTERNAL_ASSERT (_recursionCount == 0);
+            _lockingConnection = connectionRef;
+            return true;
+        }
+        else if (_lockingConnection == connectionRef)
+        {
+            ++_recursionCount;
+            return true;
+        }
+        else
+        {
+            if (tryLock)
+                return false;
+
+            _condition.wait (lock, [this, connectionRef]
+                        { return (_lockingConnection == nullptr) || (_lockingConnection == connectionRef); });
+            if (_lockingConnection == nullptr)
+            {
+                ARA_INTERNAL_ASSERT (_recursionCount == 0);
+                _lockingConnection = connectionRef;
+            }
+            else
+            {
+                ARA_INTERNAL_ASSERT (_lockingConnection == connectionRef);
+                ++_recursionCount;
+            }
+            return true;
+        }
+    }
+
+    void _unlockImpl (ARAIPCConnectionRef connectionRef)
+    {
+        std::unique_lock <std::mutex> lock { _lock };
+        ARA_INTERNAL_ASSERT (_lockingConnection == connectionRef);
+        if (_recursionCount > 0)
+        {
+            --_recursionCount;
+        }
+        else
+        {
+            _lockingConnection = nullptr;
+            _condition.notify_all ();
+        }
+    }
+
+public:
+    DistributedMainThreadLock () = default;
+
+    void lockFromLocalMainThread ()
+    {
+        _lockImpl<false> (_dummyLocalConnectionRef);
+        ARA_IPC_LOG ("distributed main thread was locked from host.");
+    }
+    bool tryLockFromLocalMainThread ()
+    {
+        const auto result { _lockImpl<true> (_dummyLocalConnectionRef) };
+        if (result)
+            ARA_IPC_LOG ("distributed main thread was try-locked from host.");
+        else
+            ARA_IPC_LOG ("distributed main thread try-lock from host failed.");
+        return result;
+    }
+    void unlockFromLocalMainThread ()
+    {
+        ARA_IPC_LOG ("distributed main thread will be unlocked from host.");
+        _unlockImpl (_dummyLocalConnectionRef);
+    }
+
+    void lockFromRemoteMainThread (ARAIPCConnectionRef connectionRef)
+    {
+        _lockImpl<false> (connectionRef);
+        ARA_IPC_LOG ("distributed main thread was locked from remote.");
+    }
+    bool tryLockFromRemoteMainThread (ARAIPCConnectionRef connectionRef)
+    {
+        const auto result { _lockImpl<true> (connectionRef) };
+        if (result)
+            ARA_IPC_LOG ("distributed main thread was try-locked from remote.");
+        else
+            ARA_IPC_LOG ("distributed main thread try-lock from remote failed.");
+        return result;
+    }
+    void unlockFromRemoteMainThread (ARAIPCConnectionRef connectionRef)
+    {
+        ARA_IPC_LOG ("distributed main thread will be unlocked from remote.");
+        _unlockImpl (connectionRef);
+    }
+
+private:
+    std::mutex _lock;
+    std::condition_variable _condition;
+    ARAIPCConnectionRef _lockingConnection { nullptr };
+    int _recursionCount { 0 };
+} _distributedMainThreadLock {};
+
+
 /*******************************************************************************/
 
 }   // namespace ProxyPlugInImpl
@@ -1433,6 +1544,20 @@ ARABool ARAIPCProxyPlugInCurrentThreadActsAsMainThread ()
     return (Connection::currentThreadActsAsMainThread ()) ? kARATrue : kARAFalse;
 }
 
+void ARAIPCProxyPlugInLockDistributedMainThread ()
+{
+    _distributedMainThreadLock.lockFromLocalMainThread ();
+}
+
+ARABool ARAIPCProxyPlugInTryLockDistributedMainThread ()
+{
+    return (_distributedMainThreadLock.tryLockFromLocalMainThread ()) ? kARATrue : kARAFalse;
+}
+
+void ARAIPCProxyPlugInUnlockDistributedMainThread ()
+{
+    _distributedMainThreadLock.unlockFromLocalMainThread ();
+}
 
 /*******************************************************************************/
 
@@ -1840,6 +1965,19 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
         documentController->getHostPlaybackController ()->requestEnableCycle (enable != kARAFalse);
+    }
+    else if (messageID == kLockDistributedMainThreadMethodID)
+    {
+        _distributedMainThreadLock.lockFromRemoteMainThread (toIPCRef (getConnection ()));
+    }
+    else if (messageID == kTryLockDistributedMainThreadMethodID)
+    {
+        auto result { _distributedMainThreadLock.tryLockFromRemoteMainThread (toIPCRef (getConnection ())) };
+        encodeReply (replyEncoder, (result) ? kARATrue : kARAFalse);
+    }
+    else if (messageID == kUnlockDistributedMainThreadMethodID)
+    {
+        _distributedMainThreadLock.unlockFromRemoteMainThread (toIPCRef (getConnection ()));
     }
     else
     {

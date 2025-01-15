@@ -1089,6 +1089,10 @@ constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARAGlobal
 constexpr auto kCleanupBindingMethodID { MethodID::createWithARAGlobalMessageID<6> () };
 constexpr auto kUninitializeARAMethodID { MethodID::createWithARAGlobalMessageID<7> () };
 
+ARA_DRAFT constexpr auto kLockDistributedMainThreadMethodID { MethodID::createWithARAGlobalMessageID<kReservedMessageIDRangeEnd - 3> () };
+ARA_DRAFT constexpr auto kTryLockDistributedMainThreadMethodID { MethodID::createWithARAGlobalMessageID<kReservedMessageIDRangeEnd - 2> () };
+ARA_DRAFT constexpr auto kUnlockDistributedMainThreadMethodID { MethodID::createWithARAGlobalMessageID<kReservedMessageIDRangeEnd - 1> () };
+
 
 // for debugging: translate IDs of messages sent by the host back to human-readable text
 inline const char* decodeHostMessageID (const MessageID messageID)
@@ -1181,6 +1185,13 @@ inline const char* decodePlugInMessageID (const MessageID messageID)
 {
     switch (messageID)
     {
+#define ARA_IPC_GLOBAL_MESSAGE_CASE(methodID) \
+        case methodID.getMessageID (): return #methodID;
+        ARA_IPC_GLOBAL_MESSAGE_CASE (kLockDistributedMainThreadMethodID);
+        ARA_IPC_GLOBAL_MESSAGE_CASE (kTryLockDistributedMainThreadMethodID);
+        ARA_IPC_GLOBAL_MESSAGE_CASE (kUnlockDistributedMainThreadMethodID);
+#undef ARA_IPC_GLOBAL_MESSAGE_CASE
+
 #define ARA_IPC_HOST_INTERFACE_CASE(StructT, member) \
         case ARA_IPC_HOST_METHOD_ID(StructT, member).getMessageID (): return #StructT "::" #member;
         ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, createAudioReaderForSource)

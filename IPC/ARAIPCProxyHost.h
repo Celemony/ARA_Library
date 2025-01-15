@@ -43,6 +43,7 @@ class ProxyHost : public MessageHandler, public RemoteCaller
 {
 protected:
     explicit ProxyHost (Connection* connection);
+    ~ProxyHost () override;
 
 public:
     void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
@@ -67,6 +68,16 @@ void ARAIPCProxyHostSetBindingHandler(ARAIPCBindingHandler handler);
 //! this call returns true when the current thread is the actual main thread or some IPC thread
 //! that acts on behalf of the main thread (similar to Swift MainActor)
 ARA_DRAFT ARABool ARAIPCProxyHostCurrentThreadActsAsMainThread ();
+
+
+//! draft for synchronizing host and plug-in main thread
+//! the lock must be taken each time the plug-in thread wakes up, in order to prevent the host main
+//! thread from interfering with the main thread operation in the plug-in
+//! try-lock can be used for operations which can be simply aborted if the host is currently busy,
+//! e.g. when a repeating timer fires
+ARA_DRAFT void ARAIPCProxyHostLockDistributedMainThread(void);
+ARA_DRAFT ARABool ARAIPCProxyHostTryLockDistributedMainThread(void);
+ARA_DRAFT void ARAIPCProxyHostUnlockDistributedMainThread(void);
 
 
 #if defined(__cplusplus)

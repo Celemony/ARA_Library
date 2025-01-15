@@ -627,7 +627,8 @@ using namespace ProxyHostImpl;
 
 
 std::vector<const ARAFactory*> _factories {};
-ARAIPCBindingHandler _bindingHandler {};
+ARAIPCBindingHandler _bindingHandler { nullptr };
+ProxyHost* _currentProxyHost { nullptr };   // there only can be one host at any time
 
 void ARAIPCProxyHostAddFactory (const ARAFactory* factory)
 {
@@ -659,12 +660,40 @@ ARABool ARAIPCProxyHostCurrentThreadActsAsMainThread ()
     return (Connection::currentThreadActsAsMainThread ()) ? kARATrue : kARAFalse;
 }
 
+void ARAIPCProxyHostLockDistributedMainThread ()
+{
+    ARA_INTERNAL_ASSERT (_currentProxyHost != nullptr);
+    _currentProxyHost->remoteCall (kLockDistributedMainThreadMethodID);
+}
+
+ARABool ARAIPCProxyHostTryLockDistributedMainThread ()
+{
+    ARA_INTERNAL_ASSERT (_currentProxyHost != nullptr);
+    ARABool reply;
+    _currentProxyHost->remoteCall (reply, kTryLockDistributedMainThreadMethodID);
+    return reply;
+}
+
+void ARAIPCProxyHostUnlockDistributedMainThread ()
+{
+    ARA_INTERNAL_ASSERT (_currentProxyHost != nullptr);
+    _currentProxyHost->remoteCall (kUnlockDistributedMainThreadMethodID);
+}
 
 /*******************************************************************************/
 
 ProxyHost::ProxyHost (Connection* connection)
 : RemoteCaller (connection)
-{}
+{
+    ARA_INTERNAL_ASSERT (_currentProxyHost == nullptr);
+    _currentProxyHost = this;
+}
+
+ProxyHost::~ProxyHost ()
+{
+    ARA_INTERNAL_ASSERT (_currentProxyHost == this);
+    _currentProxyHost = nullptr;
+}
 
 void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                        MessageEncoder* const replyEncoder)

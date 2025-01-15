@@ -85,6 +85,16 @@ void ARAIPCProxyPlugInUninitializeARA(ARAIPCConnectionRef connectionRef, const A
 ARA_DRAFT ARABool ARAIPCProxyPlugInCurrentThreadActsAsMainThread ();
 
 
+//! draft for synchronizing host and plug-in main thread
+//! the lock must be taken each time the main thread wakes up, in order to prevent the plug-in main
+//! thread from interfering with the main thread operation in the host
+//! try-lock can be used for operations which can be simply aborted if the plug-in is currently busy,
+//! e.g. when a repeating timer fires
+ARA_DRAFT void ARAIPCProxyPlugInLockDistributedMainThread(void);
+ARA_DRAFT ARABool ARAIPCProxyPlugInTryLockDistributedMainThread(void);
+ARA_DRAFT void ARAIPCProxyPlugInUnlockDistributedMainThread(void);
+
+
 #if defined(__cplusplus)
 }   // extern "C"
 }   // namespace IPC

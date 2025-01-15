@@ -107,6 +107,18 @@
 // threads, now need to be moved to other threads. Accordingly, hosts need to cache data
 // like the head and tail times from the main thread and update them there whenever
 // notifyPlaybackRegionContentChanged() is received.
+//
+// Finally, a general issue when add IPC to an existing design is that performing operations
+// on the main thread no longer inherently ensures exclusiveness, because there are now
+// two main threads: one on the host side and one in the plug-in.
+// Since many existing audio plug-in APIs rely on main thread exclusiveness, the ARA IPC
+// adds a distributed lock that allows to restore this behavior. However, both hosts and
+// plug-ins must now add code to actively acquire this distributed lock before performing
+// any operation on the main thread that might affect the overall ARA graph state.
+// This ties together with the thread pool that is used to handle main thread ARA IPC calls -
+// blocking the main thread while waiting for the distributed main thread lock does not
+// affect the IPC calls.
+
 
 
 namespace ARA {
