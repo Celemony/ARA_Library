@@ -1448,10 +1448,10 @@ ProxyPlugIn::DispatchTarget ProxyPlugIn::getDispatchTargetForIncomingTransaction
     return MessageHandler::getDispatchTargetForIncomingTransaction (messageID);
 }
 
-MessageEncoder* ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder)
+void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
+                                         MessageEncoder* const replyEncoder)
 {
 //  ARA_LOG ("ProxyPlugIn handles '%s'", decodePlugInMessageID (messageID));
-    auto replyEncoder { getConnection ()->createEncoder () };
 
     // ARAAudioAccessControllerInterface
     if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, createAudioReaderForSource))
@@ -1857,8 +1857,6 @@ MessageEncoder* ProxyPlugIn::handleReceivedMessage (const MessageID messageID, c
     {
         ARA_INTERNAL_ASSERT (false && "unhandled message ID");
     }
-
-    return replyEncoder;
 }
 
 }   // namespace IPC

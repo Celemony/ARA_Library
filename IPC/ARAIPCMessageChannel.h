@@ -76,8 +76,8 @@ public:
 
     //! IPC connections will call this method for incoming messages after
     //! after filtering replies and routing them to the correct thread.
-    //! The returned reply must eventually be deleted by the caller.
-    virtual MessageEncoder* handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder) = 0;
+    virtual void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
+                                        MessageEncoder* const replyEncoder) = 0;
 
 private:
     std::thread::id const _creationThreadID;
@@ -96,15 +96,20 @@ protected:
 public:
     virtual ~Connection ();
 
-    //! set the message channel and message handler for all main thread communication
+    //! set the message channel for all main thread communication
     //! Must be done before sending or receiving the first message on any channel.
-    //! The connections takes ownership of the channels and deletes them upon teardown.
-    void setupMainThreadChannel (MessageChannel* messageChannel, MessageHandler* messageHandler);
+    //! The connection takes ownership of the channels and deletes them upon teardown.
+    void setMainThreadChannel (MessageChannel* messageChannel);
 
-    //! set the message channel and message handler for all non-main thread communication
+    //! set the message channel for all non-main thread communication
     //! Must be done before sending or receiving the first message on any channel.
-    //! The connections takes ownership of the channels and deletes them upon teardown.
-    void setupOtherThreadsChannel (MessageChannel* messageChannel, MessageHandler* messageHandler);
+    //! The connection takes ownership of the channels and deletes them upon teardown.
+    void setOtherThreadsChannel (MessageChannel* messageChannel);
+
+    //! set the message handler for all communication on all threads
+    //! Must be done before sending or receiving the first message on any channel.
+    //! The connection does not take ownership of the message handler.
+    void setMessageHandler (MessageHandler* messageHandler);
 
     //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
     //! decoder will be nullptr if incoming message was empty
@@ -127,6 +132,8 @@ public:
     //! and receiving machine
     virtual bool receiverEndianessMatches () = 0;
 
+    MessageHandler* getMessageHandler () { return _messageHandler; }
+
 #if ARA_ENABLE_INTERNAL_ASSERTS
     bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
 #endif
@@ -134,6 +141,7 @@ public:
 private:
     MessageDispatcher* _mainDispatcher {};
     MessageDispatcher* _otherDispatcher {};
+    MessageHandler* _messageHandler {};
     std::thread::id const _creationThreadID;
 };
 //! @}
@@ -155,7 +163,7 @@ public:     // needs to be public for thread-local variables (which cannot be cl
 
 public:
     //! the dispatcher takes ownership of the channel and will delete it upon teardown
-    explicit MessageDispatcher (MessageChannel* messageChannel, MessageHandler* messageHandler, bool singleThreaded);
+    explicit MessageDispatcher (Connection* connection, MessageChannel* messageChannel, bool singleThreaded);
     virtual ~MessageDispatcher ();
 
     //! send an encoded messages to the receiving process
@@ -191,8 +199,8 @@ private:
     RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
 
 private:
+    Connection* const _connection;
     MessageChannel* const _messageChannel;
-    MessageHandler* const _messageHandler;
 
     std::mutex* _sendLock {};   // optional, nullptr if channel is only used from a single thread at a time
     std::mutex _routeLock;

@@ -2,7 +2,7 @@
 //! \file       ARAIPCProxyHost.h
 //!             implementation of host-side ARA IPC proxy host
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2021-2024, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2021-2025, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -39,7 +39,7 @@ extern "C" {
 
 //! plug-in side implementation of MessageHandler
 //! the plug-in uses the C interface below, but this class will be subclassed by specialized implementations
-class ProxyHost : public MessageHandler, protected RemoteCaller
+class ProxyHost : public MessageHandler, public RemoteCaller
 {
 protected:
     explicit ProxyHost (Connection* connection);
@@ -47,7 +47,8 @@ protected:
 public:
     DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
 
-    MessageEncoder* handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder) override;
+    void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
+                                MessageEncoder* const replyEncoder) override;
 };
 #endif
 

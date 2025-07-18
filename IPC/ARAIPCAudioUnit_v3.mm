@@ -246,8 +246,9 @@ private:
       _readAudioQueue { dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1)) },
       _initAU { initAU }
     {
-        setupMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel }, this);
-        setupOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel }, this);
+        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel });
+        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel });
+        setMessageHandler (this);
 #if !__has_feature(objc_arc)
         [_initAU retain];
 #endif
@@ -315,6 +316,7 @@ public:
     : ProxyHost { this }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
+        setMessageHandler (this);
     }
 
 private:
@@ -349,9 +351,9 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
 
     auto result { new ProxyHostMessageChannel { audioUnitChannel } };
     if (isMainThreadChannel)
-        _proxyHost->setupMainThreadChannel (result, _proxyHost);
+        _proxyHost->setMainThreadChannel (result);
     else
-        _proxyHost->setupOtherThreadsChannel (result, _proxyHost);
+        _proxyHost->setOtherThreadsChannel (result);
 
     return toIPCRef (result);
 }

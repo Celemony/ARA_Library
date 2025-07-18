@@ -4,7 +4,7 @@
 //!             Typically, this file is not included directly - either ARAIPCProxyHost.h
 //!             ARAIPCProxyPlugIn.h will be used instead.
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2021-2024, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2021-2025, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -145,9 +145,9 @@ thread_local const PendingReplyHandler* _pendingReplyHandler { nullptr };
 constexpr MessageDispatcher::ThreadRef MessageDispatcher::_invalidThread;
 
 
-MessageDispatcher::MessageDispatcher (MessageChannel* messageChannel, MessageHandler* messageHandler, bool singleThreaded)
-: _messageChannel { messageChannel },
-  _messageHandler { messageHandler }
+MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* messageChannel, bool singleThreaded)
+: _connection { connection },
+  _messageChannel { messageChannel }
 {
     static_assert (sizeof (std::thread::id) == sizeof (ThreadRef), "the current implementation relies on a specific thread ID size");
 // unfortunately at least in clang std::thread::id's c'tor isn't constexpr
@@ -300,7 +300,7 @@ void MessageDispatcher::routeReceivedMessage (MessageID messageID, const Message
     else
     {
         ARA_INTERNAL_ASSERT (messageID != 0);
-        if (const auto dispatchTarget { _messageHandler->getDispatchTargetForIncomingTransaction (messageID) })
+        if (const auto dispatchTarget { _connection->getMessageHandler ()->getDispatchTargetForIncomingTransaction (messageID) })
         {
             ARA_IPC_LOG ("dispatches received message with ID %i (new transaction)", messageID);
 #if defined (_WIN32)
@@ -332,7 +332,8 @@ void MessageDispatcher::_handleReceivedMessage (MessageID messageID, const Messa
     ARA_INTERNAL_ASSERT (success);
     _remoteTargetThread = remoteTargetThread;
 
-    auto replyEncoder { _messageHandler->handleReceivedMessage (messageID, decoder) };
+    auto replyEncoder { _connection->createEncoder () };
+    _connection->getMessageHandler ()->handleReceivedMessage (messageID, decoder, replyEncoder);
     delete decoder;
 
     if (remoteTargetThread != _invalidThread)
@@ -416,20 +417,27 @@ Connection::~Connection ()
     delete _mainDispatcher;
 }
 
-void Connection::setupMainThreadChannel (MessageChannel* messageChannel, MessageHandler* messageHandler)
+void Connection::setMainThreadChannel (MessageChannel* messageChannel)
 {
     ARA_INTERNAL_ASSERT (_mainDispatcher == nullptr);
-    _mainDispatcher = new MessageDispatcher { messageChannel, messageHandler, true };
+    _mainDispatcher = new MessageDispatcher { this, messageChannel, true };
 }
 
-void Connection::setupOtherThreadsChannel (MessageChannel* messageChannel, MessageHandler* messageHandler)
+void Connection::setOtherThreadsChannel (MessageChannel* messageChannel)
 {
     ARA_INTERNAL_ASSERT (_otherDispatcher == nullptr);
-    _otherDispatcher = new MessageDispatcher { messageChannel, messageHandler, false };
+    _otherDispatcher = new MessageDispatcher { this, messageChannel, false };
+}
+
+void Connection::setMessageHandler (MessageHandler* messageHandler)
+{
+    ARA_INTERNAL_ASSERT (_messageHandler == nullptr);
+    _messageHandler = messageHandler;
 }
 
 void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
 {
+    ARA_INTERNAL_ASSERT ((_mainDispatcher != nullptr) && (_otherDispatcher != nullptr) && (_messageHandler != nullptr));
     if (std::this_thread::get_id () == _creationThreadID)
         _mainDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
     else
