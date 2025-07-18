@@ -104,13 +104,6 @@
 // whereas the follow-ups need to dispatch to a thread that is currently blocking inside ARA code.
 
 
-#if 0
-    #define ARA_IPC_LOG(...) ARA_LOG ("ARA IPC " __VA_ARGS__)
-#else
-    #define ARA_IPC_LOG(...) ((void) 0)
-#endif
-
-
 namespace ARA {
 namespace IPC {
 

@@ -49,6 +49,13 @@ class MessageChannel;
 class MessageDispatcher;
 
 
+#if ARA_ENABLE_DEBUG_OUTPUT && 0
+    #define ARA_IPC_LOG(...) ARA_LOG ("ARA IPC " __VA_ARGS__)
+#else
+    #define ARA_IPC_LOG(...) ((void) 0)
+#endif
+
+
 //! delegate interface for processing messages received through an IPC connection
 class MessageHandler
 {
