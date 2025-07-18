@@ -53,6 +53,10 @@ API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 //! must be balanced with ARAIPCAUProxyPlugInUninitialize()
 ARAIPCConnectionRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitialize(AUAudioUnit * _Nonnull audioUnit);
 
+//! allows the host to let the plug-in perform ARA IPC on the main thread when otherwise
+//! blocking it for an extended period of time
+void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCConnectionRef _Nonnull proxyRef);
+
 //! host side: Audio Unit specialization of ARAIPCProxyPlugInBindToDocumentController()
 //! must be balanced with ARAIPCProxyPlugInCleanupBinding() when the given audioUnit is destroyed
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController(AUAudioUnit * _Nonnull audioUnit,

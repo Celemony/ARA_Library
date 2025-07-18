@@ -78,6 +78,11 @@ public:
         // \todo shouldn't the AUMessageChannel provide this information?
         return true;
     }
+
+    void performPendingMainThreadTasks ()
+    {
+        getMainThreadDispatcher ()->processPendingMessageIfNeeded ();
+    }
 };
 
 
@@ -265,7 +270,7 @@ private:
 #endif
 
 ARA_MAP_IPC_REF (AudioUnitMessageChannel, ARAIPCMessageChannelRef)
-ARA_MAP_IPC_REF (Connection, ARAIPCConnectionRef)
+ARA_MAP_IPC_REF (AUConnection, ARAIPCConnectionRef)
 
 #if defined (__GNUC__)
     _Pragma ("GCC diagnostic pop")
@@ -281,6 +286,11 @@ extern "C" {
 ARAIPCConnectionRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit)
 {
     return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit));
+}
+
+void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCConnectionRef _Nonnull proxyRef)
+{
+    fromIPCRef (proxyRef)->performPendingMainThreadTasks ();
 }
 
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,
