@@ -46,8 +46,7 @@ protected:
 public:
     DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
 
-    void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
-                                MessageEncoder* const replyEncoder) override;
+    MessageEncoder* handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder) override;
 };
 #endif
 

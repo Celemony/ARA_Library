@@ -1448,10 +1448,10 @@ ProxyPlugIn::DispatchTarget ProxyPlugIn::getDispatchTargetForIncomingTransaction
     return MessageHandler::getDispatchTargetForIncomingTransaction (messageID);
 }
 
-void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
-                                                       MessageEncoder* const replyEncoder)
+MessageEncoder* ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder)
 {
 //  ARA_LOG ("ProxyPlugIn handles '%s'", decodePlugInMessageID (messageID));
+    auto replyEncoder { getConnection ()->createEncoder () };
 
     // ARAAudioAccessControllerInterface
     if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, createAudioReaderForSource))
@@ -1469,7 +1469,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto reader { new HostAudioReader { audioSource, nullptr, (use64BitSamples != kARAFalse) ? sizeof (double) : sizeof (float) } };
         reader->hostRef = documentController->getHostAudioAccessController ()->createAudioReaderForSource (audioSource->_hostRef, (use64BitSamples) ? kARATrue : kARAFalse);
         ARAAudioReaderHostRef audioReaderHostRef { toHostRef (reader) };
-        return encodeReply (replyEncoder, audioReaderHostRef);
+        encodeReply (replyEncoder, audioReaderHostRef);
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples))
     {
@@ -1506,9 +1506,8 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         }
 
         if (documentController->getHostAudioAccessController ()->readAudioSamples (reader->hostRef, samplePosition, samplesPerChannel, sampleBuffers.data ()))
-            return encodeReply (replyEncoder, ArrayArgument<const BytesEncoder> { encoders.data (), encoders.size () });
-        else
-            return; // send empty reply as indication of failure
+            encodeReply (replyEncoder, ArrayArgument<const BytesEncoder> { encoders.data (), encoders.size () });
+        // else send empty reply as indication of failure
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, destroyAudioReader))
     {
@@ -1534,7 +1533,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
-        return encodeReply (replyEncoder, documentController->getHostArchivingController ()->getArchiveSize (archiveReaderHostRef));
+        encodeReply (replyEncoder, documentController->getHostArchivingController ()->getArchiveSize (archiveReaderHostRef));
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAArchivingControllerInterface, readBytesFromArchive))
     {
@@ -1552,7 +1551,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         bytes.resize (length);
         if (!documentController->getHostArchivingController ()->readBytesFromArchive (archiveReaderHostRef, position, length, bytes.data ()))
             bytes.clear ();
-        return encodeReply (replyEncoder, BytesEncoder { bytes, false });
+        encodeReply (replyEncoder, BytesEncoder { bytes, false });
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAArchivingControllerInterface, writeBytesToArchive))
     {
@@ -1567,7 +1566,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
-        return encodeReply (replyEncoder, documentController->getHostArchivingController ()->writeBytesToArchive (archiveWriterHostRef, position, bytes.size (), bytes.data ()));
+        encodeReply (replyEncoder, documentController->getHostArchivingController ()->writeBytesToArchive (archiveWriterHostRef, position, bytes.size (), bytes.data ()));
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAArchivingControllerInterface, notifyDocumentArchivingProgress))
     {
@@ -1600,7 +1599,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
-        return encodeReply (replyEncoder, documentController->getHostArchivingController ()->getDocumentArchiveID (archiveReaderHostRef));
+        encodeReply (replyEncoder, documentController->getHostArchivingController ()->getDocumentArchiveID (archiveReaderHostRef));
     }
 
     // ARAContentAccessControllerInterface
@@ -1614,7 +1613,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
-        return encodeReply (replyEncoder, (documentController->getHostContentAccessController ()->isMusicalContextContentAvailable (musicalContextHostRef, contentType)) ? kARATrue : kARAFalse);
+        encodeReply (replyEncoder, (documentController->getHostContentAccessController ()->isMusicalContextContentAvailable (musicalContextHostRef, contentType)) ? kARATrue : kARAFalse);
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, getMusicalContextContentGrade))
     {
@@ -1626,7 +1625,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
-        return encodeReply (replyEncoder, documentController->getHostContentAccessController ()->getMusicalContextContentGrade (musicalContextHostRef, contentType));
+        encodeReply (replyEncoder, documentController->getHostContentAccessController ()->getMusicalContextContentGrade (musicalContextHostRef, contentType));
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, createMusicalContextContentReader))
     {
@@ -1643,7 +1642,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         hostContentReader->hostRef = documentController->getHostContentAccessController ()->createMusicalContextContentReader (musicalContextHostRef, contentType, (range.second) ? &range.first : nullptr);
         hostContentReader->contentType = contentType;
 
-        return encodeReply (replyEncoder, ARAContentReaderHostRef { toHostRef (hostContentReader) });
+        encodeReply (replyEncoder, ARAContentReaderHostRef { toHostRef (hostContentReader) });
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, isAudioSourceContentAvailable))
     {
@@ -1657,7 +1656,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto audioSource { fromHostRef (audioSourceHostRef) };
         ARA_VALIDATE_API_ARGUMENT (audioSourceHostRef, isValidInstance (audioSource));
 
-        return encodeReply (replyEncoder, (documentController->getHostContentAccessController ()->isAudioSourceContentAvailable (audioSource->_hostRef, contentType)) ? kARATrue : kARAFalse);
+        encodeReply (replyEncoder, (documentController->getHostContentAccessController ()->isAudioSourceContentAvailable (audioSource->_hostRef, contentType)) ? kARATrue : kARAFalse);
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, getAudioSourceContentGrade))
     {
@@ -1671,7 +1670,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto audioSource { fromHostRef (audioSourceHostRef) };
         ARA_VALIDATE_API_ARGUMENT (audioSourceHostRef, isValidInstance (audioSource));
 
-        return encodeReply (replyEncoder, documentController->getHostContentAccessController ()->getAudioSourceContentGrade (audioSource->_hostRef, contentType));
+        encodeReply (replyEncoder, documentController->getHostContentAccessController ()->getAudioSourceContentGrade (audioSource->_hostRef, contentType));
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, createAudioSourceContentReader))
     {
@@ -1689,7 +1688,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto hostContentReader { new HostContentReader };
         hostContentReader->hostRef = documentController->getHostContentAccessController ()->createAudioSourceContentReader (audioSource->_hostRef, contentType, (range.second) ? &range.first : nullptr);
         hostContentReader->contentType = contentType;
-        return encodeReply (replyEncoder, ARAContentReaderHostRef { toHostRef (hostContentReader) });
+        encodeReply (replyEncoder, ARAContentReaderHostRef { toHostRef (hostContentReader) });
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, getContentReaderEventCount))
     {
@@ -1701,7 +1700,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
         auto hostContentReader { fromHostRef (contentReaderHostRef) };
 
-        return encodeReply (replyEncoder, documentController->getHostContentAccessController ()->getContentReaderEventCount (hostContentReader->hostRef));
+        encodeReply (replyEncoder, documentController->getHostContentAccessController ()->getContentReaderEventCount (hostContentReader->hostRef));
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, getContentReaderDataForEvent))
     {
@@ -1715,7 +1714,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto hostContentReader { fromHostRef (contentReaderHostRef) };
 
         const void* eventData { documentController->getHostContentAccessController ()->getContentReaderDataForEvent (hostContentReader->hostRef, eventIndex) };
-        return encodeContentEvent (replyEncoder, hostContentReader->contentType, eventData);
+        encodeContentEvent (replyEncoder, hostContentReader->contentType, eventData);
     }
     else if (messageID == ARA_IPC_HOST_METHOD_ID (ARAContentAccessControllerInterface, destroyContentReader))
     {
@@ -1859,9 +1858,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         ARA_INTERNAL_ASSERT (false && "unhandled message ID");
     }
 
-    // all calls that create a reply return early from their respective if ().
-// it is valid to provide a dummy replyEncoder if no reply has been requested.
-//    ARA_INTERNAL_ASSERT (replyEncoder == nullptr);
+    return replyEncoder;
 }
 
 }   // namespace IPC

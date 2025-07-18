@@ -75,8 +75,8 @@ public:
 
     //! IPC connections will call this method for incoming messages after
     //! after filtering replies and routing them to the correct thread.
-    virtual void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
-                                        MessageEncoder* const replyEncoder) = 0;
+    //! The returned reply must eventually be deleted by the caller.
+    virtual MessageEncoder* handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder) = 0;
 
 private:
     std::thread::id const _creationThreadID;
@@ -90,14 +90,7 @@ private:
 class Connection
 {
 protected:
-    //! creation requires a message handler, a channel for all main thread
-    //! communication and a channel for all communication on other threads
-    //! The connections takes ownership of the channels and deletes them upon teardown.
-    Connection (MessageHandler* messageHandler, MessageChannel* mainChannel, MessageChannel* otherChannel);
-
-    //! alternate creation when mainChannel and otherThreadsChannel cannot be
-    //! provided at construction time
-    explicit Connection (MessageHandler* messageHandler);
+    explicit Connection ();
 
 public:
     virtual ~Connection ();
@@ -143,13 +136,7 @@ protected:
         return _mainChannel;
     }
 
-    friend MessageChannel;
-    MessageHandler::DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID);
-    void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
-                                MessageEncoder* const replyEncoder);
-
 private:
-    MessageHandler* const _messageHandler;
     MessageChannel* _mainChannel {};
     MessageChannel* _otherChannel {};
     std::thread::id const _creationThreadID;
@@ -184,7 +171,7 @@ public:
                       Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
 
 protected:
-    explicit MessageChannel (Connection* connection);
+    explicit MessageChannel (MessageHandler* messageHandler);
 
     //! called by subclass implementations to route an incoming message to the correct target thread
     //! takes ownership of the decoder and will eventually delete it
@@ -223,7 +210,7 @@ private:
     RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
 
 private:
-    Connection* const _connection;
+    MessageHandler* const _messageHandler;
 
     std::mutex _sendLock;
     std::mutex _routeLock;

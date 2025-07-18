@@ -85,8 +85,8 @@ public:
 class AudioUnitMessageChannel : public MessageChannel
 {
 protected:
-    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, Connection * connection)
-    : MessageChannel { connection },
+    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, MessageHandler * messageHandler)
+    : MessageChannel { messageHandler },
       _audioUnitChannel { audioUnitChannel }
     {
 #if !__has_feature(objc_arc)
@@ -139,8 +139,8 @@ protected:
 class ProxyHostMessageChannel : public AudioUnitMessageChannel
 {
 public:
-    ProxyHostMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, Connection * connection)
-    : AudioUnitMessageChannel { audioUnitChannel, connection }
+    ProxyHostMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, MessageHandler * messageHandler)
+    : AudioUnitMessageChannel { audioUnitChannel, messageHandler }
     {}
 
 protected:
@@ -166,8 +166,8 @@ protected:
 class ProxyPlugInMessageChannel : public AudioUnitMessageChannel
 {
 public:
-    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, Connection * connection)
-    : AudioUnitMessageChannel { audioUnitChannel, connection }
+    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, MessageHandler * messageHandler)
+    : AudioUnitMessageChannel { audioUnitChannel, messageHandler }
     {
         _audioUnitChannel.callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
@@ -242,13 +242,13 @@ protected:
 private:
     AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel, NSObject<AUMessageChannel> * _Nonnull otherChannel, AUAudioUnit * _Nonnull initAU)
     : ProxyPlugIn { this },
-      AUConnection { this, new ProxyPlugInMessageChannel { mainChannel, this },
-                           new ProxyPlugInMessageChannel { otherChannel, this } },
       // \todo maybe we should make this configurable, so hosts can set this queue if it already has an appropriate one?
       // \todo there's also QOS_CLASS_USER_INTERACTIVE which seems more appropriate but is undocumented...
       _readAudioQueue { dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1)) },
       _initAU { initAU }
     {
+        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel, this });
+        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel, this });
 #if !__has_feature(objc_arc)
         [_initAU retain];
 #endif
@@ -313,8 +313,7 @@ class AUProxyHost : public ProxyHost, public AUConnection
 {
 public:
     AUProxyHost ()
-    : ProxyHost { this },
-      AUConnection { this }
+    : ProxyHost { this }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
     }
