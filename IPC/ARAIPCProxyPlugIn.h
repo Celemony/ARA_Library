@@ -39,6 +39,7 @@ namespace IPC {
 extern "C" {
 
 //! host side implementation of MessageHandler
+//! the host uses the C interface below, but this class will be subclassed by specialized implementations
 class ProxyPlugIn : public MessageHandler, protected RemoteCaller
 {
 public:
