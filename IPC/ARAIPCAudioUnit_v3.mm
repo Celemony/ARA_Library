@@ -25,7 +25,7 @@
 #import "ARA_Library/Debug/ARADebug.h"
 #import "ARA_Library/IPC/ARAIPCEncoding.h"
 #import "ARA_Library/IPC/ARAIPCCFEncoding.h"
-#import "ARA_Library/IPC/ARAIPCMessageChannel.h"
+#import "ARA_Library/IPC/ARAIPCConnection.h"
 #import "ARA_Library/IPC/ARAIPCProxyHost.h"
 #import "ARA_Library/IPC/ARAIPCProxyPlugIn.h"
 #if !ARA_ENABLE_IPC
