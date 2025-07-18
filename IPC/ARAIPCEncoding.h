@@ -1017,32 +1017,50 @@ public:
     {
         static_assert (offset > 0, "offset 0 is never a valid function pointer");
         static_assert ((interfaceID < 8), "currently using only 3 bits for interface ID");
-    #if defined (__i386__) || defined (_M_IX86)
+#if defined (__i386__) || defined (_M_IX86)
         static_assert ((sizeof (void*) == 4), "compiler settings imply 32 bit pointers");
         static_assert (((offset & 0x3FFFFFF4) == offset), "offset is misaligned or too large");
         return (offset << 1) + interfaceID; // lower 2 bits of offset are 0 due to alignment, must shift 1 bit to store interface ID
-    #else
+#else
         static_assert ((sizeof (void*) == 8), "assuming 64 bit pointers per default");
         static_assert (((offset & 0x7FFFFFF8) == offset), "offset is misaligned or too large");
         return offset + interfaceID;        // lower 3 bits of offset are 0 due to alignment, can be used to store interface ID
-    #endif
+#endif
     }
 
-    template<MessageID methodID>
-    static inline constexpr MethodID createWithARASetupMethodID ()
+    template<MessageID messageID>
+    static inline constexpr MethodID createWithARAGlobalMessageID ()
     {
-        static_assert ((kMessageIDRangeStart <= methodID) && (methodID < kMessageIDRangeEnd), "must be in valid ARA message ID range");
-        return methodID;
+        static_assert (!isCustomMessageID (messageID), "must not be in custom message range");
+        return messageID;
     }
 
-    template<MessageID methodID>
-    static inline constexpr MethodID createWithNonARAMethodID ()
+    template<MessageID messageID>
+    static inline constexpr MethodID createWithCustomMessageID ()
     {
-        static_assert ((methodID < kMessageIDRangeStart) || (kMessageIDRangeEnd <= methodID), "must not be in valid ARA message range");
-        return methodID;
+        static_assert (isCustomMessageID (messageID), "must not be in reserved message range");
+        return messageID;
+    }
+
+    static inline constexpr bool isCustomMessageID (MessageID messageID)
+    {
+        return (messageID < kReservedMessageIDRangeStart) || (kReservedMessageIDRangeEnd <= messageID);
+    }
+
+    template<typename StructT>
+    static inline constexpr bool isMessageToHostInterface (MessageID messageID)
+    {
+        return _getHostInterfaceID<StructT> () == (messageID % 8);
+    }
+
+    template<typename StructT>
+    static inline constexpr bool isMessageToPlugInInterface (MessageID messageID)
+    {
+        return _getPlugInInterfaceID<StructT> () == (messageID % 8);
     }
 
     constexpr MessageID getMessageID () const { return _id; }
+
 private:
     const MessageID _id;
 };
@@ -1063,13 +1081,13 @@ inline bool operator== (const MethodID methodID, const MessageID messageID)
 
 
 // "global" messages for startup and teardown that are not calculated based on interface structs
-constexpr auto kGetFactoriesCountMethodID { MethodID::createWithARASetupMethodID<1> () };
-constexpr auto kGetFactoryMethodID { MethodID::createWithARASetupMethodID<2> () };
-constexpr auto kInitializeARAMethodID { MethodID::createWithARASetupMethodID<3> () };
-constexpr auto kCreateDocumentControllerMethodID { MethodID::createWithARASetupMethodID<4> () };
-constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARASetupMethodID<5> () };
-constexpr auto kCleanupBindingMethodID { MethodID::createWithARASetupMethodID<6> () };
-constexpr auto kUninitializeARAMethodID { MethodID::createWithARASetupMethodID<7> () };
+constexpr auto kGetFactoriesCountMethodID { MethodID::createWithARAGlobalMessageID<1> () };
+constexpr auto kGetFactoryMethodID { MethodID::createWithARAGlobalMessageID<2> () };
+constexpr auto kInitializeARAMethodID { MethodID::createWithARAGlobalMessageID<3> () };
+constexpr auto kCreateDocumentControllerMethodID { MethodID::createWithARAGlobalMessageID<4> () };
+constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARAGlobalMessageID<5> () };
+constexpr auto kCleanupBindingMethodID { MethodID::createWithARAGlobalMessageID<6> () };
+constexpr auto kUninitializeARAMethodID { MethodID::createWithARAGlobalMessageID<7> () };
 
 
 // for debugging: translate IDs of messages sent by the host back to human-readable text
