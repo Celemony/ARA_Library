@@ -155,7 +155,7 @@ public:     // needs to be public for thread-local variables (which cannot be cl
 
 public:
     //! the dispatcher takes ownership of the channel and will delete it upon teardown
-    explicit MessageDispatcher (MessageChannel* messageChannel, MessageHandler* messageHandler);
+    explicit MessageDispatcher (MessageChannel* messageChannel, MessageHandler* messageHandler, bool singleThreaded);
     virtual ~MessageDispatcher ();
 
     //! send an encoded messages to the receiving process
@@ -194,7 +194,7 @@ private:
     MessageChannel* const _messageChannel;
     MessageHandler* const _messageHandler;
 
-    std::mutex _sendLock;
+    std::mutex* _sendLock {};   // optional, nullptr if channel is only used from a single thread at a time
     std::mutex _routeLock;
 
     // incoming data is stored in _routedMessages by the receive handler for the

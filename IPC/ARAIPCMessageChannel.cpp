@@ -137,7 +137,7 @@ thread_local const PendingReplyHandler* _pendingReplyHandler { nullptr };
 constexpr MessageDispatcher::ThreadRef MessageDispatcher::_invalidThread;
 
 
-MessageDispatcher::MessageDispatcher (MessageChannel* messageChannel, MessageHandler* messageHandler)
+MessageDispatcher::MessageDispatcher (MessageChannel* messageChannel, MessageHandler* messageHandler, bool singleThreaded)
 : _messageChannel { messageChannel },
   _messageHandler { messageHandler }
 {
@@ -148,11 +148,15 @@ MessageDispatcher::MessageDispatcher (MessageChannel* messageChannel, MessageHan
     
     _routedMessages.resize (12);     // we shouldn't use more than a handful of threads concurrently for the IPC
 
+    if (!singleThreaded)
+        _sendLock = new std::mutex;
+
     _messageChannel->setMessageDispatcher (this);
 }
 
 MessageDispatcher::~MessageDispatcher ()
 {
+    delete _sendLock;
     delete _messageChannel;
 }
 
@@ -172,10 +176,12 @@ void MessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encode
     if (_remoteTargetThread != _invalidThread)
         encoder->appendThreadRef (receiveThreadKey, _remoteTargetThread);
 
-    _sendLock.lock ();
+    if (_sendLock)
+        _sendLock->lock ();
     ARA_IPC_LOG ("sends message with ID %i on thread %p%s", messageID, currentThread, (_remoteTargetThread == _invalidThread) ? " (starting new transaction)" : "");
     _messageChannel->sendMessage (messageID, encoder);
-    _sendLock.unlock ();
+    if (_sendLock)
+        _sendLock->unlock ();
 
     if (_messageChannel->runsReceiveLoopOnCurrentThread ())
     {
@@ -324,10 +330,12 @@ void MessageDispatcher::_handleReceivedMessage (MessageID messageID, const Messa
     if (remoteTargetThread != _invalidThread)
         replyEncoder->appendThreadRef (receiveThreadKey, remoteTargetThread);
 
-    _sendLock.lock ();
+    if (_sendLock)
+        _sendLock->lock ();
     ARA_IPC_LOG ("replies to message with ID %i on thread %p", messageID, _getCurrentThread());
     _messageChannel->sendMessage (0, replyEncoder);
-    _sendLock.unlock ();
+    if (_sendLock)
+        _sendLock->unlock ();
 
     delete replyEncoder;
 
@@ -403,13 +411,13 @@ Connection::~Connection ()
 void Connection::setupMainThreadChannel (MessageChannel* messageChannel, MessageHandler* messageHandler)
 {
     ARA_INTERNAL_ASSERT (_mainDispatcher == nullptr);
-    _mainDispatcher = new MessageDispatcher { messageChannel, messageHandler };
+    _mainDispatcher = new MessageDispatcher { messageChannel, messageHandler, true };
 }
 
 void Connection::setupOtherThreadsChannel (MessageChannel* messageChannel, MessageHandler* messageHandler)
 {
     ARA_INTERNAL_ASSERT (_otherDispatcher == nullptr);
-    _otherDispatcher = new MessageDispatcher { messageChannel, messageHandler };
+    _otherDispatcher = new MessageDispatcher { messageChannel, messageHandler, false };
 }
 
 void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
