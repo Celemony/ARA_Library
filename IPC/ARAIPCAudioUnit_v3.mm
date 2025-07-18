@@ -232,18 +232,11 @@ protected:
     DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override
     {
         // AUMessageChannel cannot be called back from the same thread it receives the message,
-        // so we dispatch to the main queue for playback requests and to a dedicated read samples queue for audio requests
-        // \todo maybe we should make this configurable, so hosts can set these queues if they already have appropriate ones?
-        if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples).getMessageID ())
-        {
+        // so we dispatch audio requests to a dedicated read samples queue and let the inherited
+        // dispatch all other calls to the main thread.
+        if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples))
             return _readAudioQueue;
-        }
-        else
-        {
-            ARA_INTERNAL_ASSERT ((ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback).getMessageID () <= messageID) &&
-                                 (messageID <= ARA_IPC_HOST_METHOD_ID (ARAPlaybackControllerInterface, requestEnableCycle).getMessageID ()));
-            return dispatch_get_main_queue ();
-        }
+        return ProxyPlugIn::getDispatchTargetForIncomingTransaction (messageID);
     }
 
 private:
@@ -251,6 +244,7 @@ private:
     : ProxyPlugIn { this },
       AUConnection { this, new ProxyPlugInMessageChannel { mainChannel, this },
                            new ProxyPlugInMessageChannel { otherChannel, this } },
+      // \todo maybe we should make this configurable, so hosts can set this queue if it already has an appropriate one?
       // \todo there's also QOS_CLASS_USER_INTERACTIVE which seems more appropriate but is undocumented...
       _readAudioQueue { dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1)) },
       _initAU { initAU }

@@ -48,10 +48,6 @@ public:
 
     void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                 MessageEncoder* const replyEncoder) override;
-
-private:
-    std::thread::id const _mainThreadID;
-    DispatchTarget const _mainThreadDispatchTarget;
 };
 #endif
 
