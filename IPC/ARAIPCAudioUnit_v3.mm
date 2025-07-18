@@ -183,9 +183,13 @@ protected:
 class ProxyPlugInMessageChannel : public AudioUnitMessageChannel
 {
 public:
-    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, bool isMainThreadChannel)
-    : AudioUnitMessageChannel { audioUnitChannel, isMainThreadChannel }
+    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, bool isMainThreadChannel,
+                               ARAMainThreadWaitForMessageDelegate waitForMessageDelegate)
+    : AudioUnitMessageChannel { audioUnitChannel, isMainThreadChannel },
+      _waitForMessageDelegate { waitForMessageDelegate }
     {
+        ARA_INTERNAL_ASSERT (isMainThreadChannel || !waitForMessageDelegate);
+    
         _audioUnitChannel.callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
             {
@@ -206,12 +210,26 @@ public:
         _audioUnitChannel.callHostBlock = nil;
     }
 
+    bool waitForMessage (ARATimeDuration timeout) override
+    {
+        if (AudioUnitMessageChannel::waitForMessage (timeout))
+            return true;
+
+        if (_waitForMessageDelegate)
+            _waitForMessageDelegate ();
+
+        return false;
+    }
+
 protected:
     NSDictionary * _sendMessage (NSDictionary * message) override
     {
         const auto reply { [_audioUnitChannel callAudioUnit:message] };
         return reply;
     }
+
+private:
+    const ARAMainThreadWaitForMessageDelegate _waitForMessageDelegate;
 };
 #endif // !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
@@ -220,7 +238,8 @@ protected:
 class AUProxyPlugIn : public ProxyPlugIn, public AUConnection
 {
 public:
-    static AUProxyPlugIn* createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit)
+    static AUProxyPlugIn* createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit,
+                                               ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate)
     {
         // AUAudioUnits created before macOS 13 will not know about this API yet
         if (![audioUnit respondsToSelector:@selector(messageChannelFor:)])
@@ -234,7 +253,9 @@ public:
         if (!otherChannel)
             return nullptr;
 
-        return new AUProxyPlugIn { static_cast<NSObject<AUMessageChannel>*> (mainChannel), static_cast<NSObject<AUMessageChannel>*> (otherChannel), audioUnit };
+        return new AUProxyPlugIn { static_cast<NSObject<AUMessageChannel>*> (mainChannel),
+                                   static_cast<NSObject<AUMessageChannel>*> (otherChannel),
+                                   audioUnit, waitForMessageDelegate };
     }
 
     ~AUProxyPlugIn () override
@@ -245,12 +266,15 @@ public:
     }
 
 private:
-    AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel, NSObject<AUMessageChannel> * _Nonnull otherChannel, AUAudioUnit * _Nonnull initAU)
+    AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel,
+                   NSObject<AUMessageChannel> * _Nonnull otherChannel,
+                   AUAudioUnit * _Nonnull initAU,
+                   ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate)
     : ProxyPlugIn { this },
       _initAU { initAU }
     {
-        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel, true });
-        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel, false });
+        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel, true, waitForMessageDelegate });
+        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel, false, nullptr });
         setMessageHandler (this);
 #if !__has_feature(objc_arc)
         [_initAU retain];
@@ -283,9 +307,10 @@ extern "C" {
 // host side: proxy plug-in C adapter
 #if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
-ARAIPCConnectionRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit)
+ARAIPCConnectionRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit,
+                                                            ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate)
 {
-    return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit));
+    return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit, waitForMessageDelegate));
 }
 
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCConnectionRef _Nonnull proxyRef)
