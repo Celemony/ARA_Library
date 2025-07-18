@@ -331,6 +331,8 @@ DocumentController::DocumentController (Connection* connection, const ARAFactory
   _hostPlaybackController { instance },
   _instance { this }
 {
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
+
     ARAAudioAccessControllerHostRef audioAccessControllerHostRef { toHostRef (this) };
     ARAArchivingControllerHostRef archivingControllerHostRef { toHostRef (this) };
     ARAContentAccessControllerHostRef contentAccessControllerHostRef { toHostRef (this) };
@@ -350,6 +352,7 @@ void DocumentController::destroyDocumentController () noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy document controller", _remoteRef);
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyDocumentController), _remoteRef);
@@ -378,6 +381,7 @@ const ARAFactory* DocumentController::getFactory () const noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     return _factory;
 }
@@ -388,6 +392,7 @@ void DocumentController::beginEditing () noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, beginEditing), _remoteRef);
 }
@@ -396,6 +401,7 @@ void DocumentController::endEditing () noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, endEditing), _remoteRef);
 }
@@ -413,6 +419,7 @@ void DocumentController::notifyModelUpdates () noexcept
     }
 #endif
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     if (!_hostModelUpdateController.isProvided ())
         return;
@@ -424,6 +431,7 @@ bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef arch
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARABool success;
     remoteCall (success, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, restoreObjectsFromArchive), _remoteRef, archiveReaderHostRef, filter);
@@ -434,6 +442,7 @@ bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef archiveW
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARAStoreObjectsFilter tempFilter;
     std::vector<ARAAudioSourceRef> remoteAudioSourceRefs;
@@ -457,6 +466,7 @@ bool DocumentController::storeAudioSourceToAudioFileChunk (ARAArchiveWriterHostR
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
     ARA_INTERNAL_ASSERT (documentArchiveID != nullptr);
@@ -500,6 +510,7 @@ void DocumentController::updateDocumentProperties (PropertiesPtr<ARADocumentProp
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARADocumentPropertiesMinSize);
 
@@ -512,6 +523,7 @@ ARAMusicalContextRef DocumentController::createMusicalContext (ARAMusicalContext
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARAMusicalContextPropertiesMinSize);
 
@@ -526,6 +538,7 @@ void DocumentController::updateMusicalContextProperties (ARAMusicalContextRef mu
 {
     ARA_LOG_HOST_ENTRY (musicalContextRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARAMusicalContextPropertiesMinSize);
 
@@ -536,6 +549,7 @@ void DocumentController::updateMusicalContextContent (ARAMusicalContextRef music
 {
     ARA_LOG_HOST_ENTRY (musicalContextRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, updateMusicalContextContent), _remoteRef, musicalContextRef, range, flags);
 }
@@ -544,6 +558,7 @@ void DocumentController::destroyMusicalContext (ARAMusicalContextRef musicalCont
 {
     ARA_LOG_HOST_ENTRY (musicalContextRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy musical context", musicalContextRef);
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyMusicalContext), _remoteRef, musicalContextRef);
@@ -555,6 +570,7 @@ ARARegionSequenceRef DocumentController::createRegionSequence (ARARegionSequence
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARARegionSequencePropertiesMinSize);
 
@@ -569,6 +585,7 @@ void DocumentController::updateRegionSequenceProperties (ARARegionSequenceRef re
 {
     ARA_LOG_HOST_ENTRY (regionSequenceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARARegionSequencePropertiesMinSize);
 
@@ -579,6 +596,7 @@ void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSeque
 {
     ARA_LOG_HOST_ENTRY (regionSequenceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy region sequence", regionSequenceRef);
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyRegionSequence), _remoteRef, regionSequenceRef);
@@ -590,6 +608,7 @@ ARAAudioSourceRef DocumentController::createAudioSource (ARAAudioSourceHostRef h
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARAAudioSourcePropertiesMinSize);
 
@@ -610,6 +629,7 @@ void DocumentController::updateAudioSourceProperties (ARAAudioSourceRef audioSou
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
     ARA_INTERNAL_ASSERT (properties != nullptr);
@@ -622,6 +642,7 @@ void DocumentController::updateAudioSourceContent (ARAAudioSourceRef audioSource
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -632,6 +653,7 @@ void DocumentController::enableAudioSourceSamplesAccess (ARAAudioSourceRef audio
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -642,6 +664,7 @@ void DocumentController::deactivateAudioSourceForUndoHistory (ARAAudioSourceRef 
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -652,6 +675,7 @@ void DocumentController::destroyAudioSource (ARAAudioSourceRef audioSourceRef) n
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -666,6 +690,7 @@ ARAAudioModificationRef DocumentController::createAudioModification (ARAAudioSou
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
     ARA_INTERNAL_ASSERT (properties != nullptr);
@@ -683,6 +708,7 @@ ARAAudioModificationRef DocumentController::cloneAudioModification (ARAAudioModi
 {
     ARA_LOG_HOST_ENTRY (srcAudioModificationRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARAAudioModificationPropertiesMinSize);
 
@@ -698,6 +724,7 @@ void DocumentController::updateAudioModificationProperties (ARAAudioModification
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARAAudioModificationPropertiesMinSize);
 
@@ -708,6 +735,7 @@ bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudi
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARABool result;
     remoteCall (result, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal), _remoteRef, audioModificationRef);
@@ -718,6 +746,7 @@ void DocumentController::deactivateAudioModificationForUndoHistory (ARAAudioModi
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, deactivateAudioModificationForUndoHistory), _remoteRef, audioModificationRef, (deactivate) ? kARATrue : kARAFalse);
 }
@@ -726,6 +755,7 @@ void DocumentController::destroyAudioModification (ARAAudioModificationRef audio
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy audio modification", audioModification);
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyAudioModification), _remoteRef, audioModificationRef);
@@ -752,6 +782,7 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (properties != nullptr);
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARAPlaybackRegionPropertiesMinSize);
 
@@ -762,6 +793,8 @@ void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef 
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+// this function can be called from other threads!
+//  ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (headTime != nullptr);
     ARA_INTERNAL_ASSERT (tailTime != nullptr);
 
@@ -778,6 +811,7 @@ void DocumentController::destroyPlaybackRegion (ARAPlaybackRegionRef playbackReg
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy playback region", playbackRegionRef);
     remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, destroyPlaybackRegion), _remoteRef, playbackRegionRef);
@@ -800,6 +834,7 @@ ARAContentGrade DocumentController::getAudioSourceContentGrade (ARAAudioSourceRe
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -812,6 +847,7 @@ ARAContentReaderRef DocumentController::createAudioSourceContentReader (ARAAudio
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -832,6 +868,7 @@ bool DocumentController::isAudioModificationContentAvailable (ARAAudioModificati
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARABool result;
     remoteCall (result, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isAudioModificationContentAvailable), _remoteRef, audioModificationRef, type);
@@ -842,6 +879,7 @@ ARAContentGrade DocumentController::getAudioModificationContentGrade (ARAAudioMo
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARAContentGrade grade;
     remoteCall (grade, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getAudioModificationContentGrade), _remoteRef, audioModificationRef, type);
@@ -852,6 +890,7 @@ ARAContentReaderRef DocumentController::createAudioModificationContentReader (AR
 {
     ARA_LOG_HOST_ENTRY (audioModificationRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARAContentReaderRef contentReaderRef;
     remoteCall (contentReaderRef, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createAudioModificationContentReader),
@@ -870,6 +909,7 @@ bool DocumentController::isPlaybackRegionContentAvailable (ARAPlaybackRegionRef 
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARABool result;
     remoteCall (result, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, isPlaybackRegionContentAvailable), _remoteRef, playbackRegionRef, type);
@@ -880,6 +920,7 @@ ARAContentGrade DocumentController::getPlaybackRegionContentGrade (ARAPlaybackRe
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARAContentGrade grade;
     remoteCall (grade, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getPlaybackRegionContentGrade), _remoteRef, playbackRegionRef, type);
@@ -890,6 +931,7 @@ ARAContentReaderRef DocumentController::createPlaybackRegionContentReader (ARAPl
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARAContentReaderRef contentReaderRef;
     remoteCall (contentReaderRef, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, createPlaybackRegionContentReader),
@@ -908,6 +950,7 @@ ARAInt32 DocumentController::getContentReaderEventCount (ARAContentReaderRef con
 {
     ARA_LOG_HOST_ENTRY (contentReaderRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto contentReader { fromRef (contentReaderRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (contentReader));
 
@@ -920,6 +963,7 @@ const void* DocumentController::getContentReaderDataForEvent (ARAContentReaderRe
 {
     ARA_LOG_HOST_ENTRY (contentReaderRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto contentReader { fromRef (contentReaderRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (contentReader));
 
@@ -938,6 +982,7 @@ void DocumentController::destroyContentReader (ARAContentReaderRef contentReader
 {
     ARA_LOG_HOST_ENTRY (contentReaderRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto contentReader { fromRef (contentReaderRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (contentReader));
 
@@ -953,6 +998,7 @@ bool DocumentController::isAudioSourceContentAnalysisIncomplete (ARAAudioSourceR
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -966,6 +1012,7 @@ void DocumentController::requestAudioSourceContentAnalysis (ARAAudioSourceRef au
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -977,6 +1024,7 @@ ARAInt32 DocumentController::getProcessingAlgorithmsCount () noexcept
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     ARAInt32 count;
     remoteCall (count, ARA_IPC_PLUGIN_METHOD_ID (ARADocumentControllerInterface, getProcessingAlgorithmsCount), _remoteRef);
@@ -987,6 +1035,7 @@ const ARAProcessingAlgorithmProperties* DocumentController::getProcessingAlgorit
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     CustomDecodeFunction customDecode {
         [this] (const MessageDecoder* decoder) -> void
@@ -1007,6 +1056,7 @@ ARAInt32 DocumentController::getProcessingAlgorithmForAudioSource (ARAAudioSourc
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -1019,6 +1069,7 @@ void DocumentController::requestProcessingAlgorithmForAudioSource (ARAAudioSourc
 {
     ARA_LOG_HOST_ENTRY (audioSourceRef);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     const auto audioSource { fromRef (audioSourceRef) };
     ARA_INTERNAL_ASSERT (isValidInstance (audioSource));
 
@@ -1031,6 +1082,7 @@ bool DocumentController::isLicensedForCapabilities (bool runModalActivationDialo
 {
     ARA_LOG_HOST_ENTRY (this);
     ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
     const ArrayArgument<const ARAContentType> types { contentTypes, contentTypesCount };
     ARABool result;
@@ -1056,6 +1108,7 @@ public:
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (this));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
         remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARAPlaybackRendererInterface, addPlaybackRegion), _remoteRef, playbackRegionRef);
     }
@@ -1063,6 +1116,7 @@ public:
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (this));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
         remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARAPlaybackRendererInterface, removePlaybackRegion), _remoteRef, playbackRegionRef);
     }
@@ -1090,6 +1144,7 @@ public:
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (this));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
         remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, addPlaybackRegion), _remoteRef, playbackRegionRef);
     }
@@ -1097,6 +1152,7 @@ public:
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (this));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
         remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, removePlaybackRegion), _remoteRef, playbackRegionRef);
     }
@@ -1105,6 +1161,7 @@ public:
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (this));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
         remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, addRegionSequence), _remoteRef, regionSequenceRef);
     }
@@ -1112,6 +1169,7 @@ public:
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (this));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
         remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARAEditorRendererInterface, removeRegionSequence), _remoteRef, regionSequenceRef);
     }
@@ -1139,6 +1197,7 @@ public:
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (this));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
         ARA_INTERNAL_ASSERT (selection != nullptr);
         ARA_INTERNAL_ASSERT (selection->structSize >= ARA::kARAViewSelectionMinSize);
 
@@ -1148,6 +1207,7 @@ public:
     {
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (this));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
         const ArrayArgument<const ARARegionSequenceRef> sequences { regionSequenceRefs, regionSequenceRefsCount };
         remoteCall (ARA_IPC_PLUGIN_METHOD_ID (ARAEditorViewInterface, notifyHideRegionSequences), _remoteRef, sequences);
@@ -1182,6 +1242,7 @@ public:
 
         ARA_LOG_HOST_ENTRY (this);
         ARA_INTERNAL_ASSERT (isValidInstance (_documentController));
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
         _documentController->addPlugInExtension (this);
 
