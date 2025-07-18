@@ -46,6 +46,7 @@ namespace IPC {
 
 
 class MessageChannel;
+class MessageDispatcher;
 
 
 //! delegate interface for processing messages received through an IPC connection
@@ -95,15 +96,15 @@ protected:
 public:
     virtual ~Connection ();
 
-    //! set the message channel for all main thread communication
+    //! set the message channel and message handler for all main thread communication
     //! Must be done before sending or receiving the first message on any channel.
     //! The connections takes ownership of the channels and deletes them upon teardown.
-    void setMainThreadChannel (MessageChannel* mainChannel);
+    void setupMainThreadChannel (MessageChannel* messageChannel, MessageHandler* messageHandler);
 
-    //! set the message channel for all non-main thread communication
+    //! set the message channel and message handler for all non-main thread communication
     //! Must be done before sending or receiving the first message on any channel.
     //! The connections takes ownership of the channels and deletes them upon teardown.
-    void setOtherThreadsChannel (MessageChannel* otherChannel);
+    void setupOtherThreadsChannel (MessageChannel* messageChannel, MessageHandler* messageHandler);
 
     //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
     //! decoder will be nullptr if incoming message was empty
@@ -130,23 +131,17 @@ public:
     bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
 #endif
 
-protected:
-    MessageChannel* getMainChannel () const
-    {
-        return _mainChannel;
-    }
-
 private:
-    MessageChannel* _mainChannel {};
-    MessageChannel* _otherChannel {};
+    MessageDispatcher* _mainDispatcher {};
+    MessageDispatcher* _otherDispatcher {};
     std::thread::id const _creationThreadID;
 };
 //! @}
 
 
-//! IPC message channel: primitive for sending and receiving messages
+//! IPC message dispatcher: handles threading restrictions for MessageChannel access
 //! @{
-class MessageChannel
+class MessageDispatcher
 {
 public:     // needs to be public for thread-local variables (which cannot be class members)
 #if defined (_WIN32)
@@ -159,7 +154,9 @@ public:     // needs to be public for thread-local variables (which cannot be cl
     static constexpr ThreadRef _invalidThread { 0 };
 
 public:
-    virtual ~MessageChannel () = default;
+    //! the dispatcher takes ownership of the channel and will delete it upon teardown
+    explicit MessageDispatcher (MessageChannel* messageChannel, MessageHandler* messageHandler);
+    virtual ~MessageDispatcher ();
 
     //! send an encoded messages to the receiving process
     //! The encoder will be deleted after sending the message.
@@ -170,25 +167,9 @@ public:
     void sendMessage (MessageID messageID, MessageEncoder* encoder,
                       Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
 
-protected:
-    explicit MessageChannel (MessageHandler* messageHandler);
-
-    //! called by subclass implementations to route an incoming message to the correct target thread
+    //! route an incoming message to the correct target thread
     //! takes ownership of the decoder and will eventually delete it
     void routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder);
-
-    //! implemented by subclasses to perform the actual message (or reply) sending
-    virtual void _sendMessage (MessageID messageID, MessageEncoder* encoder) = 0;
-
-    //! implemented by subclasses for IPC APIs that require spinning a receive
-    //! loop on some thread(s) to indicate that the thread cannot be blocked
-    //! while waiting for messages
-    virtual bool runsReceiveLoopOnCurrentThread () { return false; }
-
-    //! implemented by subclasses for IPC APIs that require spinning a receive
-    //! loop on some thread(s) in order to run the loop until a message was received
-    //! and routed/handled
-    virtual void loopUntilMessageReceived () {}
 
 private:
     void _handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder);
@@ -210,15 +191,49 @@ private:
     RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
 
 private:
+    MessageChannel* const _messageChannel;
     MessageHandler* const _messageHandler;
 
     std::mutex _sendLock;
     std::mutex _routeLock;
 
     // incoming data is stored in _routedMessages by the receive handler for the
-    // sending threads waiting to pick it up (signaled via _routeReceiveCondition)
+    // sending threads waiting to pick it up (signalled via _routeReceiveCondition)
     std::condition_variable _routeReceiveCondition;
     std::vector<RoutedMessage> _routedMessages;
+};
+
+
+//! IPC message channel: primitive for sending and receiving messages
+//! @{
+class MessageChannel
+{
+public:
+    virtual ~MessageChannel () = default;
+
+    //! implemented by subclasses to perform the actual message (or reply) sending
+    virtual void sendMessage (MessageID messageID, MessageEncoder* encoder) = 0;
+
+    //! implemented by subclasses for IPC APIs that require spinning a receive
+    //! loop on some thread(s) to indicate that the thread cannot be blocked
+    //! while waiting for messages
+    virtual bool runsReceiveLoopOnCurrentThread () { return false; }
+
+    //! implemented by subclasses for IPC APIs that require spinning a receive
+    //! loop on some thread(s) in order to run the loop until a message was received
+    //! and routed/handled
+    virtual void loopUntilMessageReceived () {}
+
+    void setMessageDispatcher (MessageDispatcher* messageDispatcher)
+    {
+        ARA_INTERNAL_ASSERT (_messageDispatcher == nullptr);
+        _messageDispatcher = messageDispatcher;
+    }
+
+    MessageDispatcher* getMessageDispatcher () const { return _messageDispatcher; }
+
+private:
+    MessageDispatcher* _messageDispatcher {};
 };
 //! @}
 

@@ -122,7 +122,7 @@ constexpr MessageArgumentKey receiveThreadKey { -2 };
 
 
 // actually a "static" member of ARAIPCChannel, but for some reason C++ doesn't allow this...
-thread_local MessageChannel::ThreadRef _remoteTargetThread { 0 };
+thread_local MessageDispatcher::ThreadRef _remoteTargetThread { 0 };
 
 
 struct PendingReplyHandler
@@ -134,11 +134,12 @@ struct PendingReplyHandler
 thread_local const PendingReplyHandler* _pendingReplyHandler { nullptr };
 
 
-constexpr MessageChannel::ThreadRef MessageChannel::_invalidThread;
+constexpr MessageDispatcher::ThreadRef MessageDispatcher::_invalidThread;
 
 
-MessageChannel::MessageChannel (MessageHandler* messageHandler)
-: _messageHandler { messageHandler }
+MessageDispatcher::MessageDispatcher (MessageChannel* messageChannel, MessageHandler* messageHandler)
+: _messageChannel { messageChannel },
+  _messageHandler { messageHandler }
 {
     static_assert (sizeof (std::thread::id) == sizeof (ThreadRef), "the current implementation relies on a specific thread ID size");
 // unfortunately at least in clang std::thread::id's c'tor isn't constexpr
@@ -146,9 +147,16 @@ MessageChannel::MessageChannel (MessageHandler* messageHandler)
     ARA_INTERNAL_ASSERT (std::thread::id {} == *reinterpret_cast<const std::thread::id*>(&_invalidThread));
     
     _routedMessages.resize (12);     // we shouldn't use more than a handful of threads concurrently for the IPC
+
+    _messageChannel->setMessageDispatcher (this);
 }
 
-MessageChannel::ThreadRef MessageChannel::_getCurrentThread ()
+MessageDispatcher::~MessageDispatcher ()
+{
+    delete _messageChannel;
+}
+
+MessageDispatcher::ThreadRef MessageDispatcher::_getCurrentThread ()
 {
     const auto thisThread { std::this_thread::get_id () };
     const auto result { *reinterpret_cast<const ThreadRef*> (&thisThread) };
@@ -156,8 +164,8 @@ MessageChannel::ThreadRef MessageChannel::_getCurrentThread ()
     return result;
 }
 
-void MessageChannel::sendMessage (MessageID messageID, MessageEncoder* encoder,
-                                  Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+void MessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encoder,
+                                     Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     const auto currentThread { _getCurrentThread () };
     encoder->appendThreadRef (sendThreadKey, currentThread);
@@ -166,17 +174,17 @@ void MessageChannel::sendMessage (MessageID messageID, MessageEncoder* encoder,
 
     _sendLock.lock ();
     ARA_IPC_LOG ("sends message with ID %i on thread %p%s", messageID, currentThread, (_remoteTargetThread == _invalidThread) ? " (starting new transaction)" : "");
-    _sendMessage (messageID, encoder);
+    _messageChannel->sendMessage (messageID, encoder);
     _sendLock.unlock ();
 
-    if (runsReceiveLoopOnCurrentThread ())
+    if (_messageChannel->runsReceiveLoopOnCurrentThread ())
     {
         const PendingReplyHandler* previousPendingReplyHandler { _pendingReplyHandler };
         PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData };
         _pendingReplyHandler = &pendingReplyHandler;
         do
         {
-            loopUntilMessageReceived ();
+            _messageChannel->loopUntilMessageReceived ();
         } while (_pendingReplyHandler != nullptr);
         _pendingReplyHandler = previousPendingReplyHandler;
     }
@@ -211,7 +219,7 @@ void MessageChannel::sendMessage (MessageID messageID, MessageEncoder* encoder,
 #if defined (_WIN32)
 struct APCProcessReceivedMessageParams
 {
-    MessageChannel* channel;
+    MessageDispatcher* dispatcher;
     MessageID messageID;
     const MessageDecoder* decoder;
 };
@@ -219,12 +227,12 @@ struct APCProcessReceivedMessageParams
 void APCRouteNewTransactionFunc (ULONG_PTR parameter)
 {
     auto params { reinterpret_cast<APCProcessReceivedMessageParams*> (parameter) };
-    params->channel->_handleReceivedMessage (params->messageID, params->decoder);
+    params->dispatcher->_handleReceivedMessage (params->messageID, params->decoder);
     delete params;
 }
 #endif
 
-MessageChannel::RoutedMessage* MessageChannel::_getRoutedMessageForThread (ThreadRef thread)
+MessageDispatcher::RoutedMessage* MessageDispatcher::_getRoutedMessageForThread (ThreadRef thread)
 {
     for (auto& message : _routedMessages)
     {
@@ -234,7 +242,7 @@ MessageChannel::RoutedMessage* MessageChannel::_getRoutedMessageForThread (Threa
     return nullptr;
 }
 
-void MessageChannel::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+void MessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     ThreadRef targetThread;
     if (decoder->readThreadRef (receiveThreadKey, &targetThread))
@@ -242,7 +250,7 @@ void MessageChannel::routeReceivedMessage (MessageID messageID, const MessageDec
         ARA_INTERNAL_ASSERT (targetThread != _invalidThread);
         if (targetThread == _getCurrentThread ())
         {
-            ARA_INTERNAL_ASSERT (runsReceiveLoopOnCurrentThread ());
+            ARA_INTERNAL_ASSERT (_messageChannel->runsReceiveLoopOnCurrentThread ());
             if (messageID != 0)
             {
                 _handleReceivedMessage (messageID, decoder);
@@ -299,7 +307,7 @@ void MessageChannel::routeReceivedMessage (MessageID messageID, const MessageDec
     }
 }
 
-void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+void MessageDispatcher::_handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     ARA_IPC_LOG ("handles received message with ID %i on thread %p", messageID, _getCurrentThread());
     ARA_INTERNAL_ASSERT (messageID != 0);
@@ -318,7 +326,7 @@ void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageD
 
     _sendLock.lock ();
     ARA_IPC_LOG ("replies to message with ID %i on thread %p", messageID, _getCurrentThread());
-    _sendMessage (0, replyEncoder);
+    _messageChannel->sendMessage (0, replyEncoder);
     _sendLock.unlock ();
 
     delete replyEncoder;
@@ -326,7 +334,7 @@ void MessageChannel::_handleReceivedMessage (MessageID messageID, const MessageD
     _remoteTargetThread = previousRemoteTargetThread;
 }
 
-void MessageChannel::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThread());
     if (replyHandler)
@@ -388,26 +396,28 @@ Connection::Connection ()
 
 Connection::~Connection ()
 {
-    delete _otherChannel;
-    delete _mainChannel;
+    delete _otherDispatcher;
+    delete _mainDispatcher;
 }
 
-void Connection::setMainThreadChannel (MessageChannel* mainChannel)
+void Connection::setupMainThreadChannel (MessageChannel* messageChannel, MessageHandler* messageHandler)
 {
-    _mainChannel = mainChannel;
+    ARA_INTERNAL_ASSERT (_mainDispatcher == nullptr);
+    _mainDispatcher = new MessageDispatcher { messageChannel, messageHandler };
 }
 
-void Connection::setOtherThreadsChannel (MessageChannel* otherChannel)
+void Connection::setupOtherThreadsChannel (MessageChannel* messageChannel, MessageHandler* messageHandler)
 {
-    _otherChannel = otherChannel;
+    ARA_INTERNAL_ASSERT (_otherDispatcher == nullptr);
+    _otherDispatcher = new MessageDispatcher { messageChannel, messageHandler };
 }
 
 void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     if (std::this_thread::get_id () == _creationThreadID)
-        _mainChannel->sendMessage(messageID, encoder, replyHandler, replyHandlerUserData);
+        _mainDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
     else
-        _otherChannel->sendMessage(messageID, encoder, replyHandler, replyHandlerUserData);
+        _otherDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
 }
 
 }   // namespace IPC
