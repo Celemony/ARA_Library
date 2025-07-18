@@ -84,29 +84,34 @@ public:
 // message channel base class for both proxy implementations
 class AudioUnitMessageChannel : public MessageChannel
 {
-protected:
-    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
-    : _audioUnitChannel { audioUnitChannel }
+public:
+    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, bool isMainThreadChannel)
+    : _audioUnitChannel { audioUnitChannel },
+	  _semaphore { (isMainThreadChannel) ? dispatch_semaphore_create (0) : nil }
     {
 #if !__has_feature(objc_arc)
         [_audioUnitChannel retain];
 #endif
     }
 
-public:
 #if !__has_feature(objc_arc)
     ~AudioUnitMessageChannel () override
     {
         [_audioUnitChannel release];
+        if (_semaphore)
+            dispatch_release ((dispatch_semaphore_t _Nonnull)_semaphore);
     }
 #endif
 
 public:
     void routeReceivedMessage (NSDictionary * _Nonnull message)
     {
+        ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
         const MessageID messageID { [(NSNumber *) [message objectForKey:_messageIDKey] intValue] };
         const auto decoder { new CFMessageDecoder { (__bridge CFDictionaryRef) message } };
         getMessageDispatcher ()->routeReceivedMessage (messageID, decoder);
+        if (_semaphore)
+            dispatch_semaphore_signal ((dispatch_semaphore_t _Nonnull)_semaphore);
     }
 
     void sendMessage (MessageID messageID, MessageEncoder * encoder) override
@@ -125,11 +130,21 @@ public:
 #endif
     }
 
+    bool waitForMessage (ARATimeDuration timeout) override
+    {
+        ARA_INTERNAL_ASSERT ([NSThread isMainThread]);
+        ARA_INTERNAL_ASSERT (_semaphore);
+
+        const auto deadline { dispatch_time (DISPATCH_TIME_NOW, static_cast<int64_t> (10e9 * timeout + 0.5)) };
+        return (_semaphore && (dispatch_semaphore_wait ((dispatch_semaphore_t _Nonnull)_semaphore, deadline) == 0));
+    }
+
 protected:
     virtual NSDictionary * _sendMessage (NSDictionary * message) = 0;
 
 protected:
     NSObject<AUMessageChannel> * __strong _Nonnull _audioUnitChannel;
+    dispatch_semaphore_t __strong _Nullable _semaphore;
 };
 
 
@@ -138,9 +153,7 @@ protected:
 class ProxyHostMessageChannel : public AudioUnitMessageChannel
 {
 public:
-    ProxyHostMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
-    : AudioUnitMessageChannel { audioUnitChannel }
-    {}
+    using AudioUnitMessageChannel::AudioUnitMessageChannel;
 
 protected:
     NSDictionary * _sendMessage (NSDictionary * message) override
@@ -165,8 +178,8 @@ protected:
 class ProxyPlugInMessageChannel : public AudioUnitMessageChannel
 {
 public:
-    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
-    : AudioUnitMessageChannel { audioUnitChannel }
+    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, bool isMainThreadChannel)
+    : AudioUnitMessageChannel { audioUnitChannel, isMainThreadChannel }
     {
         _audioUnitChannel.callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
@@ -231,8 +244,8 @@ private:
     : ProxyPlugIn { this },
       _initAU { initAU }
     {
-        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel });
-        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel });
+        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel, true });
+        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel, false });
         setMessageHandler (this);
 #if !__has_feature(objc_arc)
         [_initAU retain];
@@ -333,7 +346,7 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
      else
          dispatch_sync (dispatch_get_main_queue (), createProxyIfNeeded);
 
-    auto result { new ProxyHostMessageChannel { audioUnitChannel } };
+    auto result { new ProxyHostMessageChannel { audioUnitChannel, isMainThreadChannel } };
     if (isMainThreadChannel)
         _proxyHost->setMainThreadChannel (result);
     else

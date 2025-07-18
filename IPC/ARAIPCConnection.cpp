@@ -118,23 +118,10 @@ constexpr MessageArgumentKey receiveThreadKey { -2 };
 #endif
 
 
-// actually a "static" member of ARAIPCChannel, but for some reason C++ doesn't allow this...
-thread_local MessageDispatcher::ThreadRef _remoteTargetThread { 0 };
-
-
-struct PendingReplyHandler
-{
-    Connection::ReplyHandler _replyHandler;
-    void* _replyHandlerUserData;
-};
-// actually a "static" member of MessageChannel, but for some reason C++ doesn't allow this...
-thread_local const PendingReplyHandler* _pendingReplyHandler { nullptr };
-
-
 constexpr MessageDispatcher::ThreadRef MessageDispatcher::_invalidThread;
 
 
-MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* messageChannel, bool singleThreaded)
+MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* messageChannel)
 : _connection { connection },
   _messageChannel { messageChannel }
 {
@@ -143,19 +130,11 @@ MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* me
 //  static_assert (std::thread::id {} == *reinterpret_cast<const std::thread::id*>(&_invalidThread), "the current implementation relies on invalid thread IDs being 0");
     ARA_INTERNAL_ASSERT (std::thread::id {} == *reinterpret_cast<const std::thread::id*>(&_invalidThread));
     
-    _routedMessages.resize (12);     // we shouldn't use more than a handful of threads concurrently for the IPC
-
-    if (!singleThreaded)
-        _sendLock = new std::mutex;
-
     _messageChannel->setMessageDispatcher (this);
 }
 
 MessageDispatcher::~MessageDispatcher ()
 {
-    if (!_isSingleThreaded ())
-        delete _sendLock;
-
     delete _messageChannel;
 }
 
@@ -167,31 +146,146 @@ MessageDispatcher::ThreadRef MessageDispatcher::_getCurrentThread ()
     return result;
 }
 
-void MessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encoder,
-                                     Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+void MessageDispatcher::_sendMessage (MessageID messageID, MessageEncoder* encoder)
+{
+    if (_isReply (messageID))
+        ARA_IPC_LOG ("replies to message on thread %p", _getCurrentThread ());
+    else
+        ARA_IPC_LOG ("sends message with ID %i on thread %p", messageID, _getCurrentThread ());
+
+    _messageChannel->sendMessage (messageID, encoder);
+
+    delete encoder;
+}
+
+bool MessageDispatcher::_waitForMessage ()
+{
+    return _messageChannel->waitForMessage (0.001);
+}
+
+void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+{
+    ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThread ());
+    if (replyHandler)
+        (replyHandler) (decoder, replyHandlerUserData);
+    else
+        ARA_INTERNAL_ASSERT (!decoder || !decoder->hasDataForKey (0));  // replies should be empty when not handled (i.e. void functions)
+    delete decoder;
+}
+
+MessageEncoder* MessageDispatcher::_handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+{
+    ARA_INTERNAL_ASSERT (!_isReply (messageID));
+
+    ARA_IPC_LOG ("handles received message with ID %i on thread %p", messageID, _getCurrentThread ());
+    auto replyEncoder { _connection->createEncoder () };
+    _connection->getMessageHandler ()->handleReceivedMessage (messageID, decoder, replyEncoder);
+
+    delete decoder;
+
+    return replyEncoder;
+}
+
+
+void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encoder,
+                                               Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+{
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
+
+    const auto previousPendingReplyHandler { _pendingReplyHandler.load (std::memory_order_acquire) };
+    const PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData, previousPendingReplyHandler };
+    _pendingReplyHandler.store (&pendingReplyHandler, std::memory_order_release);
+ 
+    _sendMessage (messageID, encoder);
+
+    while (previousPendingReplyHandler != _pendingReplyHandler.load (std::memory_order_acquire))
+    {
+        if (_waitForMessage ())
+            processPendingMessageIfNeeded ();
+    }
+}
+
+void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
+{
+    if (_hasPendingMessage.exchange (false, std::memory_order_acquire))
+    {
+        if (_isReply (_pendingMessageID))
+        {
+            const auto pendingReplyHandler { _pendingReplyHandler.load (std::memory_order_acquire) };
+            ARA_INTERNAL_ASSERT (pendingReplyHandler != nullptr);
+            _handleReply (_pendingMessageDecoder, pendingReplyHandler->_replyHandler, pendingReplyHandler->_replyHandlerUserData);
+            _pendingReplyHandler.store (pendingReplyHandler->_prevPendingReplyHandler, std::memory_order_release);
+        }
+        else
+        {
+            auto replyEncoder { _handleReceivedMessage (_pendingMessageID, _pendingMessageDecoder) };
+            _sendMessage (0, replyEncoder);
+        }
+    }
+}
+
+#if defined (_WIN32)
+void APCRouteNewTransactionFunc (ULONG_PTR parameter)
+{
+    auto messageDispatcher { reinterpret_cast<MainThreadMessageDispatcher*> (parameter) };
+    messageDispatcher->processPendingMessageIfNeeded ();
+}
+#endif
+
+void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+{
+    _pendingMessageID = messageID;
+    _pendingMessageDecoder = decoder;
+    _hasPendingMessage.store (true, std::memory_order_release);
+
+    if (getConnection ()->wasCreatedOnCurrentThread ())
+    {
+        processPendingMessageIfNeeded ();
+    }
+    else
+    {
+        if (_isReply (messageID))
+            ARA_IPC_LOG ("dispatches received reply from thread %p to creation thread", _getCurrentThread ());
+        else
+            ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to creation thread", messageID, _getCurrentThread ());
+#if defined (_WIN32)
+        const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, getConnection ()->getCreationThreadDispatchTarget (), reinterpret_cast<ULONG_PTR> (this)) };
+        ARA_INTERNAL_ASSERT (result != 0);
+#elif defined (__APPLE__)
+        dispatch_async (getConnection ()->getCreationThreadDispatchTarget (),
+            ^{
+                processPendingMessageIfNeeded ();
+            });
+#endif
+    }
+}
+
+
+// actually "static" members of OtherThreadsMessageDispatcher, but for some reason C++ doesn't allow this...
+thread_local OtherThreadsMessageDispatcher::ThreadRef _remoteTargetThread { 0 };
+thread_local const OtherThreadsMessageDispatcher::PendingReplyHandler* _pendingReplyHandler { nullptr };
+
+void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encoder,
+                                                 Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     const auto currentThread { _getCurrentThread () };
     encoder->appendThreadRef (sendThreadKey, currentThread);
     if (_remoteTargetThread != _invalidThread)
         encoder->appendThreadRef (receiveThreadKey, _remoteTargetThread);
 
-    if (!_isSingleThreaded ())
-        _sendLock->lock ();
-    ARA_IPC_LOG ("sends message with ID %i on thread %p%s", messageID, currentThread, (_remoteTargetThread == _invalidThread) ? " (starting new transaction)" : "");
-    _messageChannel->sendMessage (messageID, encoder);
-    if (!_isSingleThreaded ())
-        _sendLock->unlock ();
+    _sendLock.lock ();
+    _sendMessage (messageID, encoder);
+    _sendLock.unlock ();
 
-    if (_messageChannel->runsReceiveLoopOnCurrentThread ())
+    if (getMessageChannel ()->currentThreadMustNotBeBlocked ())
     {
-        const PendingReplyHandler* previousPendingReplyHandler { _pendingReplyHandler };
-        PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData };
+        const auto previousPendingReplyHandler { _pendingReplyHandler };
+        const PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData, previousPendingReplyHandler };
         _pendingReplyHandler = &pendingReplyHandler;
         do
         {
-            _messageChannel->loopUntilMessageReceived ();
-        } while (_pendingReplyHandler != nullptr);
-        _pendingReplyHandler = previousPendingReplyHandler;
+            _waitForMessage ();
+        } while (_pendingReplyHandler != previousPendingReplyHandler);
     }
     else
     {
@@ -206,38 +300,20 @@ void MessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encode
             message->_targetThread = _invalidThread;
             lock.unlock ();
 
-            if (receivedMessageID != 0)
-            {
-                _handleReceivedMessage (receivedMessageID, receivedDecoder);        // will also delete receivedDecoder
-            }
-            else
+            if (_isReply (receivedMessageID))
             {
                 _handleReply (receivedDecoder, replyHandler, replyHandlerUserData); // will also delete receivedDecoder
                 break;
             }
+            else
+            {
+                _processReceivedMessage (receivedMessageID, receivedDecoder);       // will also delete receivedDecoder
+            }
         }
     }
-
-    delete encoder;
 }
 
-#if defined (_WIN32)
-struct APCProcessReceivedMessageParams
-{
-    MessageDispatcher* dispatcher;
-    MessageID messageID;
-    const MessageDecoder* decoder;
-};
-
-void APCRouteNewTransactionFunc (ULONG_PTR parameter)
-{
-    auto params { reinterpret_cast<APCProcessReceivedMessageParams*> (parameter) };
-    params->dispatcher->_handleReceivedMessage (params->messageID, params->decoder);
-    delete params;
-}
-#endif
-
-MessageDispatcher::RoutedMessage* MessageDispatcher::_getRoutedMessageForThread (ThreadRef thread)
+OtherThreadsMessageDispatcher::RoutedMessage* OtherThreadsMessageDispatcher::_getRoutedMessageForThread (ThreadRef thread)
 {
     for (auto& message : _routedMessages)
     {
@@ -247,7 +323,7 @@ MessageDispatcher::RoutedMessage* MessageDispatcher::_getRoutedMessageForThread 
     return nullptr;
 }
 
-void MessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     ThreadRef targetThread;
     if (decoder->readThreadRef (receiveThreadKey, &targetThread))
@@ -255,27 +331,27 @@ void MessageDispatcher::routeReceivedMessage (MessageID messageID, const Message
         ARA_INTERNAL_ASSERT (targetThread != _invalidThread);
         if (targetThread == _getCurrentThread ())
         {
-            ARA_INTERNAL_ASSERT (_messageChannel->runsReceiveLoopOnCurrentThread ());
-            if (messageID != 0)
-            {
-                _handleReceivedMessage (messageID, decoder);
-            }
-            else
+            ARA_INTERNAL_ASSERT (getMessageChannel ()->currentThreadMustNotBeBlocked ());
+            if (_isReply (messageID))
             {
                 ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
                 _handleReply (decoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
-                _pendingReplyHandler = nullptr;
+                _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
+            }
+            else
+            {
+                _processReceivedMessage (messageID, decoder);
             }
         }
         else
         {
-            if (messageID != 0)
-                ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to sending thread %p", messageID, _getCurrentThread(), targetThread);
+            if (_isReply (messageID))
+                ARA_IPC_LOG ("dispatches received reply from thread %p to sending thread %p", _getCurrentThread (), targetThread);
             else
-                ARA_IPC_LOG ("dispatches received reply from thread %p to sending thread %p", _getCurrentThread(), targetThread);
+                ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to sending thread %p", messageID, _getCurrentThread (), targetThread);
 
             _routeLock.lock ();
-            RoutedMessage* message = _getRoutedMessageForThread (_invalidThread);
+            RoutedMessage* message { _getRoutedMessageForThread (_invalidThread) };
             if (message == nullptr)
             {
                 _routedMessages.push_back ({});
@@ -290,67 +366,28 @@ void MessageDispatcher::routeReceivedMessage (MessageID messageID, const Message
     }
     else
     {
-        ARA_INTERNAL_ASSERT (messageID != 0);
-        if (_isSingleThreaded () &&
-            !_connection->wasCreatedOnCurrentThread ())
-        {
-            ARA_IPC_LOG ("dispatches received message with ID %i (new transaction)", messageID);
-#if defined (_WIN32)
-            auto params { new APCProcessReceivedMessageParams { this, messageID, decoder } };
-            const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, _connection->getCreationThreadDispatchTarget (), reinterpret_cast<ULONG_PTR> (params)) };
-            ARA_INTERNAL_ASSERT (result != 0);
-#elif defined (__APPLE__)
-            dispatch_async (_connection->getCreationThreadDispatchTarget (),
-                ^{
-                    _handleReceivedMessage (messageID, decoder);
-                });
-#endif
-        }
-        else
-        {
-            _handleReceivedMessage (messageID, decoder);
-        }
+        ARA_INTERNAL_ASSERT (!_isReply (messageID));
+        _processReceivedMessage (messageID, decoder);
     }
 }
 
-void MessageDispatcher::_handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
-    ARA_IPC_LOG ("handles received message with ID %i on thread %p", messageID, _getCurrentThread());
-    ARA_INTERNAL_ASSERT (messageID != 0);
-
     const auto previousRemoteTargetThread { _remoteTargetThread };
     ThreadRef remoteTargetThread;
     const auto success { decoder->readThreadRef (sendThreadKey, &remoteTargetThread) };
     ARA_INTERNAL_ASSERT (success);
     _remoteTargetThread = remoteTargetThread;
 
-    auto replyEncoder { _connection->createEncoder () };
-    _connection->getMessageHandler ()->handleReceivedMessage (messageID, decoder, replyEncoder);
-    delete decoder;
+    auto replyEncoder { _handleReceivedMessage (messageID, decoder) };
 
-    if (remoteTargetThread != _invalidThread)
-        replyEncoder->appendThreadRef (receiveThreadKey, remoteTargetThread);
+    replyEncoder->appendThreadRef (receiveThreadKey, remoteTargetThread);
 
-    if (!_isSingleThreaded ())
-        _sendLock->lock ();
-    ARA_IPC_LOG ("replies to message with ID %i on thread %p", messageID, _getCurrentThread());
-    _messageChannel->sendMessage (0, replyEncoder);
-    if (!_isSingleThreaded ())
-        _sendLock->unlock ();
-
-    delete replyEncoder;
+    _sendLock.lock ();
+    _sendMessage (0, replyEncoder);
+    _sendLock.unlock ();
 
     _remoteTargetThread = previousRemoteTargetThread;
-}
-
-void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
-{
-    ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThread());
-    if (replyHandler)
-        (replyHandler) (decoder, replyHandlerUserData);
-    else
-        ARA_INTERNAL_ASSERT (!decoder->hasDataForKey(0));   // replies should be empty when not handled (i.e. void)
-    delete decoder;
 }
 
 
@@ -395,20 +432,20 @@ Connection::Connection ()
 
 Connection::~Connection ()
 {
-    delete _otherDispatcher;
-    delete _mainDispatcher;
+    delete _otherThreadsDispatcher;
+    delete _mainThreadDispatcher;
 }
 
 void Connection::setMainThreadChannel (MessageChannel* messageChannel)
 {
-    ARA_INTERNAL_ASSERT (_mainDispatcher == nullptr);
-    _mainDispatcher = new MessageDispatcher { this, messageChannel, true };
+    ARA_INTERNAL_ASSERT (_mainThreadDispatcher == nullptr);
+    _mainThreadDispatcher = new MainThreadMessageDispatcher { this, messageChannel };
 }
 
 void Connection::setOtherThreadsChannel (MessageChannel* messageChannel)
 {
-    ARA_INTERNAL_ASSERT (_otherDispatcher == nullptr);
-    _otherDispatcher = new MessageDispatcher { this, messageChannel, false };
+    ARA_INTERNAL_ASSERT (_otherThreadsDispatcher == nullptr);
+    _otherThreadsDispatcher = new OtherThreadsMessageDispatcher { this, messageChannel };
 }
 
 void Connection::setMessageHandler (MessageHandler* messageHandler)
@@ -419,11 +456,11 @@ void Connection::setMessageHandler (MessageHandler* messageHandler)
 
 void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
 {
-    ARA_INTERNAL_ASSERT ((_mainDispatcher != nullptr) && (_otherDispatcher != nullptr) && (_messageHandler != nullptr));
+    ARA_INTERNAL_ASSERT ((_mainThreadDispatcher != nullptr) && (_otherThreadsDispatcher != nullptr) && (_messageHandler != nullptr));
     if (wasCreatedOnCurrentThread ())
-        _mainDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
+        _mainThreadDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
     else
-        _otherDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
+        _otherThreadsDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
 }
 
 }   // namespace IPC
