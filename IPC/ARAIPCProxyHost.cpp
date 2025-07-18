@@ -721,7 +721,7 @@ ProxyHost::DispatchTarget ProxyHost::getDispatchTargetForIncomingTransaction (Me
 void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                                      MessageEncoder* const replyEncoder)
 {
-//  ARA_LOG ("ProxyHost handles message %s", decodePlugInMessageID (messageID));
+//  ARA_LOG ("ProxyHost handles '%s'", decodeHostMessageID (messageID));
 
     // ARAFactory
     if (messageID == kGetFactoriesCountMethodID)
