@@ -45,8 +45,6 @@ class ProxyPlugIn : public MessageHandler, public RemoteCaller
 public:
     using RemoteCaller::RemoteCaller;
 
-    DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override;
-
     void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                 MessageEncoder* const replyEncoder) override;
 };

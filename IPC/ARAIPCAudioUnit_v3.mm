@@ -222,28 +222,13 @@ public:
     ~AUProxyPlugIn () override
     {
 #if !__has_feature(objc_arc)
-        dispatch_release (_readAudioQueue);
         [_initAU release];
 #endif
-    }
-
-protected:
-    DispatchTarget getDispatchTargetForIncomingTransaction (MessageID messageID) override
-    {
-        // AUMessageChannel cannot be called back from the same thread it receives the message,
-        // so we dispatch audio requests to a dedicated read samples queue and let the inherited
-        // dispatch all other calls to the main thread.
-        if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples))
-            return _readAudioQueue;
-        return ProxyPlugIn::getDispatchTargetForIncomingTransaction (messageID);
     }
 
 private:
     AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel, NSObject<AUMessageChannel> * _Nonnull otherChannel, AUAudioUnit * _Nonnull initAU)
     : ProxyPlugIn { this },
-      // \todo maybe we should make this configurable, so hosts can set this queue if it already has an appropriate one?
-      // \todo there's also QOS_CLASS_USER_INTERACTIVE which seems more appropriate but is undocumented...
-      _readAudioQueue { dispatch_queue_create ("ARA read audio samples", dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1)) },
       _initAU { initAU }
     {
         setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel });
@@ -255,7 +240,6 @@ private:
     }
 
 private:
-    const dispatch_queue_t _readAudioQueue;
     const AUAudioUnit * __strong _initAU;   // workaround for macOS 14: keep the AU that vends the message channels alive, otherwise the channels will eventually stop working
                                             // \todo once this is fixed in macOS, we only need to store this on older macOS versions
 };

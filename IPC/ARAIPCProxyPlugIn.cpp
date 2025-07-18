@@ -1431,23 +1431,6 @@ void ARAIPCProxyPlugInUninitializeARA (ARAIPCConnectionRef connectionRef, const 
 
 /*******************************************************************************/
 
-ProxyPlugIn::DispatchTarget ProxyPlugIn::getDispatchTargetForIncomingTransaction (MessageID messageID)
-{
-    // The archiving controller interface must never be called without the host first starting
-    // the transaction via some (un)archiving call.
-    ARA_INTERNAL_ASSERT (!MethodID::isMessageToHostInterface<ARAArchivingControllerInterface> (messageID));
-
-    // The model update controller interface must never be called without the host first starting
-    // the transaction via notifyModelUpdates().
-    ARA_INTERNAL_ASSERT (!MethodID::isMessageToHostInterface<ARAModelUpdateControllerInterface> (messageID));
-
-    // readAudioSamples() is valid on any thread, so we can directly serve it from the current IPC thread.
-    // For all other calls, we call the inherited default implementation to dispatch to the creation thread.
-    if (messageID == ARA_IPC_HOST_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples))
-        return nullptr;
-    return MessageHandler::getDispatchTargetForIncomingTransaction (messageID);
-}
-
 void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                          MessageEncoder* const replyEncoder)
 {

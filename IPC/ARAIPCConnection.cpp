@@ -80,21 +80,19 @@
 //
 // Another challenge when injecting IPC into the ARA communication is that for each
 // message that comes in, an appropriate thread has to be selected to process it.
-// For the main thread channel, this is trivial.
+// When a new transaction is initiated, the implementation checks whether this is happening
+// on the main thread or on any other thread, and chooses the appropriate channel accordingly.
+// On the receiving side, calls coming in on the main thread channel are forwarded to the main
+// thread (unless the receive code already runs there), and for the other threads the code is
+// executed directly on the receive thread.
 //
-// For the channel that handles all communication on other threads, the implementation
-// adds a token to each call message that identifies the sending thread. The reply message
-// or any stacked call the receiver might make in response to the message will pass back
-// this thread token, enabling proper routing back to the original sending thread.
+// Replies or callbacks are routed back to the originating thread in the sender. This is done
+// by adding a token when sending a message that identifies the sending thread, and replies and
+// callbacks pass this token back to allow for proper dispatching from the receive thread to the
+// thread that initiated the transaction.
 // Since the actual ARA code is agnostic to IPC being used, the receiving side uses
 // thread local storage to make the sender's thread token available for all stacked calls
 // that the ARA code might make in response to the message.
-//
-// If a message is received that does not contain the token, this message indicates
-// the start of a transaction that was initiated on the other side. For this new
-// transaction, a proper thread has to be selected. This is done based on the message ID -
-// the current implementation dispatches audio reading to a dedicated dispatch queue and
-// handles the remaining calls directly on the IPC receive thread.
 //
 // Note that there is a crucial difference between the dispatch of a new transaction and
 // the dispatch of any follow-up messages in the transaction: the initial message is dispatched
@@ -155,7 +153,9 @@ MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* me
 
 MessageDispatcher::~MessageDispatcher ()
 {
-    delete _sendLock;
+    if (!_isSingleThreaded ())
+        delete _sendLock;
+
     delete _messageChannel;
 }
 
@@ -175,11 +175,11 @@ void MessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encode
     if (_remoteTargetThread != _invalidThread)
         encoder->appendThreadRef (receiveThreadKey, _remoteTargetThread);
 
-    if (_sendLock)
+    if (!_isSingleThreaded ())
         _sendLock->lock ();
     ARA_IPC_LOG ("sends message with ID %i on thread %p%s", messageID, currentThread, (_remoteTargetThread == _invalidThread) ? " (starting new transaction)" : "");
     _messageChannel->sendMessage (messageID, encoder);
-    if (_sendLock)
+    if (!_isSingleThreaded ())
         _sendLock->unlock ();
 
     if (_messageChannel->runsReceiveLoopOnCurrentThread ())
@@ -291,15 +291,16 @@ void MessageDispatcher::routeReceivedMessage (MessageID messageID, const Message
     else
     {
         ARA_INTERNAL_ASSERT (messageID != 0);
-        if (const auto dispatchTarget { _connection->getMessageHandler ()->getDispatchTargetForIncomingTransaction (messageID) })
+        if (_isSingleThreaded () &&
+            !_connection->wasCreatedOnCurrentThread ())
         {
             ARA_IPC_LOG ("dispatches received message with ID %i (new transaction)", messageID);
 #if defined (_WIN32)
             auto params { new APCProcessReceivedMessageParams { this, messageID, decoder } };
-            const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, dispatchTarget, reinterpret_cast<ULONG_PTR> (params)) };
+            const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, _connection->getCreationThreadDispatchTarget (), reinterpret_cast<ULONG_PTR> (params)) };
             ARA_INTERNAL_ASSERT (result != 0);
 #elif defined (__APPLE__)
-            dispatch_async (dispatchTarget,
+            dispatch_async (_connection->getCreationThreadDispatchTarget (),
                 ^{
                     _handleReceivedMessage (messageID, decoder);
                 });
@@ -330,11 +331,11 @@ void MessageDispatcher::_handleReceivedMessage (MessageID messageID, const Messa
     if (remoteTargetThread != _invalidThread)
         replyEncoder->appendThreadRef (receiveThreadKey, remoteTargetThread);
 
-    if (_sendLock)
+    if (!_isSingleThreaded ())
         _sendLock->lock ();
     ARA_IPC_LOG ("replies to message with ID %i on thread %p", messageID, _getCurrentThread());
     _messageChannel->sendMessage (0, replyEncoder);
-    if (_sendLock)
+    if (!_isSingleThreaded ())
         _sendLock->unlock ();
 
     delete replyEncoder;
@@ -374,7 +375,7 @@ HANDLE _GetRealCurrentThread ()
 #endif
 
 
-MessageHandler::MessageHandler ()
+Connection::Connection ()
 : _creationThreadID { std::this_thread::get_id () },
 #if defined (_WIN32)
   _creationThreadDispatchTarget { _GetRealCurrentThread () }
@@ -391,16 +392,6 @@ MessageHandler::MessageHandler ()
     ARA_INTERNAL_ASSERT (CFRunLoopGetMain () == CFRunLoopGetCurrent ());
 #endif
 }
-
-MessageHandler::DispatchTarget MessageHandler::getDispatchTargetForIncomingTransaction (MessageID /*messageID*/)
-{
-    return (std::this_thread::get_id () == _creationThreadID) ? nullptr : _creationThreadDispatchTarget;
-}
-
-
-Connection::Connection ()
-: _creationThreadID { std::this_thread::get_id () }
-{}
 
 Connection::~Connection ()
 {
@@ -429,7 +420,7 @@ void Connection::setMessageHandler (MessageHandler* messageHandler)
 void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_INTERNAL_ASSERT ((_mainDispatcher != nullptr) && (_otherDispatcher != nullptr) && (_messageHandler != nullptr));
-    if (std::this_thread::get_id () == _creationThreadID)
+    if (wasCreatedOnCurrentThread ())
         _mainDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
     else
         _otherDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
