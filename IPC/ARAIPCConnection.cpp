@@ -118,7 +118,9 @@ constexpr MessageArgumentKey receiveThreadKey { -2 };
 #endif
 
 
+#if __cplusplus < 201703L
 constexpr MessageDispatcher::ThreadRef MessageDispatcher::_invalidThread;
+#endif
 
 
 MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* messageChannel)

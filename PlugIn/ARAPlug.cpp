@@ -299,7 +299,7 @@ bool AnalysisProgressTracker::decodeIsProgressing (float encodedProgress) noexce
 
 bool AnalysisProgressTracker::updateProgress (ARAAnalysisProgressState state, float progress) noexcept
 {
-#if (__cplusplus >= 201703L)
+#if __cplusplus >= 201703L
     static_assert (decltype (_encodedProgress)::is_always_lock_free);
 #else
     ARA_INTERNAL_ASSERT (_encodedProgress.is_lock_free ());
