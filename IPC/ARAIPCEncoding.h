@@ -1073,6 +1073,14 @@ inline bool operator== (const MethodID methodID, const MessageID messageID)
 {
     return (messageID == methodID.getMessageID ());
 }
+inline bool operator!= (const MessageID messageID, const MethodID methodID)
+{
+    return (messageID != methodID.getMessageID ());
+}
+inline bool operator!= (const MethodID methodID, const MessageID messageID)
+{
+    return (messageID != methodID.getMessageID ());
+}
 
 
 // create a MethodID for a given host-side or plug-in-side ARA method
