@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.2.0: Boolean Values</title>
+<title>ARA SDK 2.3.0: Boolean Values</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -104,8 +104,8 @@ $(document).ready(function(){initNavTree('group___boolean__values.html',''); ini
 <p>Since Microsoft still doesn't fully support C99 and fails to provide &lt;stdbool.h&gt;, we need to roll our own. On the other hand this ensures a fixed size of 32 bits, too. 32 bits were chosen so that ARABool is consistent with the other enum-like data types such as ARAContentType. Since ARABool is only used in temporary structs that are valid only for the duration of a call and likely passed in a register in most cases, there's no point in trying to optimize for size by using 8 bit boolean types. Note that in order to avoid conversion warnings in Visual Studio, you should not directly cast bool to ARABool or vice versa, but instead use a ternary operator or a comparison like this: </p>
 <div class="fragment"><div class="line">araBool = (cppBool) ? <a class="code" href="group___boolean__values.html#ga9b2e3d2a2f034b39cb7633aeefdeb33a">kARATrue</a> : <a class="code" href="group___boolean__values.html#ga4b75d2749ec1784b95a7847f42bf7314">kARAFalse</a>;</div>
 <div class="line">cppBool = (araBool != <a class="code" href="group___boolean__values.html#ga4b75d2749ec1784b95a7847f42bf7314">kARAFalse</a>);</div>
-<div class="ttc" id="agroup___boolean__values_html_ga4b75d2749ec1784b95a7847f42bf7314"><div class="ttname"><a href="group___boolean__values.html#ga4b75d2749ec1784b95a7847f42bf7314">kARAFalse</a></div><div class="ttdeci">constexpr ARABool kARAFalse</div><div class="ttdoc">&quot;false&quot; value for ARABool.</div><div class="ttdef"><b>Definition:</b> ARAInterface.h:232</div></div>
-<div class="ttc" id="agroup___boolean__values_html_ga9b2e3d2a2f034b39cb7633aeefdeb33a"><div class="ttname"><a href="group___boolean__values.html#ga9b2e3d2a2f034b39cb7633aeefdeb33a">kARATrue</a></div><div class="ttdeci">constexpr ARABool kARATrue</div><div class="ttdoc">&quot;true&quot; value for ARABool.</div><div class="ttdef"><b>Definition:</b> ARAInterface.h:230</div></div>
+<div class="ttc" id="agroup___boolean__values_html_ga4b75d2749ec1784b95a7847f42bf7314"><div class="ttname"><a href="group___boolean__values.html#ga4b75d2749ec1784b95a7847f42bf7314">kARAFalse</a></div><div class="ttdeci">constexpr ARABool kARAFalse</div><div class="ttdoc">&quot;false&quot; value for ARABool.</div><div class="ttdef"><b>Definition:</b> ARAInterface.h:250</div></div>
+<div class="ttc" id="agroup___boolean__values_html_ga9b2e3d2a2f034b39cb7633aeefdeb33a"><div class="ttname"><a href="group___boolean__values.html#ga9b2e3d2a2f034b39cb7633aeefdeb33a">kARATrue</a></div><div class="ttdeci">constexpr ARABool kARATrue</div><div class="ttdoc">&quot;true&quot; value for ARABool.</div><div class="ttdef"><b>Definition:</b> ARAInterface.h:248</div></div>
 </div><!-- fragment --><p> Providing conversion operators for ARABool for C++ that handle this automatically is alas no viable option, because ARABool is only a typedef so this would lead to side-effects for all conversions from the integer type that ARABool is defined upon. </p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>

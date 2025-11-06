@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.2.0: Content Updates</title>
+<title>ARA SDK 2.3.0: Content Updates</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -116,7 +116,7 @@ $(document).ready(function(){initNavTree('group___model___content___updates.html
 <table class="fieldtable">
 <tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="gga74195b82b008866a82ca9dc2d226485ca2b833ed89b1081c361abcb6615cc90a4"></a>kARAContentUpdateEverythingChanged&#160;</td><td class="fielddoc"><p>No flags set means update everything. </p>
 </td></tr>
-<tr><td class="fieldname"><a id="gga74195b82b008866a82ca9dc2d226485ca34fb9ac9367757d532012c08185eac8b"></a>kARAContentUpdateSignalScopeRemainsUnchanged&#160;</td><td class="fielddoc"><p>The actual signal is unaffected by the change. Note that in some cases even when the signal is considered to be unchanged, the values of the actual sample data may change, e.g. if the user applies a sample rate conversion. </p>
+<tr><td class="fieldname"><a id="gga74195b82b008866a82ca9dc2d226485ca34fb9ac9367757d532012c08185eac8b"></a>kARAContentUpdateSignalScopeRemainsUnchanged&#160;</td><td class="fielddoc"><p>The actual signal is unaffected by the change. Note that in some cases even when the signal is considered to be unchanged, the values of the actual sample data may change, e.g. if the user applies a sample rate conversion. Whenever the output signal for a playback region changes, this implies that the head and tail times for that region may have changed too, so the host must update these values after receiving such a change. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="gga74195b82b008866a82ca9dc2d226485cafe91eda7ebf411919569b4fd4aa1cf1a"></a>kARAContentUpdateNoteScopeRemainsUnchanged&#160;</td><td class="fielddoc"><p>Content information for notes, beat-markers etc. is unaffected by the change. </p>
 </td></tr>

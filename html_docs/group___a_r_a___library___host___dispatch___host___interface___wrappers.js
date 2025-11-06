@@ -28,6 +28,7 @@ var group___a_r_a___library___host___dispatch___host___interface___wrappers =
       [ "notifyAudioModificationContentChanged", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#a6cd8d55b9ce86364be26c0d036c506ff", null ],
       [ "notifyAudioSourceAnalysisProgress", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#af85d36dec389223a4cc3feee7cff25af", null ],
       [ "notifyAudioSourceContentChanged", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#ac816181712ec472816ab6be6aeaa3d2c", null ],
+      [ "notifyDocumentDataChanged", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#a347c8c15c9606bcab61f38abaf61a77d", null ],
       [ "notifyPlaybackRegionContentChanged", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#a94f3e126cbbbad0b6973f8dd3b1ebaae", null ]
     ] ],
     [ "HostPlaybackController", "group___a_r_a___library___host___dispatch___host___interface___wrappers.html#class_a_r_a_1_1_plug_in_1_1_host_playback_controller", [

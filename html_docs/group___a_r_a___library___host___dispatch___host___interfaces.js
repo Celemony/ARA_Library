@@ -28,6 +28,7 @@ var group___a_r_a___library___host___dispatch___host___interfaces =
       [ "notifyAudioModificationContentChanged", "group___a_r_a___library___host___dispatch___host___interfaces.html#a3ee41b6dfb7b34434da2ec3224c9d934", null ],
       [ "notifyAudioSourceAnalysisProgress", "group___a_r_a___library___host___dispatch___host___interfaces.html#aa55c68dc1bc923b3475919509fbf1620", null ],
       [ "notifyAudioSourceContentChanged", "group___a_r_a___library___host___dispatch___host___interfaces.html#abbe679734a55e2564161ab11a151c8a5", null ],
+      [ "notifyDocumentDataChanged", "group___a_r_a___library___host___dispatch___host___interfaces.html#a3d4e135dcfbe4e8fe39b3f7fa9ce0e68", null ],
       [ "notifyPlaybackRegionContentChanged", "group___a_r_a___library___host___dispatch___host___interfaces.html#a88a5c10acf49e4beab33071f5db49c33", null ]
     ] ],
     [ "PlaybackControllerInterface", "group___a_r_a___library___host___dispatch___host___interfaces.html#class_a_r_a_1_1_host_1_1_playback_controller_interface", [

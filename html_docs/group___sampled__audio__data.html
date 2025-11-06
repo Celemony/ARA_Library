@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.2.0: Sampled Audio Data</title>
+<title>ARA SDK 2.3.0: Sampled Audio Data</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -126,16 +126,20 @@ typedef <a class="el" href="group___fixed-size__integers.html#gae89c0d982d17edbe
       </table>
 </div><div class="memdoc">
 
-<p>To avoid defining yet another abstraction of spacial layout information for the individual channels of an audio signal, ARA directly uses the respective Companion API's model of spacial arrangement. Since different Companion APIs are available, this enum specifies which abstraction is used. </p>
+<p>To avoid defining yet another abstraction of spacial layout information for the individual channels of an audio signal, ARA directly uses the respective companion API's model of spacial arrangement. Since different companion APIs are available, this enum specifies which abstraction is used. </p>
 <table class="fieldtable">
 <tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7a0eee6dfbcb8f56a09eddb2d1ce3ecc34"></a>kARAChannelArrangementUndefined&#160;</td><td class="fielddoc"><p>Used to indicate the feature is not supported/used (e.g. mono or stereo). </p>
 </td></tr>
 <tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7a58de1d574f840ba7e70c98f636c8e74d"></a>kARAChannelArrangementVST3SpeakerArrangement&#160;</td><td class="fielddoc"><p>For VST3, the channel arrangement is specified as Steinberg::Vst::SpeakerArrangement. </p>
 </td></tr>
-<tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7a395cce0a0be446a61e4c1e71cf276081"></a>kARAChannelArrangementCoreAudioChannelLayout&#160;</td><td class="fielddoc"><p>For Audio Units, the channel arrangement is specified as the CoreAudio struct AudioChannelLayout. Note that according to Apple's documentation, "the kAudioChannelLayoutTag_UseChannelBitmap field is NOT used within the context
+<tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7a395cce0a0be446a61e4c1e71cf276081"></a>kARAChannelArrangementCoreAudioChannelLayout&#160;</td><td class="fielddoc"><p>For Audio Units, the channel arrangement is specified as the Core Audio struct AudioChannelLayout. Note that according to Apple's documentation, "the kAudioChannelLayoutTag_UseChannelBitmap field is NOT used within the context
  of the AudioUnit." If possible, kAudioChannelLayoutTag_UseChannelDescriptions should also be avoided to ease parsing the struct. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7ad150a5376a6e33757e2a147b74f89ec5"></a>kARAChannelArrangementAAXStemFormat&#160;</td><td class="fielddoc"><p>For AAX, the channel arrangement is specified as AAX_EStemFormat. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7ac916519f8a4b2d41e71cfd1e2dfe53af"></a>kARAChannelArrangementCLAPChannelMap&#160;</td><td class="fielddoc"><p>For CLAP surround, the channel arrangement is specified as a channel map, i.e. an array of uint8_t with <a class="el" href="group___model___audio___source.html#a55abf0e4315bb7d49c2785a9c0564a2b" title="Count of discrete channels of the contained audio material. May only be changed while access to the a...">ARAAudioSourceProperties.channelCount</a> entries. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga518788c837f45be600925e0899cdc7b7af91fe78b956553fa3c7a06786d8fdf5f"></a>kARAChannelArrangementCLAPAmbisonicInfo&#160;</td><td class="fielddoc"><p>For CLAP ambisonic, the channel arrangement is specified as clap_ambisonic_info. </p>
 </td></tr>
 </table>
 

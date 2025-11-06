@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['viewselection_838',['ViewSelection',['../group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_view_selection',1,'ARA::PlugIn']]]
+  ['viewselection_853',['ViewSelection',['../group___a_r_a___library___a_r_a_plug___utility___classes.html#class_a_r_a_1_1_plug_in_1_1_view_selection',1,'ARA::PlugIn']]]
 ];

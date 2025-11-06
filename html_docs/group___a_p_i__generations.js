@@ -8,6 +8,7 @@ var group___a_p_i__generations =
       [ "kARAAPIGeneration_1_0_Final", "group___a_p_i__generations.html#gga056d437a04be3404c38ec743727b0ba7a2917eeac9d2ad9a86838e3411369bed0", null ],
       [ "kARAAPIGeneration_2_0_Draft", "group___a_p_i__generations.html#gga056d437a04be3404c38ec743727b0ba7aef92bda70849afe4022166643ef35f40", null ],
       [ "kARAAPIGeneration_2_0_Final", "group___a_p_i__generations.html#gga056d437a04be3404c38ec743727b0ba7a017c2181dc7de21c1810795e1e95a406", null ],
-      [ "kARAAPIGeneration_2_X_Draft", "group___a_p_i__generations.html#gga056d437a04be3404c38ec743727b0ba7a1bc12a72f3bbe61b350ef517ec5b95be", null ]
+      [ "kARAAPIGeneration_2_X_Draft", "group___a_p_i__generations.html#gga056d437a04be3404c38ec743727b0ba7a1bc12a72f3bbe61b350ef517ec5b95be", null ],
+      [ "kARAAPIGeneration_2_3_Final", "group___a_p_i__generations.html#gga056d437a04be3404c38ec743727b0ba7a751050265fb5102368eb04660f0ce88e", null ]
     ] ]
 ];

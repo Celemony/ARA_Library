@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.2.0: Model Objects</title>
+<title>ARA SDK 2.3.0: Model Objects</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -370,6 +370,10 @@ const std::string &amp;&#160;</td><td class="memItemRight" valign="bottom"><a cl
 <a class="el" href="group___sampled__audio__data.html#ga0c79a2d1df7953f0e65f83ffb97e8fb7">ARAChannelCount</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a809dfeead76b0f4598c39bb1706d0396">getChannelCount</a> () const noexcept</td></tr>
 <tr class="memdesc:a809dfeead76b0f4598c39bb1706d0396"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___model___audio___source.html#a55abf0e4315bb7d49c2785a9c0564a2b" title="Count of discrete channels of the contained audio material. May only be changed while access to the a...">ARAAudioSourceProperties::channelCount</a>. <br /></td></tr>
 <tr class="separator:a809dfeead76b0f4598c39bb1706d0396"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5e32e8bae051af116096247aa0f02d23"><td class="memItemLeft" align="right" valign="top"><a id="a5e32e8bae051af116096247aa0f02d23"></a>
+const <a class="el" href="group___a_r_a___library___utility___channel___arrangement.html#class_a_r_a_1_1_channel_format">ChannelFormat</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a5e32e8bae051af116096247aa0f02d23">getChannelFormat</a> () const noexcept</td></tr>
+<tr class="memdesc:a5e32e8bae051af116096247aa0f02d23"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derived from <a class="el" href="group___model___audio___source.html#aa24cefea83fdb42f2dd1a3ce67a3b9d1" title="Spacial arrangement information: defines which channel carries the signal from which direction....">ARAAudioSourceProperties::channelArrangement</a>. <br /></td></tr>
+<tr class="separator:a5e32e8bae051af116096247aa0f02d23"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2fc8ad7aedb8ecca606f8bb6251e9e02"><td class="memItemLeft" align="right" valign="top"><a id="a2fc8ad7aedb8ecca606f8bb6251e9e02"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a2fc8ad7aedb8ecca606f8bb6251e9e02">merits64BitSamples</a> () const noexcept</td></tr>
 <tr class="memdesc:a2fc8ad7aedb8ecca606f8bb6251e9e02"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___model___audio___source.html#ae882bdfc28b1a35f5460ec85ce50dbfd" title="Flag to indicating that the data is available in a resolution that cannot be represented in 32 bit fl...">ARAAudioSourceProperties::merits64BitSamples</a>. <br /></td></tr>
@@ -383,10 +387,6 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="grou
 bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a4ff0878bffdc8e50d8875996fda91ad9">isDeactivatedForUndoHistory</a> () const noexcept</td></tr>
 <tr class="memdesc:a4ff0878bffdc8e50d8875996fda91ad9"><td class="mdescLeft">&#160;</td><td class="mdescRight">See <a class="el" href="group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#aefe1e7f19bbfabc5c07e65f7011c166c" title="Deactivate the given audio source because it has become part of the undo history and is no longer use...">DocumentController::deactivateAudioSourceForUndoHistory</a>. <br /></td></tr>
 <tr class="separator:a4ff0878bffdc8e50d8875996fda91ad9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a27c4490d86aef1cc3345c45326dd2bb1"><td class="memItemLeft" align="right" valign="top"><a id="a27c4490d86aef1cc3345c45326dd2bb1"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_r_a___library___a_r_a_plug___model___objects.html#a27c4490d86aef1cc3345c45326dd2bb1">doUpdateChannelArrangement</a> (const <a class="el" href="group___a_r_a___library___utility___channel___arrangement.html#class_a_r_a_1_1_channel_arrangement">ChannelArrangement</a> &amp;channelArrangement) noexcept</td></tr>
-<tr class="memdesc:a27c4490d86aef1cc3345c45326dd2bb1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Since the channel arrangement is expressed in terms of the Companion API and not in some native ARA format, translating it into the plug-in's internal representation is delegated by the library via this call for clients to override as necessary. <br /></td></tr>
-<tr class="separator:a27c4490d86aef1cc3345c45326dd2bb1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 
 </div>

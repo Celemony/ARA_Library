@@ -4,6 +4,7 @@ var group___a_r_a_audio_file_chunks =
     [ "kARAXMLName_ArchiveData", "group___a_r_a_audio_file_chunks.html#ga3264708ee0071a61c9def48677f78758", null ],
     [ "kARAXMLName_AudioSource", "group___a_r_a_audio_file_chunks.html#gaec01170e5e8074328283283f06ecc0e9", null ],
     [ "kARAXMLName_AudioSources", "group___a_r_a_audio_file_chunks.html#gab5ebdd2563133204758ce255ba50054e", null ],
+    [ "kARAXMLName_CreateDistinctAudioModification", "group___a_r_a_audio_file_chunks.html#ga8a70b48e3da163cd107a4cb8bff35c64", null ],
     [ "kARAXMLName_DocumentArchiveID", "group___a_r_a_audio_file_chunks.html#ga8d596d214c01fb25bd86e196fee7e9e7", null ],
     [ "kARAXMLName_InformationURL", "group___a_r_a_audio_file_chunks.html#ga16f15711559fa3bd6cd2e5673a0e4294", null ],
     [ "kARAXMLName_LowestSupportedVersion", "group___a_r_a_audio_file_chunks.html#gafcc81cb801a03c18ad30a259316c0430", null ],

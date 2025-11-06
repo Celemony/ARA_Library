@@ -4,6 +4,7 @@ var group___host___model___update___controller___interface =
       [ "notifyAudioModificationContentChanged", "group___host___model___update___controller___interface.html#af8ff42d436d6a83fe7605f06e49e6b52", null ],
       [ "notifyAudioSourceAnalysisProgress", "group___host___model___update___controller___interface.html#a77eba535adcf86c0e0c83e4cc031ca89", null ],
       [ "notifyAudioSourceContentChanged", "group___host___model___update___controller___interface.html#a1a6775769ed85499fdb85a3f971a78b8", null ],
+      [ "notifyDocumentDataChanged", "group___host___model___update___controller___interface.html#a1ad48108faec76f6e73d817f3a5c7c1e", null ],
       [ "notifyPlaybackRegionContentChanged", "group___host___model___update___controller___interface.html#a4a78d6826cfce3a0f609784c37a29d16", null ],
       [ "structSize", "group___host___model___update___controller___interface.html#a89c52872d8119060976cb885bcd8d86c", null ]
     ] ],

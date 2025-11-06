@@ -24,7 +24,7 @@
 */
 var NAVTREE =
 [
-  [ "ARA SDK 2.2.0", "index.html", [
+  [ "ARA SDK 2.3.0", "index.html", [
     [ "Introduction", "intro.html", [
       [ "Welcome", "intro.html#sec_Welcome", null ],
       [ "About ARA", "intro.html#autotoc_md0", null ]
@@ -61,7 +61,7 @@ var NAVTREE =
       ] ],
       [ "Mapping The Internal Model To ARA", "implementing_a_r_a.html#autotoc_md16", [
         [ "Dealing With Overlapping Playback Regions", "implementing_a_r_a.html#autotoc_md17", null ],
-        [ "Modelling Audio Modifications In The Host", "implementing_a_r_a.html#autotoc_md18", null ],
+        [ "Modeling Audio Modifications In The Host", "implementing_a_r_a.html#autotoc_md18", null ],
         [ "Choosing An Appropriate Region Sequence Representation", "implementing_a_r_a.html#autotoc_md19", null ]
       ] ],
       [ "Configuring The Rendering", "implementing_a_r_a.html#autotoc_md20", [
@@ -125,10 +125,10 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "ara_design_overview.html",
-"group___a_r_a___library___a_r_a_plug___plug_in_entry.html",
-"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a8e0264b139236a7ea2b3959c49f594fe",
-"group___host___model___update___controller___interface.html#a77eba535adcf86c0e0c83e4cc031ca89",
-"group___plug-_in___extension.html#ggadb888a1dc7f658281705411c7b4c253eac033ffe4d4ae6821fe05a418929cf093"
+"group___a_r_a___library___a_r_a_plug___model___objects.html#class_a_r_a_1_1_plug_in_1_1_region_sequence",
+"group___a_r_a___library___host___dispatch___plug-_in___interfaces.html#a838c453c28cf96694e3002aedfec924b",
+"group___host___model___content___access___controller.html#a1eb7b82eb4298179febe754357cf208b",
+"group___plug-_in___document___controller.html#adfa1747d10db24d62e811cf4947c8aee"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

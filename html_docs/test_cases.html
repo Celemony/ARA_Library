@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.9.1"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ARA SDK 2.2.0: Use Cases and Testing</title>
+<title>ARA SDK 2.3.0: Use Cases and Testing</title>
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -115,7 +115,7 @@ $(document).ready(function(){initNavTree('test_cases.html',''); initResizable();
 <div class="textblock"><p></p>
 <h1><a class="anchor" id="autotoc_md45"></a>
 Synopsis</h1>
-<p>A major challenge when adopting an API as flexible and complex as ARA is understanding the potential use cases that will be encountered across all the possible host/plug-in combinations, and to design and test implementations accordingly. <br>                               This chapter describes various use cases that each host and plug-in should be aware of in order to build high quality ARA integrations. Intense quality insurance is key to a stable and thriving overall ARA platform and great user experience - passing this checklist as applicable is therefore also a prerequisite for Celemony granting developers the right to use its ARA Audio Random Access trademark for marketing a ARA-enabled products as such. <br>                               As a living document, this chapter will be regularly updated whenever common issues in current implementations become apparent. <br>                              </p>
+<p>A major challenge when adopting an API as flexible and complex as ARA is understanding the potential use cases that will be encountered across all the possible host/plug-in combinations, and to design and test implementations accordingly. <br>                               This chapter describes various use cases that each host and plug-in should be aware of in order to build high quality ARA integrations. Intense quality insurance is key to a stable and thriving overall ARA platform and great user experience - passing this checklist as applicable is therefore also a prerequisite for Celemony granting developers the right to use its ARA Audio Random Access trademark for marketing ARA-enabled products as such. <br>                               As a living document, this chapter will be regularly updated whenever common issues in current implementations become apparent. <br>                              </p>
 <p>As both hosts and plug-ins have very different features and capabilities, many of the following use cases may not apply in a specific host/plug-in combination. For example, a restoration plug-in will typically not bother with musical timing, time-stretching or MIDI notes. Nevertheless, all features which make sense in the given context shall be properly supported by all hosts and plug-ins that pick up ARA. <br>                              </p>
 <p>While testing, developers should also utilize the ARA Test Host and ARA Test Plug-In examples provided with the ARA SDK as well as Melodyne, which all feature extensive testing and validation as outlined in the <a class="el" href="implementing_a_r_a.html#sec_UtilizingExamples">previous chapter</a>.</p>
 <h1><a class="anchor" id="autotoc_md46"></a>
@@ -146,13 +146,13 @@ Musical Timing</h1>
 <li>Does the plug-in update properly if the audio source tempo or signatures are edited in the host, and vice versa?</li>
 </ul>
 </li>
-<li>If supported by the host, can audio source tempo and signature analysis provided by the plug-in copied to the song timeline? For example, Studio One implements this by letting users drag events (i.e. playback regions) to the timeline.</li>
+<li>If supported by the host, can audio source tempo and signature analysis provided by the plug-in be copied to the song timeline? For example, Studio One implements this by letting users drag events (i.e. playback regions) to the timeline.</li>
 </ul>
 <h1><a class="anchor" id="autotoc_md48"></a>
 Time Stretching</h1>
 <ul>
 <li>Does time-stretching work properly? Using an example audio file with a drum track that starts at 120 bpm then has a ritardando to 90 bpm:<ul>
-<li>can the user have this drum file analyzed in the plug-in and make it fit a song with constant 120 bpm? (As a host, have the audio analyzed by the plug-in, then read the timeline to find out the number of beats in the file, then in the host timeline pick a range with the same number of beats, then set up an according playback region and activate the <a class="el" href="group___model___playback___region.html#gga258336ff5f674225e3ec403493461179ad0c5da282e792ae38e3551fec63c4e45">TimestretchReflectingTempo</a> flag</li>
+<li>can the user have this drum file analyzed in the plug-in and make it fit a song with constant 120 bpm? (As a host, have the audio analyzed by the plug-in, then read the timeline to find out the number of beats in the file, then in the host timeline pick a range with the same number of beats, then set up an according playback region and activate the <a class="el" href="group___model___playback___region.html#gga258336ff5f674225e3ec403493461179ad0c5da282e792ae38e3551fec63c4e45">TimestretchReflectingTempo</a> flag)</li>
 <li>Starting from the results of the previous test, can the user stretch the file to halftime by either entering a stretch factor in the host or by dragging (if supported by the host)? Does the result sound correct in both cases?</li>
 <li>Starting from the results of the first test, can the user use Melodyne's tempo dialog to re-interpret the tempo as halftime (so that the region/event is extended properly)?</li>
 <li>Can the user do the opposite of the first test and make the song timeline fit the drum file? (As a host, have the audio analyzed by the plug-in, then read the timeline and copy the tempo curve to the song timeline, then set up a playback region that does not modify the file upon playback)</li>
@@ -166,7 +166,7 @@ Signal Flow And Routing</h1>
 <li>Are content based fades rendered correctly (if implemented by the plug-in and supported by the host)?</li>
 <li>Does region/event solo/mute/volume behave as expected?</li>
 <li>Does track solo/mute/volume behave as expected?</li>
-<li>Is bypass behaving properly for ARA? (If the host chooses to bypass ARA plug-ins, it will need to apply any transformation done by the plug-in on its own - this may be tough esp. with regards to the the <a class="el" href="group___model___playback___region.html#gga258336ff5f674225e3ec403493461179ad0c5da282e792ae38e3551fec63c4e45">TimestretchReflectingTempo</a> flag. The easier choice is to not implement bypass for ARA on the host side and instead leave that up to the plug-in.)</li>
+<li>Is bypass behaving properly for ARA? (If the host chooses to bypass ARA plug-ins, it will need to apply any transformation done by the plug-in on its own - this may be tough esp. with regards to the <a class="el" href="group___model___playback___region.html#gga258336ff5f674225e3ec403493461179ad0c5da282e792ae38e3551fec63c4e45">TimestretchReflectingTempo</a> flag. The easier choice is to not implement bypass for ARA on the host side and instead leave that up to the plug-in.)</li>
 </ul>
 <h1><a class="anchor" id="autotoc_md50"></a>
 Maintaining The ARA Model</h1>
@@ -188,14 +188,14 @@ Audio-MIDI Conversion</h1>
 Key Signatures And Chords</h1>
 <ul>
 <li>Are enharmonic equivalents properly distinguished based on the circle of fifth index?</li>
-<li>Are the interval roles properly evaluated to distinguish e.g. from 2 from 9?</li>
+<li>Are the interval roles properly evaluated to distinguish e.g. 2 from 9?</li>
 <li>If the name is provided or evaluated, are the music related unicode characters (sharp, flat, triangle etc.) properly handled?</li>
 <li>When reading chords, and the internal chord model is covering only a subset of the possible ARA chords, are there reasonable fallbacks for the cases not covered?</li>
 </ul>
 <h1><a class="anchor" id="autotoc_md53"></a>
 Persistence</h1>
 <ul>
-<li>Can documents be archived and restored properly with all edits in tact (see also ARA Test Host <code>testArchiving()</code>)?<ul>
+<li>Can documents be archived and restored properly with all edits intact (see also ARA Test Host <code>testArchiving(), testSplitArchives(), testDragAndDrop()</code>)?<ul>
 <li>When doing a bounce, is the output identical before saving and after restoring?</li>
 </ul>
 </li>
@@ -237,8 +237,8 @@ UI-Related Topics</h1>
 </li>
 <li>Is key command handling working properly?<ul>
 <li>Are all key commands properly handled by the plug-in when its view has the focus (regardless of whether they are bound to menu items in the plug-in's menus or "free" commands not bound to a menu)?</li>
-<li>Are they properly ignored by the plug-in when has no focus?</li>
-<li>Is there any conflicts when both the host and the plug-in implement the same key command, such as the standard key commands for copy/undo/paste or space bar for playback start?</li>
+<li>Are they properly ignored by the plug-in when it has no focus?</li>
+<li>Is there any conflict when both the host and the plug-in implement the same key command, such as the standard key commands for copy/undo/paste or space bar for playback start?</li>
 <li>Does it work across Windows, macOS, Linux (if applicable)?</li>
 </ul>
 </li>
@@ -257,7 +257,7 @@ General</h1>
 <li>Does the implementation scale well both in terms of CPU and memory usage when being used with many long audio files at the same time (e.g. a real-life test scenario with a 30 minutes life-recording of 20+ tracks)?</li>
 <li>When reading UTF8-encoded strings from the other side, are any normalization requirements (e.g. for the text layout engine) properly enforced?</li>
 <li>Does the plug-in scan as an ARA enabled plug-in in the host?<ul>
-<li>For AudioUnit plug-in developers, is the <a class="el" href="group___audio___unit__v3.html#gad3b2fc71ec6c6b3c311eb504b56fad83">`</a>ARA"` tag" set in the <code>Info.plist</code> file? </li>
+<li>For AudioUnit plug-in developers, is the <a class="el" href="group___audio___unit.html#gad3b2fc71ec6c6b3c311eb504b56fad83">`</a>ARA"` tag" set in the <code>Info.plist</code> file? </li>
 </ul>
 </li>
 </ul>
