@@ -167,6 +167,8 @@ configure_ARA_Library_target(ARA_PlugIn_Library)
 
 # ======================
 
+if(FALSE)
+
 add_library(ARA_IPC_Library ${ARA_LIBRARY_TARGET_TYPE}
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPC.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCEncoding.h"
@@ -197,3 +199,4 @@ target_link_libraries(ARA_IPC_Library PRIVATE
 )
 
 configure_ARA_Library_target(ARA_IPC_Library)
+endif()
