@@ -223,9 +223,9 @@ public:
         const PendingReplyHandler* _prevPendingReplyHandler;
     };
 
-protected:
-    bool _isReply (MessageID messageID) { return messageID == 0; }
+    static bool isReply (MessageID messageID) { return messageID == 0; }
 
+protected:
     void _sendMessage (MessageID messageID, MessageEncoder* encoder);
     bool _waitForMessage ();
     void _handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData);

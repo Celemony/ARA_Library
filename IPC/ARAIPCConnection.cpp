@@ -150,7 +150,7 @@ MessageDispatcher::ThreadRef MessageDispatcher::_getCurrentThread ()
 
 void MessageDispatcher::_sendMessage (MessageID messageID, MessageEncoder* encoder)
 {
-    if (_isReply (messageID))
+    if (isReply (messageID))
         ARA_IPC_LOG ("replies to message on thread %p", _getCurrentThread ());
     else
         ARA_IPC_LOG ("sends message with ID %i on thread %p", messageID, _getCurrentThread ());
@@ -177,7 +177,7 @@ void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection:
 
 MessageEncoder* MessageDispatcher::_handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
-    ARA_INTERNAL_ASSERT (!_isReply (messageID));
+    ARA_INTERNAL_ASSERT (!isReply (messageID));
 
     ARA_IPC_LOG ("handles received message with ID %i on thread %p", messageID, _getCurrentThread ());
     auto replyEncoder { _connection->createEncoder () };
@@ -211,7 +211,7 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
 {
     if (_hasPendingMessage.exchange (false, std::memory_order_acquire))
     {
-        if (_isReply (_pendingMessageID))
+        if (isReply (_pendingMessageID))
         {
             const auto pendingReplyHandler { _pendingReplyHandler.load (std::memory_order_acquire) };
             ARA_INTERNAL_ASSERT (pendingReplyHandler != nullptr);
@@ -246,7 +246,7 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, con
     }
     else
     {
-        if (_isReply (messageID))
+        if (isReply (messageID))
             ARA_IPC_LOG ("dispatches received reply from thread %p to creation thread", _getCurrentThread ());
         else
             ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to creation thread", messageID, _getCurrentThread ());
@@ -302,7 +302,7 @@ void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, MessageEnc
             message->_targetThread = _invalidThread;
             lock.unlock ();
 
-            if (_isReply (receivedMessageID))
+            if (isReply (receivedMessageID))
             {
                 _handleReply (receivedDecoder, replyHandler, replyHandlerUserData); // will also delete receivedDecoder
                 break;
@@ -334,7 +334,7 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, c
         if (targetThread == _getCurrentThread ())
         {
             ARA_INTERNAL_ASSERT (getMessageChannel ()->currentThreadMustNotBeBlocked ());
-            if (_isReply (messageID))
+            if (isReply (messageID))
             {
                 ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
                 _handleReply (decoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
@@ -347,7 +347,7 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, c
         }
         else
         {
-            if (_isReply (messageID))
+            if (isReply (messageID))
                 ARA_IPC_LOG ("dispatches received reply from thread %p to sending thread %p", _getCurrentThread (), targetThread);
             else
                 ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to sending thread %p", messageID, _getCurrentThread (), targetThread);
@@ -368,7 +368,7 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, c
     }
     else
     {
-        ARA_INTERNAL_ASSERT (!_isReply (messageID));
+        ARA_INTERNAL_ASSERT (!isReply (messageID));
         _processReceivedMessage (messageID, decoder);
     }
 }
