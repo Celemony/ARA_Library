@@ -120,6 +120,7 @@ constexpr MessageArgumentKey receiveThreadKey { -2 };
 
 #if __cplusplus < 201703L
 constexpr MessageDispatcher::ThreadRef MessageDispatcher::_invalidThread;
+constexpr intptr_t MainThreadMessageDispatcher::_noPendingMessageDecoder;
 #endif
 
 
@@ -209,17 +210,21 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncod
 
 void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
 {
-    if (_hasPendingMessage.exchange (false, std::memory_order_acquire))
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
+
+    const auto pendingMessageDecoder { _pendingMessageDecoder.exchange (reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder), std::memory_order_acquire) };
+    if (pendingMessageDecoder != reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder))
     {
-        if (isReply (_pendingMessageID))
+        const auto pendingMessageID { _pendingMessageID };
+        if (isReply (pendingMessageID))
         {
             ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
-            _handleReply (_pendingMessageDecoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
+            _handleReply (pendingMessageDecoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
             _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
         }
         else
         {
-            auto replyEncoder { _handleReceivedMessage (_pendingMessageID, _pendingMessageDecoder) };
+            auto replyEncoder { _handleReceivedMessage (pendingMessageID, pendingMessageDecoder) };
             _sendMessage (0, replyEncoder);
         }
     }
@@ -228,8 +233,7 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
 void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     _pendingMessageID = messageID;
-    _pendingMessageDecoder = decoder;
-    _hasPendingMessage.store (true, std::memory_order_release);
+    _pendingMessageDecoder.store (decoder, std::memory_order_release);
 
     if (getConnection ()->wasCreatedOnCurrentThread ())
     {

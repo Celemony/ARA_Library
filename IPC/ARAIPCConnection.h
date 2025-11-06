@@ -260,9 +260,11 @@ public:
     void processPendingMessageIfNeeded ();
 
 private:
-    MessageID _pendingMessageID { 0 };
-    const MessageDecoder* _pendingMessageDecoder { nullptr };
-    std::atomic<bool> _hasPendingMessage {false };
+// \todo this is not allowed for some reason, so we must cast at every use of _noPendingMessageDecoder...
+//  static constexpr auto _noPendingMessageDecoder { reinterpret_cast<const MessageDecoder*> (static_cast<intptr_t> (-1)) };
+    static constexpr auto _noPendingMessageDecoder { static_cast<intptr_t> (-1) };
+    MessageID _pendingMessageID { 0 };  // read/write _pendingMessageDecoder with proper barrier before/after reading/writing this
+    std::atomic<const MessageDecoder*> _pendingMessageDecoder { reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder) };
 
     const PendingReplyHandler* _pendingReplyHandler { nullptr };
 };
