@@ -377,6 +377,7 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
 
 
 #if defined (_WIN32)
+
 // from https://devblogs.microsoft.com/oldnewthing/20141015-00/?p=43843
 BOOL ConvertToRealHandle(HANDLE h,
                          BOOL bInheritHandle,
@@ -401,26 +402,48 @@ void APCRouteNewTransactionFunc (ULONG_PTR parameter)
     (*funcPtr) ();
     delete funcPtr;
 }
+
+#elif defined (__APPLE__)
+
+void Connection::performRunloopSource (void* info)
+{
+    auto connection { reinterpret_cast<Connection*> (info) };
+    connection->_mutex.lock ();
+    while (!connection->_queue.empty ())
+    {
+        auto func { connection->_queue.front () };
+        connection->_queue.pop ();
+        connection->_mutex.unlock ();
+ 
+        func ();
+ 
+        connection->_mutex.lock ();
+    }
+    connection->_mutex.unlock ();
+}
+
 #endif
 
 Connection::Connection ()
 : _creationThreadID { std::this_thread::get_id () },
 #if defined (_WIN32)
   _creationThreadHandle { _GetRealCurrentThread () }
+{}
 #elif defined (__APPLE__)
-  _creationThreadQueue { dispatch_get_main_queue () }
-#endif
+  _creationThreadRunLoop { CFRunLoopGetCurrent () }
 {
-#if defined (__APPLE__)
-    // since there is no way to create a dispatch queue associated with the current thread,
-    // we require this is called on the main thread on Apple platforms, which has the only
-    // well-defined dispatch queue on the system.
-    ARA_INTERNAL_ASSERT (CFRunLoopGetMain () == CFRunLoopGetCurrent ());
-#endif
+    CFRunLoopSourceContext context { 0, this, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, performRunloopSource };
+    _runloopSource = CFRunLoopSourceCreate (kCFAllocatorDefault, 0, &context);
+    CFRunLoopAddSource (_creationThreadRunLoop, _runloopSource, kCFRunLoopCommonModes);
 }
+#endif
 
 Connection::~Connection ()
 {
+#if defined (__APPLE__)
+    CFRunLoopRemoveSource (_creationThreadRunLoop, _runloopSource, kCFRunLoopCommonModes);
+    CFRelease (_runloopSource);
+#endif
     delete _otherThreadsDispatcher;
     delete _mainThreadDispatcher;
 }
@@ -459,10 +482,11 @@ void Connection::dispatchToCreationThread (DispatchableFunction func)
     const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, _creationThreadHandle, reinterpret_cast<ULONG_PTR> (funcPtr)) };
     ARA_INTERNAL_ASSERT (result != 0);
 #elif defined (__APPLE__)
-    dispatch_async (_creationThreadQueue,
-        ^{
-            func ();
-        });
+    _mutex.lock ();
+    _queue.emplace (std::move (func));
+    _mutex.unlock ();
+    CFRunLoopSourceSignal (_runloopSource);
+    CFRunLoopWakeUp (_creationThreadRunLoop);
 #endif
 }
 

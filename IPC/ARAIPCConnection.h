@@ -28,12 +28,13 @@
 #if defined (_WIN32)
     #include <Windows.h>
 #elif defined (__APPLE__)
-    #include <dispatch/dispatch.h>
+    #include <CoreFoundation/CFRunLoop.h>
 #endif
 
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <queue>
 #include <vector>
 
 
@@ -162,6 +163,10 @@ public:
     using DispatchableFunction = std::function<void ()>;
     void dispatchToCreationThread (DispatchableFunction func);
 
+#if defined (__APPLE__)
+    static void performRunloopSource (void* info);
+#endif
+
 private:
     MainThreadMessageDispatcher* _mainThreadDispatcher {};
     OtherThreadsMessageDispatcher* _otherThreadsDispatcher {};
@@ -170,7 +175,10 @@ private:
 #if defined (_WIN32)
     HANDLE const _creationThreadHandle;
 #elif defined (__APPLE__)
-    dispatch_queue_t const _creationThreadQueue;
+    CFRunLoopRef const _creationThreadRunLoop;
+    CFRunLoopSourceRef _runloopSource;
+    std::queue<DispatchableFunction> _queue;    // \todo instead of locking, use a lockless concurrent queue,
+    std::recursive_mutex _mutex;                // eg this one: https://github.com/hogliux/farbot
 #else
     #error "not yet implemented on this platform"
 #endif
