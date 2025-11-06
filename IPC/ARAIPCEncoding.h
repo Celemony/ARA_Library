@@ -1107,7 +1107,7 @@ inline const char* decodeHostMessageID (const MessageID messageID)
 #undef ARA_IPC_GLOBAL_MESSAGE_CASE
 
 #define ARA_IPC_PLUGIN_INTERFACE_CASE(StructT, member) \
-        case ARA_IPC_PLUGIN_METHOD_ID(StructT, member).getMessageID (): return #StructT "::" #member;
+        case ARA_IPC_PLUGIN_METHOD_ID (StructT, member).getMessageID (): return #StructT "::" #member;
         ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyDocumentController)
         ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getFactory)
         ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, beginEditing)
@@ -1182,7 +1182,7 @@ inline const char* decodePlugInMessageID (const MessageID messageID)
     switch (messageID)
     {
 #define ARA_IPC_HOST_INTERFACE_CASE(StructT, member) \
-        case ARA_IPC_HOST_METHOD_ID(StructT, member).getMessageID (): return #StructT "::" #member;
+        case ARA_IPC_HOST_METHOD_ID (StructT, member).getMessageID (): return #StructT "::" #member;
         ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, createAudioReaderForSource)
         ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, readAudioSamples)
         ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, destroyAudioReader)
