@@ -46,7 +46,7 @@ extern "C" {
 API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 
 //! optional delegate that can be provided in ARAIPCAUProxyPlugInInitialize()
-typedef void (*ARAMainThreadWaitForMessageDelegate) (void);
+typedef void (*ARAMainThreadWaitForMessageDelegate) (void * _Nullable delegateUserData);
 
 //! host side: initialize proxy plug-in component and its internal the message channels
 //! will return nullptr if the Audio Unit does not implement [AUAudioUnit messageChannelFor:]
@@ -54,9 +54,11 @@ typedef void (*ARAMainThreadWaitForMessageDelegate) (void);
 //! the provided audioUnit is only used to establish the channels, it can be closed again
 //! after the call if not needed otherwise
 //! must be balanced with ARAIPCAUProxyPlugInUninitialize()
-//! the optional delegate will be called periodically when the IPC needs to block the main thread
+//! the optional delegate will be called periodically when the IPC needs to block the main thread,
+//! with the opaque user data pointer being passed back into the call
 ARAIPCConnectionRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitialize(AUAudioUnit * _Nonnull audioUnit,
-                                                                     ARAMainThreadWaitForMessageDelegate _Nullable delegate);
+                                                                     ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
+                                                                     void * _Nullable delegateUserData);
 
 //! allows the host to let the plug-in perform ARA IPC on the main thread when otherwise
 //! blocking it for an extended period of time

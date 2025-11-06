@@ -184,9 +184,11 @@ class ProxyPlugInMessageChannel : public AudioUnitMessageChannel
 {
 public:
     ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, bool isMainThreadChannel,
-                               ARAMainThreadWaitForMessageDelegate waitForMessageDelegate)
+                               ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
+                               void * _Nullable delegateUserData)
     : AudioUnitMessageChannel { audioUnitChannel, isMainThreadChannel },
-      _waitForMessageDelegate { waitForMessageDelegate }
+      _waitForMessageDelegate { waitForMessageDelegate },
+      _delegateUserData { delegateUserData }
     {
         ARA_INTERNAL_ASSERT (isMainThreadChannel || !waitForMessageDelegate);
     
@@ -216,7 +218,7 @@ public:
             return true;
 
         if (_waitForMessageDelegate)
-            _waitForMessageDelegate ();
+            _waitForMessageDelegate (_delegateUserData);
 
         return false;
     }
@@ -229,7 +231,8 @@ protected:
     }
 
 private:
-    const ARAMainThreadWaitForMessageDelegate _waitForMessageDelegate;
+    const ARAMainThreadWaitForMessageDelegate _Nullable _waitForMessageDelegate;
+    void * _Nullable const _delegateUserData;
 };
 #endif // !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
@@ -239,7 +242,8 @@ class AUProxyPlugIn : public ProxyPlugIn, public AUConnection
 {
 public:
     static AUProxyPlugIn* createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit,
-                                               ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate)
+                                               ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
+                                               void * _Nullable delegateUserData)
     {
         // AUAudioUnits created before macOS 13 will not know about this API yet
         if (![audioUnit respondsToSelector:@selector(messageChannelFor:)])
@@ -255,7 +259,7 @@ public:
 
         return new AUProxyPlugIn { static_cast<NSObject<AUMessageChannel>*> (mainChannel),
                                    static_cast<NSObject<AUMessageChannel>*> (otherChannel),
-                                   audioUnit, waitForMessageDelegate };
+                                   audioUnit, waitForMessageDelegate, delegateUserData };
     }
 
     ~AUProxyPlugIn () override
@@ -269,12 +273,13 @@ private:
     AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel,
                    NSObject<AUMessageChannel> * _Nonnull otherChannel,
                    AUAudioUnit * _Nonnull initAU,
-                   ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate)
+                   ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
+                   void * _Nullable delegateUserData)
     : ProxyPlugIn { this },
       _initAU { initAU }
     {
-        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel, true, waitForMessageDelegate });
-        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel, false, nullptr });
+        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel, true, waitForMessageDelegate, delegateUserData });
+        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel, false, nullptr, nullptr });
         setMessageHandler (this);
 #if !__has_feature(objc_arc)
         [_initAU retain];
@@ -308,9 +313,10 @@ extern "C" {
 #if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
 ARAIPCConnectionRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit,
-                                                            ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate)
+                                                            ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
+                                                            void * _Nullable delegateUserData)
 {
-    return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit, waitForMessageDelegate));
+    return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit, waitForMessageDelegate, delegateUserData));
 }
 
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCConnectionRef _Nonnull proxyRef)
