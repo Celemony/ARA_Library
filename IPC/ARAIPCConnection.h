@@ -31,6 +31,7 @@
     #include <dispatch/dispatch.h>
 #endif
 
+#include <functional>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -158,22 +159,21 @@ public:
 
     bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
 
-#if defined (_WIN32)
-    using DispatchTarget = HANDLE;
-    friend void APCProcessReceivedMessageFunc (ULONG_PTR parameter);
-#elif defined (__APPLE__)
-    using DispatchTarget = dispatch_queue_t;
-#else
-    #error "not yet implemented on this platform"
-#endif
-    DispatchTarget getCreationThreadDispatchTarget () { return _creationThreadDispatchTarget; }
+    using DispatchableFunction = std::function<void ()>;
+    void dispatchToCreationThread (DispatchableFunction func);
 
 private:
     MainThreadMessageDispatcher* _mainThreadDispatcher {};
     OtherThreadsMessageDispatcher* _otherThreadsDispatcher {};
     MessageHandler* _messageHandler {};
     std::thread::id const _creationThreadID;
-    DispatchTarget const _creationThreadDispatchTarget;
+#if defined (_WIN32)
+    HANDLE const _creationThreadHandle;
+#elif defined (__APPLE__)
+    dispatch_queue_t const _creationThreadQueue;
+#else
+    #error "not yet implemented on this platform"
+#endif
 };
 //! @}
 
@@ -250,10 +250,6 @@ public:
     void routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder) override;
 
     void processPendingMessageIfNeeded ();
-
-#if defined (_WIN32)
-    friend void APCRouteNewTransactionFunc (ULONG_PTR parameter);
-#endif
 
 private:
     MessageID _pendingMessageID { 0 };

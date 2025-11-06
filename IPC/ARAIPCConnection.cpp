@@ -225,14 +225,6 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
     }
 }
 
-#if defined (_WIN32)
-void APCRouteNewTransactionFunc (ULONG_PTR parameter)
-{
-    auto messageDispatcher { reinterpret_cast<MainThreadMessageDispatcher*> (parameter) };
-    messageDispatcher->processPendingMessageIfNeeded ();
-}
-#endif
-
 void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     _pendingMessageID = messageID;
@@ -249,15 +241,7 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, con
             ARA_IPC_LOG ("dispatches received reply from thread %p to creation thread", _getCurrentThread ());
         else
             ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to creation thread", messageID, _getCurrentThread ());
-#if defined (_WIN32)
-        const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, getConnection ()->getCreationThreadDispatchTarget (), reinterpret_cast<ULONG_PTR> (this)) };
-        ARA_INTERNAL_ASSERT (result != 0);
-#elif defined (__APPLE__)
-        dispatch_async (getConnection ()->getCreationThreadDispatchTarget (),
-            ^{
-                processPendingMessageIfNeeded ();
-            });
-#endif
+        getConnection ()->dispatchToCreationThread (std::bind (&MainThreadMessageDispatcher::processPendingMessageIfNeeded, this));
     }
 }
 
@@ -410,17 +394,21 @@ HANDLE _GetRealCurrentThread ()
     ARA_INTERNAL_ASSERT (success);
     return currentThread;
 }
-#endif
 
+void APCRouteNewTransactionFunc (ULONG_PTR parameter)
+{
+    auto funcPtr { reinterpret_cast<Connection::DispatchableFunction*> (parameter) };
+    (*funcPtr) ();
+    delete funcPtr;
+}
+#endif
 
 Connection::Connection ()
 : _creationThreadID { std::this_thread::get_id () },
 #if defined (_WIN32)
-  _creationThreadDispatchTarget { _GetRealCurrentThread () }
+  _creationThreadHandle { _GetRealCurrentThread () }
 #elif defined (__APPLE__)
-  _creationThreadDispatchTarget { dispatch_get_main_queue () }
-#else
-    #error "not yet implemented on this platform"
+  _creationThreadQueue { dispatch_get_main_queue () }
 #endif
 {
 #if defined (__APPLE__)
@@ -462,6 +450,20 @@ void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, Repl
         _mainThreadDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
     else
         _otherThreadsDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
+}
+
+void Connection::dispatchToCreationThread (DispatchableFunction func)
+{
+#if defined (_WIN32)
+    auto funcPtr { new DispatchableFunction { func } };
+    const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, _creationThreadHandle, reinterpret_cast<ULONG_PTR> (funcPtr)) };
+    ARA_INTERNAL_ASSERT (result != 0);
+#elif defined (__APPLE__)
+    dispatch_async (_creationThreadQueue,
+        ^{
+            func ();
+        });
+#endif
 }
 
 }   // namespace IPC
