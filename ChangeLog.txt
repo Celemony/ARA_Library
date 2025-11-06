@@ -1,10 +1,9 @@
-This is a development build of the ARA Library 2.3.
-=== PRELIMINARY - DO NOT USE FOR SHIPPING PRODUCTS! ===
+Proposed Features which have been postponed to a later subrelease:
+- generic ARA IPC library, providing a proxy host and a proxy plug-in,
+  based on the IPC Example from earlier SDK releases
 
 
-Changes since previous releases:
-- initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,
-  based on heavily refactored IPC Example from earlier SDK releases
+=== ARA SDK 2.3 release (aka 2.3.001) (2025/11/07) ===
 - ChannelArrangement helper class refactored as editable ChannelFormat, which now maintains
   a channel count too and copies the channel arrangement data instead of referencing it
   As a result, DocumentController::doUpdateChannelArrangement() has been removed since
