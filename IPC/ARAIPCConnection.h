@@ -81,16 +81,6 @@ public:
     //! implemented by subclasses to perform the actual message (or reply) sending
     virtual void sendMessage (MessageID messageID, MessageEncoder* encoder) = 0;
 
-    //! OtherThreadsMessageDispatcher calls this to determine whether it may or may not
-    //! block the current thread - some IPC implementations might require spinning
-    //! the current thread in order to receive messages or perform other tasks
-    virtual bool currentThreadMustNotBeBlocked () { return false; }
-
-    //! when using the MainThreadMessageDispatcher or when currentThreadMustNotBeBlocked ()
-    //! returns true, this call will be made in order to spin the thread while waiting
-    //! for messages - returns true if a message was handled, false otherwise
-    virtual bool waitForMessage (ARATimeDuration timeout) = 0;
-
     void setMessageDispatcher (MessageDispatcher* messageDispatcher)
     {
         ARA_INTERNAL_ASSERT (_messageDispatcher == nullptr);
@@ -110,10 +100,9 @@ private:
 //! @{
 class Connection
 {
-protected:
-    explicit Connection ();
-
 public:
+    using WaitForMessageDelegate = void (*) (void* delegateUserData);
+    explicit Connection (WaitForMessageDelegate waitForMessageDelegate, void* delegateUserData);
     virtual ~Connection ();
 
     //! set the message channel for all main thread communication
@@ -160,14 +149,29 @@ public:
 
     bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
 
+    //! if IPC messages that need to be processed on the creation thread are received on some
+    //! other thread due to the design of the underlying IPC APIs, then this dispatch allows them
+    //! to forward it to the creation thread
     using DispatchableFunction = std::function<void ()>;
     void dispatchToCreationThread (DispatchableFunction func);
+
+    //! when a message dispatcher blocks the creation thread for some time, it needs to periodically
+    //! call this method to let other main thread tasks execute cooperatively
+    //! returns true if a message was received, false otherwise
+    bool waitForMessageOnCreationThread ();
+
+    //! message dispatcher need to call this when routing a message to the creation thread
+    //! in order to wake it up
+    void signalMesssageReceived ();
 
 #if defined (__APPLE__)
     static void performRunloopSource (void* info);
 #endif
 
 private:
+    const WaitForMessageDelegate _waitForMessageDelegate;
+    void* const _delegateUserData;
+    void* const _waitForMessageSemaphore;   // concrete type is platform-dependent
     MainThreadMessageDispatcher* _mainThreadDispatcher {};
     OtherThreadsMessageDispatcher* _otherThreadsDispatcher {};
     MessageHandler* _messageHandler {};

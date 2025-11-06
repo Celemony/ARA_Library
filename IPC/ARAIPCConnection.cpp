@@ -26,6 +26,10 @@
 #include "ARA_Library/IPC/ARAIPCEncoding.h"
 
 #include <utility>
+#if __cplusplus >= 202002L
+    #include <chrono>
+    #include <semaphore>
+#endif
 
 #if defined (__APPLE__)
     #include <CoreFoundation/CoreFoundation.h>
@@ -161,11 +165,6 @@ void MessageDispatcher::_sendMessage (MessageID messageID, MessageEncoder* encod
     delete encoder;
 }
 
-bool MessageDispatcher::_waitForMessage ()
-{
-    return _messageChannel->waitForMessage (0.001);
-}
-
 void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThread ());
@@ -203,7 +202,7 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncod
 
     while (previousPendingReplyHandler != _pendingReplyHandler)
     {
-        if (_waitForMessage ())
+        if (getConnection ()->waitForMessageOnCreationThread ())
             processPendingMessageIfNeeded ();
     }
 }
@@ -234,6 +233,7 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, con
 {
     _pendingMessageID = messageID;
     _pendingMessageDecoder.store (decoder, std::memory_order_release);
+    getConnection ()->signalMesssageReceived ();
 
     if (getConnection ()->wasCreatedOnCurrentThread ())
     {
@@ -266,14 +266,14 @@ void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, MessageEnc
     _sendMessage (messageID, encoder);
     _sendLock.unlock ();
 
-    if (getMessageChannel ()->currentThreadMustNotBeBlocked ())
+    if (getConnection ()->wasCreatedOnCurrentThread ())
     {
         const auto previousPendingReplyHandler { _pendingReplyHandler };
         const PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData, previousPendingReplyHandler };
         _pendingReplyHandler = &pendingReplyHandler;
         do
         {
-            _waitForMessage ();
+            getConnection ()->waitForMessageOnCreationThread ();
         } while (_pendingReplyHandler != previousPendingReplyHandler);
     }
     else
@@ -320,7 +320,6 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, c
         ARA_INTERNAL_ASSERT (targetThread != _invalidThread);
         if (targetThread == _getCurrentThread ())
         {
-            ARA_INTERNAL_ASSERT (getMessageChannel ()->currentThreadMustNotBeBlocked ());
             if (isReply (messageID))
             {
                 ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
@@ -428,8 +427,20 @@ void Connection::performRunloopSource (void* info)
 
 #endif
 
-Connection::Connection ()
-: _creationThreadID { std::this_thread::get_id () },
+
+Connection::Connection (WaitForMessageDelegate waitForMessageDelegate, void* delegateUserData)
+: _waitForMessageDelegate { waitForMessageDelegate },
+  _delegateUserData { delegateUserData },
+#if __cplusplus >= 202002L
+  _waitForMessageSemaphore { new std::binary_semaphore { 0 } },
+#elif defined (_WIN32)
+  _waitForMessageSemaphore { ::CreateSemaphore (nullptr, 0, LONG_MAX, nullptr) },
+#elif defined (__APPLE__)
+  _waitForMessageSemaphore { dispatch_semaphore_create (0) },
+#else
+    #error "IPC not yet implemented for this platform"
+#endif
+  _creationThreadID { std::this_thread::get_id () },
 #if defined (_WIN32)
   _creationThreadHandle { _GetRealCurrentThread () }
 {}
@@ -450,6 +461,15 @@ Connection::~Connection ()
 #endif
     delete _otherThreadsDispatcher;
     delete _mainThreadDispatcher;
+#if __cplusplus >= 202002L
+    delete static_cast<std::binary_semaphore*> (_waitForMessageSemaphore);
+#elif defined (_WIN32)
+    ::CloseHandle (_waitForMessageSemaphore);
+#elif defined (__APPLE__)
+    dispatch_release (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore));
+#else
+    #error "IPC not yet implemented for this platform"
+#endif
 }
 
 void Connection::setMainThreadChannel (MessageChannel* messageChannel)
@@ -493,6 +513,45 @@ void Connection::dispatchToCreationThread (DispatchableFunction func)
     CFRunLoopWakeUp (_creationThreadRunLoop);
 #endif
 }
+
+bool Connection::waitForMessageOnCreationThread ()
+{
+    ARA_INTERNAL_ASSERT (wasCreatedOnCurrentThread ());
+
+    constexpr ARATimeDuration timeout { 0.010 };
+    bool didReceiveMessage;
+#if __cplusplus >= 202002L
+    didReceiveMessage = static_cast<std::binary_semaphore*> (_waitForMessageSemaphore)->try_acquire_for (std::chrono::duration<ARATimeDuration> { timeout });
+#elif defined (_WIN32)
+    didReceiveMessage = (::WaitForSingleObject (_waitForMessageSemaphore, static_cast<DWORD> (timeout * 1000.0 + 0.5)) == WAIT_OBJECT_0);
+#elif defined (__APPLE__)
+    const auto deadline { dispatch_time (DISPATCH_TIME_NOW, static_cast<int64_t> (10e9 * timeout + 0.5)) };
+    didReceiveMessage = (dispatch_semaphore_wait (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore), deadline) == 0);
+#else
+    #error "IPC not yet implemented for this platform"
+#endif
+    if (didReceiveMessage)
+        return true;
+
+    if (_waitForMessageDelegate)
+        _waitForMessageDelegate (_delegateUserData);
+
+    return false;
+}
+
+void Connection::signalMesssageReceived ()
+{
+#if __cplusplus >= 202002L
+    static_cast<std::binary_semaphore*> (_waitForMessageSemaphore)->release ();
+#elif defined (_WIN32)
+    ::ReleaseSemaphore (_waitForMessageSemaphore, 1, nullptr);
+#elif defined (__APPLE__)
+    dispatch_semaphore_signal (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore));
+#else
+    #error "IPC not yet implemented for this platform"
+#endif
+}
+
 
 }   // namespace IPC
 }   // namespace ARA
