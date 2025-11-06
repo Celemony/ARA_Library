@@ -260,7 +260,7 @@ private:
     const MessageDecoder* _pendingMessageDecoder { nullptr };
     std::atomic<bool> _hasPendingMessage {false };
 
-    std::atomic<const PendingReplyHandler*> _pendingReplyHandler { nullptr };
+    const PendingReplyHandler* _pendingReplyHandler { nullptr };
 };
 
 //! multi-threaded variant for all non-main thread communication

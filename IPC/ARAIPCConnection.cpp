@@ -194,13 +194,13 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncod
 {
     ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
-    const auto previousPendingReplyHandler { _pendingReplyHandler.load (std::memory_order_acquire) };
+    const auto previousPendingReplyHandler { _pendingReplyHandler };
     const PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData, previousPendingReplyHandler };
-    _pendingReplyHandler.store (&pendingReplyHandler, std::memory_order_release);
+    _pendingReplyHandler = &pendingReplyHandler;
  
     _sendMessage (messageID, encoder);
 
-    while (previousPendingReplyHandler != _pendingReplyHandler.load (std::memory_order_acquire))
+    while (previousPendingReplyHandler != _pendingReplyHandler)
     {
         if (_waitForMessage ())
             processPendingMessageIfNeeded ();
@@ -213,10 +213,9 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
     {
         if (isReply (_pendingMessageID))
         {
-            const auto pendingReplyHandler { _pendingReplyHandler.load (std::memory_order_acquire) };
-            ARA_INTERNAL_ASSERT (pendingReplyHandler != nullptr);
-            _handleReply (_pendingMessageDecoder, pendingReplyHandler->_replyHandler, pendingReplyHandler->_replyHandlerUserData);
-            _pendingReplyHandler.store (pendingReplyHandler->_prevPendingReplyHandler, std::memory_order_release);
+            ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
+            _handleReply (_pendingMessageDecoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
+            _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
         }
         else
         {
