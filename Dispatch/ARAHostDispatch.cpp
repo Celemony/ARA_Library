@@ -360,62 +360,13 @@ void DocumentController::updateDocumentProperties (const ARADocumentProperties* 
     getInterface ()->updateDocumentProperties (getRef (), properties);
 }
 
-bool DocumentController::beginRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
-{
-    // begin-/endRestoringDocumentFromArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
-    if (supportsPartialPersistency ())
-    {
-        getInterface ()->beginEditing (getRef ());
-        return true;
-    }
-    else
-    {
-        return (getInterface ()->beginRestoringDocumentFromArchive (getRef (), archiveReaderHostRef) != kARAFalse);
-    }
-}
-
-bool DocumentController::endRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
-{
-    // begin-/endRestoringDocumentFromArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
-    if (supportsPartialPersistency ())
-    {
-        const auto result { getInterface ()->restoreObjectsFromArchive (getRef (), archiveReaderHostRef, nullptr) };
-        getInterface ()->endEditing (getRef ());
-        return (result != kARAFalse);
-    }
-    else
-    {
-        return (getInterface ()->endRestoringDocumentFromArchive (getRef (), archiveReaderHostRef) != kARAFalse);
-    }
-}
-
-bool DocumentController::storeDocumentToArchive (ARAArchiveWriterHostRef archiveWriterHostRef) noexcept
-{
-    // storeDocumentToArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
-    if (supportsPartialPersistency ())
-        return (getInterface ()->storeObjectsToArchive (getRef (), archiveWriterHostRef, nullptr) != kARAFalse);
-    else
-        return (getInterface ()->storeDocumentToArchive (getRef (), archiveWriterHostRef) != kARAFalse);
-}
-
-bool DocumentController::supportsPartialPersistency () noexcept
-{
-    return getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeObjectsToArchive)> ();
-}
-
 bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept
 {
-    if (!supportsPartialPersistency ())
-        return false;
-
     return (getInterface ()->restoreObjectsFromArchive (getRef (), archiveReaderHostRef, filter) != kARAFalse);
 }
 
 bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef archiveWriterHostRef, const ARAStoreObjectsFilter* filter) noexcept
 {
-    if (!supportsPartialPersistency ())
-        return false;
-
     return (getInterface ()->storeObjectsToArchive (getRef (), archiveWriterHostRef, filter) != kARAFalse);
 }
 

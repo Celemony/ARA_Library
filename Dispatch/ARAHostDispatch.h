@@ -292,17 +292,6 @@ public:
 
 //! @name Archiving
 //@{
-    // deprecated ARA 1 monolithic persistency calls, must be used unless requiring plug-ins to support kARAAPIGeneration_2_0_Final
-    //! \copydoc ARADocumentControllerInterface::beginRestoringDocumentFromArchive
-    ARA_DEPRECATED(2_0_Final) bool beginRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept;
-    //! \copydoc ARADocumentControllerInterface::endRestoringDocumentFromArchive
-    ARA_DEPRECATED(2_0_Final) bool endRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept;
-    //! \copydoc ARADocumentControllerInterface::storeDocumentToArchive
-    ARA_DEPRECATED(2_0_Final) bool storeDocumentToArchive (ARAArchiveWriterHostRef archiveWriterHostRef) noexcept;
-    //! If supporting both types of persistency, this call can be used to pick the appropriate type for the given plug-in.
-    ARA_DEPRECATED(2_0_Final) bool supportsPartialPersistency () noexcept;
-    // new ARA 2 partial persistency calls, may only be used for plug-ins that support the new ARA 2 persistency,
-    // which is part of kARAAPIGeneration_2_0_Final (but not yet present in kARAAPIGeneration_2_0_Draft !)
     //! \copydoc ARADocumentControllerInterface::restoreObjectsFromArchive
     bool restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept;
     //! \copydoc ARADocumentControllerInterface::storeObjectsToArchive
