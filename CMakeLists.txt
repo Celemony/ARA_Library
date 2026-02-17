@@ -58,7 +58,7 @@ function(configure_ARA_Library_target target)
     # language standards
     target_compile_features(${target}
         PUBLIC
-            cxx_std_11
+            cxx_std_14
             c_std_11
     )
 

@@ -207,10 +207,7 @@ public:
 
     //! Default constructor.
     //! Special-cases the initializer list constructor only to suppress warnings about missing initializers for default construction.
-#if __cplusplus >= 201402L
-    constexpr
-#endif
-              inline SizedStruct () noexcept
+    inline constexpr SizedStruct () noexcept
     : StructType {}
     {
         this->structSize = SizedStruct::getImplementedSize ();

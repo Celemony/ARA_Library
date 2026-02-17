@@ -1319,11 +1319,7 @@ private:
         }
     }
 
-    static inline
-#if __cplusplus >= 201402L
-                  constexpr
-#endif
-                            _DecoderFunction _getDecoderFunctionForContentType (const ARAContentType type)
+    static inline constexpr _DecoderFunction _getDecoderFunctionForContentType (const ARAContentType type)
     {
         switch (type)
         {
@@ -1337,11 +1333,7 @@ private:
         }
     }
 
-    static inline
-#if __cplusplus >= 201402L
-                  constexpr
-#endif
-                            size_t _getStringMemberOffsetForContentType (const ARAContentType type)
+    static inline constexpr size_t _getStringMemberOffsetForContentType (const ARAContentType type)
     {
         switch (type)
         {

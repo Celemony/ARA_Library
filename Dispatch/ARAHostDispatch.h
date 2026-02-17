@@ -219,10 +219,7 @@ ARA_MAP_HOST_REF (PlaybackControllerInterface, ARAPlaybackControllerHostRef)
 class DocumentControllerHostInstance : public SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerHostInstance, playbackControllerInterface)>
 {
 public:
-#if __cplusplus >= 201402L
-    constexpr
-#endif
-              DocumentControllerHostInstance () noexcept : BaseType {} {}
+    constexpr DocumentControllerHostInstance () noexcept : BaseType {} {}
     DocumentControllerHostInstance (AudioAccessControllerInterface* audioAccessController,
                                     ArchivingControllerInterface* archivingController,
                                     ContentAccessControllerInterface* contentAccessController = nullptr,
