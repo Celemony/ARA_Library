@@ -31,6 +31,19 @@
 #include "ARA_API/ARAInterface.h"
 
 
+#if !defined (__cplusplus) || ((__cplusplus < 201703L) && (!defined (_MSVC_LANG) || (_MSVC_LANG < 201703L)))
+    #error "C++17 or higher is required to compile this code."
+#endif
+
+#if !defined(__cpp_nontype_template_parameter_auto) && !defined (__cpp_template_auto)
+    #error "Template auto support is required to compile this code."
+#endif
+
+#if defined (__clang__) && (__clang_major__ < 10)
+    #error "Clang 10 or newer is required to compile this code."
+#endif
+
+
 /*******************************************************************************/
 /** Optional ARA 1 backwards compatibility.
     Hosts and plug-ins can choose support ARA 1 hosts in addition to ARA 2 hosts.
@@ -172,16 +185,11 @@ public:
     __pragma (warning(disable : 4324))  // disable padding warnings, instances of this struct template may need to be padded.
 #endif
 
-#if defined (__cpp_template_auto)
 template <auto member>
 struct alignas (alignof (void*)) SizedStruct;
 
 template <typename StructType, typename MemberType, MemberType StructType::*member>
 struct alignas (alignof (void*)) SizedStruct<member> : public StructType
-#else
-template <typename StructType, typename MemberType, MemberType StructType::*member>
-struct alignas (alignof (void*)) SizedStruct : public StructType
-#endif
 {
 protected:
     //! \p SizedStruct alias, to allow any derived class to easily reference its templated base class.
@@ -257,27 +265,9 @@ public:
     //! ARA uses the \p StructType::structSize member as a means of versioning -
     //! if it is large enough to contain \p member then this function returns true.
     //! This is a C++ version of ARA_IMPLEMENTS_FIELD.
-#if defined (__cpp_template_auto)
     template <auto member>
     inline bool implements () const noexcept
-    {
-    #if defined (__clang__) && (__clang_major__ < 10)
-        // see clang bug: https://bugs.llvm.org/show_bug.cgi?id=35655
-        // as workaround, we're copying the code from SizedStruct<member>::getImplementedSize () here
-        static_assert (std::is_class<StructType>::value && std::is_standard_layout<StructType>::value, "C compatible standard layout struct required");
-        return this->_ptr->structSize >= reinterpret_cast<intptr_t> (&(static_cast<StructType*> (nullptr)->*member)) + sizeof (static_cast<StructType*> (nullptr)->*member);
-    #else
-        return this->_ptr->structSize >= SizedStruct<member>::getImplementedSize ();
-    #endif
-    }
-#else
-    template <typename DummyStructType, typename MemberType, MemberType StructType::*member>
-    inline bool implements () const noexcept
-    {
-        static_assert (std::is_same<DummyStructType, StructType>::value, "must test member of same struct");
-        return this->_ptr->structSize >= SizedStruct<StructType, MemberType, member>::getImplementedSize ();
-    }
-#endif
+    { return this->_ptr->structSize >= SizedStruct<member>::getImplementedSize (); }
 
 private:
     const StructType* _ptr;

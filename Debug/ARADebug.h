@@ -97,7 +97,7 @@ extern "C"
 // prevent unused variable warnings
 /*******************************************************************************/
 
-#if defined(__cplusplus) && (__cplusplus >= 201703L)
+#if defined(__cplusplus)
     #define ARA_MAYBE_UNUSED_VAR(var) var [[maybe_unused]]
 #elif defined(__GNUC__)
     #define ARA_MAYBE_UNUSED_VAR(var) var __attribute__((unused))
@@ -107,7 +107,7 @@ extern "C"
     #define ARA_MAYBE_UNUSED_VAR(var) var; (void)var
 #endif
 
-#if defined(__cplusplus) && (__cplusplus >= 201703L)
+#if defined(__cplusplus)
     #define ARA_MAYBE_UNUSED_ARG(var) var [[maybe_unused]]
 #elif defined(__GNUC__)
     #define ARA_MAYBE_UNUSED_ARG(var) var __attribute__((unused))

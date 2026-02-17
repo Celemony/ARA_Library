@@ -40,13 +40,8 @@ namespace ARA {
 
 struct ContentLogger
 {
-#if __cplusplus >= 201703L
     template <typename ControllerType, typename ModelObjectRefType>
     using ContentReaderRef = decltype ((static_cast<ControllerType*> (nullptr)->*ContentReaderFunctionMapper<ControllerType, ModelObjectRefType>::createContentReader) (nullptr, kARAContentTypeNotes, nullptr));
-#else
-    template <typename ControllerType, typename ModelObjectRefType>
-    using ContentReaderRef = typename std::result_of<decltype (ContentReaderFunctionMapper<ControllerType, ModelObjectRefType>::createContentReader) (ControllerType, ModelObjectRefType, ARAContentType, const ARAContentTimeRange*)>::type;
-#endif
 
     template <ARAContentType contentType, typename ControllerType, typename ModelObjectRefType>
 #if ARA_VALIDATE_API_CALLS

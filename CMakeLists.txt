@@ -41,6 +41,14 @@ project(ARA_Library
     LANGUAGES C CXX
 )
 
+# language standards
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # ======================
 
 add_subdirectory("${ARA_API_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/ARA_API.build" EXCLUDE_FROM_ALL)
@@ -54,13 +62,6 @@ function(configure_ARA_Library_target target)
 
     # file grouping
     ara_group_target_files(${target})
-
-    # language standards
-    target_compile_features(${target}
-        PUBLIC
-            cxx_std_14
-            c_std_11
-    )
 
     # ARA_API dependency
     target_link_libraries(${target} PUBLIC ARA_API)
@@ -85,6 +86,14 @@ function(configure_ARA_Library_target target)
             PRIVATE
                 -DNOMINMAX=1
         )
+        # /Zc:__cplusplus, added in Visual Studio 2017 version 15.7, is required to make __cplusplus
+        # accurate, see https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
+        if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
+            target_compile_options(${target}
+                PRIVATE
+                    "/Zc:__cplusplus"
+            )
+        endif()
     elseif(APPLE)
         if(XCODE)
             set_target_properties(${target} PROPERTIES

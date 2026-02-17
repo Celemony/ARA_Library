@@ -5,9 +5,9 @@ This is a development build of the ARA Library 3.0.
 Changes since previous releases:
 - support for ARA 1 and 2.0 Draft and related APIs dropped
   If previously optionally supporting obsolete ARA 1 persistency, now exclusively use ARA 2 persistency.
+- C++17 is now consistently required on all platforms
 - initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,
   based on heavily refactored IPC Example from earlier SDK releases
-- C++14 is now consistently required on all platforms
 
 
 === ARA SDK 2.3 release (aka 2.3.001) (2025/11/07) ===

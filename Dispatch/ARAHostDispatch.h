@@ -79,13 +79,8 @@ ARA_DISABLE_DOCUMENTATION_DEPRECATED_WARNINGS_BEGIN
 /** C++ wrapper for ARA variable-sized properties structs, ensures their proper initialization. */
 /*******************************************************************************/
 
-#if defined (__cpp_template_auto)
     template <auto member>
     using Properties = SizedStruct<member>;
-#else
-    template <typename StructType, typename MemberType, MemberType StructType::*member>
-    using Properties = SizedStruct<StructType, MemberType, member>;
-#endif
 
 //! @addtogroup ARA_Library_Host_Dispatch_Host_Interfaces Host Interfaces
 //! @{
