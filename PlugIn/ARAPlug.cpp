@@ -430,17 +430,17 @@ const OptionalProperty<ARAUtf8String>& MusicalContext::getEffectiveName () const
 
 void MusicalContext::updateProperties (PropertiesPtr<ARAMusicalContextProperties> properties) noexcept
 {
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAMusicalContextProperties, name)> ())
+    if (properties.implements<&ARAMusicalContextProperties::name> ())
         _name = properties->name;
     else
         _name = nullptr;
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAMusicalContextProperties, orderIndex)> ())
+    if (properties.implements<&ARAMusicalContextProperties::orderIndex> ())
         _orderIndex = properties->orderIndex;
     else
         _orderIndex = 0;        // for position, we have no markup for "unknown" position - we'll just remain unsorted
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAMusicalContextProperties, color)> ())
+    if (properties.implements<&ARAMusicalContextProperties::color> ())
         _color = properties->color;
     else
         _color = nullptr;
@@ -471,7 +471,7 @@ void RegionSequence::updateProperties (PropertiesPtr<ARARegionSequenceProperties
     _name = properties->name;
     _orderIndex = properties->orderIndex;
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARARegionSequenceProperties, color)> ())
+    if (properties.implements<&ARARegionSequenceProperties::color> ())
         _color = properties->color;
     else
         _color = nullptr;
@@ -519,7 +519,7 @@ void AudioSource::updateProperties (PropertiesPtr<ARAAudioSourceProperties> prop
     _sampleRate = properties->sampleRate;
     _merits64BitSamples = (properties->merits64BitSamples != kARAFalse);
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAAudioSourceProperties, channelArrangement)> ())
+    if (properties.implements<&ARAAudioSourceProperties::channelArrangement> ())
         _channelFormat.update (properties->channelCount, properties->channelArrangementDataType, properties->channelArrangement);
     else
         _channelFormat.update (properties->channelCount, kARAChannelArrangementUndefined, nullptr);
@@ -612,17 +612,17 @@ void PlaybackRegion::updateProperties (PropertiesPtr<ARAPlaybackRegionProperties
     _contentBasedFadeAtHead = ((properties->transformationFlags & kARAPlaybackTransformationContentBasedFadeAtHead) != 0);
     _contentBasedFadeAtTail = ((properties->transformationFlags & kARAPlaybackTransformationContentBasedFadeAtTail) != 0);
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, name)> ())
+    if (properties.implements<&ARAPlaybackRegionProperties::name> ())
         _name = properties->name;
     else
         _name = nullptr;
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, color)> ())
+    if (properties.implements<&ARAPlaybackRegionProperties::color> ())
         _color = properties->color;
     else
         _color = nullptr;
 
-    ARA_VALIDATE_API_ARGUMENT (properties, properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, regionSequenceRef)> ());
+    ARA_VALIDATE_API_ARGUMENT (properties, properties.implements<&ARAPlaybackRegionProperties::regionSequenceRef> ());
     auto regionSequence { fromRef (properties->regionSequenceRef) };
     ARA_VALIDATE_API_ARGUMENT (properties->regionSequenceRef, getDocumentController ()->isValidRegionSequence (regionSequence));
     setRegionSequence (regionSequence);
@@ -1189,10 +1189,10 @@ bool DocumentControllerDelegate::doStoreAudioSourceToAudioFileChunk (HostArchive
     *openAutomatically = false;
 
     ARAAudioSourceRef audioSourceRef { toRef (audioSource) };
-    const ARA::SizedStruct<ARA_STRUCT_MEMBER (ARAStoreObjectsFilter, audioModificationRefs)> filter { ARA::kARATrue,
-                                                                                                      1U, &audioSourceRef,
-                                                                                                      0U, nullptr
-                                                                                                    };
+    const SizedStruct<&ARAStoreObjectsFilter::audioModificationRefs> filter { kARATrue,
+                                                                              1U, &audioSourceRef,
+                                                                              0U, nullptr
+                                                                            };
     const StoreObjectsFilter storeObjectsFilter { &filter };
     return doStoreObjectsToArchive (archiveWriter, &storeObjectsFilter);
 }
@@ -1260,7 +1260,7 @@ void DocumentController::updateMusicalContextProperties (ARAMusicalContextRef mu
     ARA_VALIDATE_API_ARGUMENT (musicalContextRef, isValidMusicalContext (musicalContext));
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAMusicalContextProperties);
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAMusicalContextProperties, orderIndex)> ())
+    if (properties.implements<&ARAMusicalContextProperties::orderIndex> ())
     {
         if (properties->orderIndex != musicalContext->getOrderIndex ())
         {
@@ -2845,7 +2845,7 @@ const ARADocumentControllerInstance* PlugInEntry::createDocumentControllerWithDo
     ARA_VALIDATE_API_INTERFACE (hostInstance->audioAccessControllerInterface, ARAAudioAccessControllerInterface);
     ARA_VALIDATE_API_INTERFACE (hostInstance->archivingControllerInterface, ARAArchivingControllerInterface);
     if (_usedApiGeneration >= kARAAPIGeneration_2_0_Final)
-        ARA_VALIDATE_API_ARGUMENT (hostInstance->archivingControllerInterface, SizedStructPtr<ARAArchivingControllerInterface> (hostInstance->archivingControllerInterface).implements<ARA_STRUCT_MEMBER (ARAArchivingControllerInterface, getDocumentArchiveID)> ());
+        ARA_VALIDATE_API_ARGUMENT (hostInstance->archivingControllerInterface, SizedStructPtr<ARAArchivingControllerInterface> (hostInstance->archivingControllerInterface).implements<&ARAArchivingControllerInterface::getDocumentArchiveID> ());
     if (hostInstance->contentAccessControllerInterface)
         ARA_VALIDATE_API_INTERFACE (hostInstance->contentAccessControllerInterface, ARAContentAccessControllerInterface);
     if (hostInstance->modelUpdateControllerInterface)

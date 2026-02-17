@@ -1374,9 +1374,9 @@ private:
 //! Internal helper template class for HostContentReader.
 template <ARAContentType contentType>
 #if ARA_VALIDATE_API_CALLS
-using HostContentReaderBase = ARA::ContentReader<contentType, HostContentAccessController, ARAContentReaderHostRef, ARA::ContentValidator<contentType, HostContentAccessController, ARAContentReaderHostRef>>;
+using HostContentReaderBase = ARA::ContentReader<contentType, HostContentAccessController, ARAContentReaderHostRef, ContentValidator<contentType, HostContentAccessController, ARAContentReaderHostRef>>;
 #else
-using HostContentReaderBase = ARA::ContentReader<contentType, HostContentAccessController, ARAContentReaderHostRef, ARA::NoContentValidator<contentType, HostContentAccessController, ARAContentReaderHostRef>>;
+using HostContentReaderBase = ARA::ContentReader<contentType, HostContentAccessController, ARAContentReaderHostRef, NoContentValidator<contentType, HostContentAccessController, ARAContentReaderHostRef>>;
 #endif
 
 /*******************************************************************************/
@@ -1943,7 +1943,7 @@ private:
 
 private:
     const FactoryConfig* const _factoryConfig;
-    const SizedStruct<ARA_STRUCT_MEMBER (ARAFactory, supportsStoringAudioFileChunks)> _factory;
+    const SizedStruct<&ARAFactory::supportsStoringAudioFileChunks> _factory;
     ARAAPIGeneration _usedApiGeneration { 0 };
 
     ARA_DISABLE_COPY_AND_MOVE (PlugInEntry)

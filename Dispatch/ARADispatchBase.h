@@ -150,20 +150,6 @@ public:
 #endif
 
 /*******************************************************************************/
-// ARA_STRUCT_MEMBER pre-C++17 utility macro
-/** When dealing with ARA variable-sized structures, this eases defining the related C++ template arguments */
-/*******************************************************************************/
-
-#if defined (__cpp_template_auto)
-    // defined here so that code can be written to support both pre-C++17 and C++17 by always using the macro
-    // note that code which can rely on C++17 and up does not need to use the macro,
-    // writing e.g. SizedStruct<&ARAFactory::supportedPlaybackTransformationFlags> instead.
-    #define ARA_STRUCT_MEMBER(StructType, member) &ARA::StructType::member
-#else
-    #define ARA_STRUCT_MEMBER(StructType, member) ARA::StructType, decltype (ARA::StructType::member), &ARA::StructType::member
-#endif
-
-/*******************************************************************************/
 // SizedStruct
 
 //! Templated C++ wrapper for ARA's variable-sized structs, ensuring their proper initialization.
@@ -174,7 +160,7 @@ public:
 //! struct that implements every function up until ARADocumentControllerInterface::storeObjectsToArchive(),
 //! you can declare a SizedStruct like so:
 //! \code{.cpp}
-//! SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeObjectsToArchive)> dci;
+//! SizedStruct<&ARA::ARADocumentControllerInterface::storeObjectsToArchive> dci;
 //! \endcode
 //! In this example, `dci` won't support any function declared after ARADocumentControllerInterface::storeObjectsToArchive(),
 //! meaning it won't support ARA Analysis Algorithm selection.
@@ -239,7 +225,7 @@ public:
 //! bool supportsAnalysisAlgorithmSelection (ARADocumentControllerInterface* dci)
 //! {
 //!      SizedStructPtr<ARADocumentControllerInterface> sizedStructPtr (dci);
-//!      return sizedStructPtr.implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, getProcessingAlgorithmsCount)> ();
+//!      return sizedStructPtr.implements<&ARA::ARADocumentControllerInterface::getProcessingAlgorithmsCount> ();
 //! }
 //! \endcode
 /*******************************************************************************/

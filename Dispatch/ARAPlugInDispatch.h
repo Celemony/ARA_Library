@@ -250,7 +250,7 @@ ARA_MAP_REF (DocumentControllerInterface, ARADocumentControllerRef)
 /** Wrapper class for the ARADocumentControllerInstance. */
 /*******************************************************************************/
 
-class DocumentControllerInstance : public SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInstance, documentControllerInterface)>
+class DocumentControllerInstance : public SizedStruct<&ARADocumentControllerInstance::documentControllerInterface>
 {
 public:
     explicit DocumentControllerInstance (DocumentControllerInterface* documentController) noexcept;
@@ -324,7 +324,7 @@ ARA_MAP_REF (EditorViewInterface, ARAEditorViewRef)
 /** Wrapper class for ARAPlugInExtensionInstance. */
 /*******************************************************************************/
 
-class PlugInExtensionInstance : public SizedStruct<ARA_STRUCT_MEMBER (ARAPlugInExtensionInstance, editorViewInterface)>
+class PlugInExtensionInstance : public SizedStruct<&ARAPlugInExtensionInstance::editorViewInterface>
 {
 public:
     explicit PlugInExtensionInstance (PlaybackRendererInterface* playbackRenderer, EditorRendererInterface* editorRenderer, EditorViewInterface* editorView) noexcept;

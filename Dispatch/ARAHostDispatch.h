@@ -211,7 +211,7 @@ ARA_MAP_HOST_REF (PlaybackControllerInterface, ARAPlaybackControllerHostRef)
 /** Wrapper class for the ARADocumentControllerHostInstance. */
 /*******************************************************************************/
 
-class DocumentControllerHostInstance : public SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerHostInstance, playbackControllerInterface)>
+class DocumentControllerHostInstance : public SizedStruct<&ARADocumentControllerHostInstance::playbackControllerInterface>
 {
 public:
     constexpr DocumentControllerHostInstance () noexcept : BaseType {} {}

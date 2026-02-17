@@ -342,7 +342,7 @@ namespace DocumentControllerDispatcher
 
     static const ARADocumentControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)> ifc =
+        static const SizedStruct<&ARADocumentControllerInterface::isAudioModificationPreservingAudioSourceSignal> ifc =
         {
             DocumentControllerDispatcher::destroyDocumentController,
             DocumentControllerDispatcher::getFactory,
@@ -429,7 +429,7 @@ namespace PlaybackRendererDispatcher
 
     static const ARAPlaybackRendererInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAPlaybackRendererInterface, removePlaybackRegion)> ifc =
+        static const SizedStruct<&ARAPlaybackRendererInterface::removePlaybackRegion> ifc =
         {
             PlaybackRendererDispatcher::addPlaybackRegion,
             PlaybackRendererDispatcher::removePlaybackRegion
@@ -466,7 +466,7 @@ namespace EditorRendererDispatcher
 
     static const ARAEditorRendererInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAEditorRendererInterface, removeRegionSequence)> ifc =
+        static const SizedStruct<&ARAEditorRendererInterface::removeRegionSequence> ifc =
         {
             EditorRendererDispatcher::addPlaybackRegion,
             EditorRendererDispatcher::removePlaybackRegion,
@@ -495,7 +495,7 @@ namespace EditorViewDispatcher
 
     static const ARAEditorViewInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAEditorViewInterface, notifyHideRegionSequences)> ifc =
+        static const SizedStruct<&ARAEditorViewInterface::notifyHideRegionSequences> ifc =
         {
             EditorViewDispatcher::notifySelection,
             EditorViewDispatcher::notifyHideRegionSequences
@@ -569,7 +569,7 @@ void HostArchivingController::notifyDocumentUnarchivingProgress (float value) no
 ARAPersistentID HostArchivingController::getDocumentArchiveID (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
     // getDocumentArchiveID() was added in the ARA 2.0 final release, so check its presence here to support older hosts
-    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARAArchivingControllerInterface, getDocumentArchiveID)> ())
+    if (getInterface ().implements<&ARAArchivingControllerInterface::getDocumentArchiveID> ())
         return getInterface ()->getDocumentArchiveID (getRef (), archiveReaderHostRef);
     return nullptr;
 }
@@ -649,14 +649,14 @@ void HostModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackR
                                                                 const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept
 {
     // notifyPlaybackRegionContentChanged was optional in the ARA 2.0 draft, so check its presence here to be safe
-    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARAModelUpdateControllerInterface, notifyPlaybackRegionContentChanged)> ())
+    if (getInterface ().implements<&ARAModelUpdateControllerInterface::notifyPlaybackRegionContentChanged> ())
         getInterface ()->notifyPlaybackRegionContentChanged (getRef (), playbackRegionHostRef, range, scopeFlags);
 }
 
 void HostModelUpdateController::notifyDocumentDataChanged () noexcept
 {
     // notifyDocumentDataChanged was added in ARA 2.3 draft, so check its presence here
-    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARAModelUpdateControllerInterface, notifyDocumentDataChanged)> ())
+    if (getInterface ().implements<&ARAModelUpdateControllerInterface::notifyDocumentDataChanged> ())
         getInterface ()->notifyDocumentDataChanged (getRef ());
 }
 

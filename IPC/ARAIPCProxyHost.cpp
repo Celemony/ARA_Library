@@ -676,7 +676,7 @@ void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageD
     else if (messageID == kInitializeARAMethodID)
     {
         ARAPersistentID factoryID;
-        ARA::SizedStruct<ARA_STRUCT_MEMBER (ARAInterfaceConfiguration, assertFunctionAddress)> interfaceConfig = { kARAAPIGeneration_2_0_Final, nullptr };
+        ARA::SizedStruct<&ARA::ARAInterfaceConfiguration::assertFunctionAddress> interfaceConfig = { kARAAPIGeneration_2_0_Final, nullptr };
         decodeArguments (decoder, factoryID, interfaceConfig.desiredApiGeneration);
         ARA_INTERNAL_ASSERT (interfaceConfig.desiredApiGeneration >= kARAAPIGeneration_2_0_Final);
 

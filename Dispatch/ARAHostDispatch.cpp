@@ -48,7 +48,7 @@ namespace AudioAccessControllerDispatcher
 
     static const ARAAudioAccessControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAAudioAccessControllerInterface, destroyAudioReader)> ifc =
+        static const SizedStruct<&ARAAudioAccessControllerInterface::destroyAudioReader> ifc =
         {
             AudioAccessControllerDispatcher::createAudioReaderForSource,
             AudioAccessControllerDispatcher::readAudioSamples,
@@ -98,7 +98,7 @@ namespace ArchivingControllerDispatcher
 
     static const ARAArchivingControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAArchivingControllerInterface, getDocumentArchiveID)> ifc =
+        static const SizedStruct<&ARAArchivingControllerInterface::getDocumentArchiveID> ifc =
         {
             ArchivingControllerDispatcher::getArchiveSize,
             ArchivingControllerDispatcher::readBytesFromArchive,
@@ -167,7 +167,7 @@ namespace ContentAccessControllerDispatcher
 
     static const ARAContentAccessControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAContentAccessControllerInterface, destroyContentReader)> ifc =
+        static const SizedStruct<&ARAContentAccessControllerInterface::destroyContentReader> ifc =
         {
             ContentAccessControllerDispatcher::isMusicalContextContentAvailable,
             ContentAccessControllerDispatcher::getMusicalContextContentGrade,
@@ -220,7 +220,7 @@ namespace ModelUpdateControllerDispatcher
 
     static const ARAModelUpdateControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAModelUpdateControllerInterface, notifyDocumentDataChanged)> ifc =
+        static const SizedStruct<&ARAModelUpdateControllerInterface::notifyDocumentDataChanged> ifc =
         {
             ModelUpdateControllerDispatcher::notifyAudioSourceAnalysisProgress,
             ModelUpdateControllerDispatcher::notifyAudioSourceContentChanged,
@@ -265,7 +265,7 @@ namespace PlaybackControllerDispatcher
 
     static const ARAPlaybackControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAPlaybackControllerInterface, requestEnableCycle)> ifc =
+        static const SizedStruct<&ARAPlaybackControllerInterface::requestEnableCycle> ifc =
         {
             PlaybackControllerDispatcher::requestStartPlayback,
             PlaybackControllerDispatcher::requestStopPlayback,
@@ -372,11 +372,11 @@ bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef archiveW
 
 bool DocumentController::supportsStoringAudioFileChunks () noexcept
 {
-    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk)> ())
+    if (!getInterface ().implements<&ARADocumentControllerInterface::storeAudioSourceToAudioFileChunk> ())
         return false;
 
     const SizedStructPtr<ARAFactory> factory { getInterface ()->getFactory (getRef ()) };
-    if (!factory.implements<ARA_STRUCT_MEMBER (ARAFactory, supportsStoringAudioFileChunks)> ())
+    if (!factory.implements<&ARAFactory::supportsStoringAudioFileChunks> ())
         return false;
     return (factory->supportsStoringAudioFileChunks != kARAFalse);
 }
@@ -474,7 +474,7 @@ void DocumentController::updateAudioModificationProperties (ARAAudioModification
 
 bool DocumentController::supportsIsAudioModificationPreservingAudioSourceSignal () noexcept
 {
-    return getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)> ();
+    return getInterface ().implements<&ARADocumentControllerInterface::isAudioModificationPreservingAudioSourceSignal> ();
 }
 
 bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept
@@ -591,7 +591,7 @@ bool DocumentController::supportsProcessingAlgorithms () noexcept
 
 ARAInt32 DocumentController::getProcessingAlgorithmsCount () noexcept
 {
-    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, requestProcessingAlgorithmForAudioSource)> ())
+    if (getInterface ().implements<&ARADocumentControllerInterface::requestProcessingAlgorithmForAudioSource> ())
         return getInterface ()->getProcessingAlgorithmsCount (getRef ());
     else
         return 0;
@@ -614,7 +614,7 @@ void DocumentController::requestProcessingAlgorithmForAudioSource (ARAAudioSourc
 
 bool DocumentController::isLicensedForCapabilities (bool runModalActivationDialogIfNeeded, ARASize contentTypesCount, const ARAContentType contentTypes[], ARAPlaybackTransformationFlags transformationFlags) noexcept
 {
-    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isLicensedForCapabilities)> ())
+    if (!getInterface ().implements<&ARADocumentControllerInterface::isLicensedForCapabilities> ())
         return true;
 
     return (getInterface ()->isLicensedForCapabilities (getRef (), (runModalActivationDialogIfNeeded) ? kARATrue : kARAFalse, contentTypesCount, contentTypes, transformationFlags) != kARAFalse);
