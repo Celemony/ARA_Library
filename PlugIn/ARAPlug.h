@@ -656,10 +656,6 @@ public:
     template <typename AudioModification_t = AudioModification>
     AudioModification_t* getAudioModification () const noexcept { return static_cast<AudioModification_t*> (this->_audioModification); }
 
-#if ARA_SUPPORT_VERSION_1
-    template <typename MusicalContext_t = MusicalContext>
-    MusicalContext_t* getMusicalContext () const noexcept { return static_cast<MusicalContext_t*> ((this->_regionSequence) ? this->_regionSequence->getMusicalContext () : this->_musicalContext); }
-#endif
     //! Retrieve the current underlying RegionSequence instance.
     template <typename RegionSequence_t = RegionSequence>
     RegionSequence_t* getRegionSequence () const noexcept { return static_cast<RegionSequence_t*> (this->_regionSequence); }
@@ -679,9 +675,6 @@ private:
     ARATimePosition _startInPlaybackTime { 0.0 };
     ARATimeDuration _durationInPlaybackTime { 0.0 };
     RegionSequence* _regionSequence { nullptr };
-#if ARA_SUPPORT_VERSION_1
-    MusicalContext* _musicalContext { nullptr };
-#endif
     bool _timestretchEnabled { false };
     bool _timestretchReflectingTempo { false };
     bool _contentBasedFadeAtHead { false };
@@ -1794,9 +1787,7 @@ public:
 
     //! \copydoc ARAFactory::lowestSupportedApiGeneration
     virtual ARAAPIGeneration getLowestSupportedApiGeneration () const noexcept
-#if ARA_SUPPORT_VERSION_1
-                                                                                { return kARAAPIGeneration_1_0_Final; }
-#elif ARA_CPU_ARM
+#if ARA_CPU_ARM
                                                                                 { return kARAAPIGeneration_2_0_Final; }
 #else
                                                                                 { return kARAAPIGeneration_2_0_Draft; }

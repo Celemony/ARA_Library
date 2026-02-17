@@ -52,14 +52,6 @@
 */
 /*******************************************************************************/
 
-#if !defined (ARA_SUPPORT_VERSION_1)
-    #define ARA_SUPPORT_VERSION_1 0
-#endif
-
-#if ARA_SUPPORT_VERSION_1 && ARA_CPU_ARM
-    #error "ARA v1 is not supported on ARM architecture"
-#endif
-
 
 namespace ARA {
 

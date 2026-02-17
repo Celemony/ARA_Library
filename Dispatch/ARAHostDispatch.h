@@ -485,14 +485,9 @@ using ContentReader = ARA::ContentReader<contentType, DocumentController, ARACon
 class PlaybackRenderer : public InterfaceInstance<ARAPlaybackRendererRef, ARAPlaybackRendererInterface>
 {
 public:
-#if ARA_SUPPORT_VERSION_1
-    explicit PlaybackRenderer (const ARAPlugInExtensionInstance* instance);
-    ~PlaybackRenderer ();
-#else
     explicit PlaybackRenderer (const ARAPlugInExtensionInstance* instance) noexcept
     : BaseType { instance->playbackRendererRef, instance->playbackRendererInterface }
     {}
-#endif
 
 //! @name Assigning the playback region(s) for playback rendering
 //! For details, see \ref Assigning_ARAPlaybackRendererInterface_Regions "ARAPlaybackRendererInterface".
@@ -510,13 +505,9 @@ public:
 class EditorRenderer : public InterfaceInstance<ARAEditorRendererRef, ARAEditorRendererInterface>
 {
 public:
-#if ARA_SUPPORT_VERSION_1
-    explicit EditorRenderer (const ARAPlugInExtensionInstance* instance) noexcept;
-#else
     explicit EditorRenderer (const ARAPlugInExtensionInstance* instance) noexcept
     : BaseType { instance->editorRendererRef, instance->editorRendererInterface }
     {}
-#endif
 
 //! @name Assigning the playback region(s) for preview while editing
 //! For details, see \ref Assigning_ARAEditorRendererInterface_Regions "ARAEditorRendererInterface".
@@ -536,13 +527,9 @@ public:
 class EditorView : public InterfaceInstance<ARAEditorViewRef, ARAEditorViewInterface>
 {
 public:
-#if ARA_SUPPORT_VERSION_1
-    explicit EditorView (const ARAPlugInExtensionInstance* instance) noexcept;
-#else
     explicit EditorView (const ARAPlugInExtensionInstance* instance) noexcept
     : BaseType { instance->editorViewRef, instance->editorViewInterface }
     {}
-#endif
 
 //! @name Host UI notifications
 //@{
@@ -565,11 +552,7 @@ public:
 ARA_DEPRECATED(2_0_Final) class PlugInExtensionInstance
 {
 public:
-#if ARA_SUPPORT_VERSION_1
-    explicit PlugInExtensionInstance (const ARAPlugInExtensionInstance* instance)
-#else
     explicit PlugInExtensionInstance (const ARAPlugInExtensionInstance* instance) noexcept
-#endif
     : _playbackRenderer { instance },
       _editorRenderer { instance },
       _editorView { instance }

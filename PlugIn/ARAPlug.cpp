@@ -625,29 +625,10 @@ void PlaybackRegion::updateProperties (PropertiesPtr<ARAPlaybackRegionProperties
     else
         _color = nullptr;
 
-#if ARA_SUPPORT_VERSION_1
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, regionSequenceRef)> ())
-    {
-        ARA_VALIDATE_API_STATE (_musicalContext == nullptr);
-        auto regionSequence { fromRef (properties->regionSequenceRef) };
-        ARA_VALIDATE_API_ARGUMENT (properties->regionSequenceRef, getDocumentController ()->isValidRegionSequence (regionSequence));
-        setRegionSequence (regionSequence);
-    }
-    else
-    {
-        ARA_VALIDATE_API_STATE (DocumentController::getUsedApiGeneration () < kARAAPIGeneration_2_0_Draft);
-        ARA_VALIDATE_API_STATE (getRegionSequence () == nullptr);
-
-        auto musicalContext { fromRef (properties->musicalContextRef) };
-        ARA_VALIDATE_API_ARGUMENT (properties->musicalContextRef, getDocumentController ()->isValidMusicalContext (musicalContext));
-        _musicalContext = musicalContext;
-    }
-#else
     ARA_VALIDATE_API_ARGUMENT (properties, properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, regionSequenceRef)> ());
     auto regionSequence { fromRef (properties->regionSequenceRef) };
     ARA_VALIDATE_API_ARGUMENT (properties->regionSequenceRef, getDocumentController ()->isValidRegionSequence (regionSequence));
     setRegionSequence (regionSequence);
-#endif
 }
 
 bool PlaybackRegion::intersectsWithAudioModificationTimeRange (ARAContentTimeRange range) const noexcept
@@ -1707,11 +1688,7 @@ ARAPlaybackRegionRef DocumentController::createPlaybackRegion (ARAAudioModificat
 
     didAddPlaybackRegionToAudioModification (audioModification, playbackRegion);
 
-    auto regionSequence { playbackRegion->getRegionSequence () };
-#if ARA_SUPPORT_VERSION_1
-    if (regionSequence)
-#endif
-        didAddPlaybackRegionToRegionSequence (regionSequence, playbackRegion);
+    didAddPlaybackRegionToRegionSequence (playbackRegion->getRegionSequence (), playbackRegion);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create playback region", playbackRegion);
     return toRef (playbackRegion);
@@ -1741,13 +1718,8 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
     playbackRegion->updateProperties (properties);
     didUpdatePlaybackRegionProperties (playbackRegion);
 
-#if ARA_SUPPORT_VERSION_1
-    if (newSequence)
-#endif
-    {
-        if (currentSequence != newSequence)
-            didAddPlaybackRegionToRegionSequence (newSequence, playbackRegion);
-    }
+    if (currentSequence != newSequence)
+        didAddPlaybackRegionToRegionSequence (newSequence, playbackRegion);
 
     ARA_LOG_PROPERTY_CHANGES ("did update properties of playback region", playbackRegion);
 }
@@ -1786,10 +1758,7 @@ void DocumentController::destroyPlaybackRegion (ARAPlaybackRegionRef playbackReg
         ARA_VALIDATE_API_STATE (!contains (playbackRenderer->getPlaybackRegions (), playbackRegion));
 #endif
 
-#if ARA_SUPPORT_VERSION_1
-    if (playbackRegion->getRegionSequence ())
-#endif
-        willRemovePlaybackRegionFromRegionSequence (playbackRegion->getRegionSequence (), playbackRegion);
+    willRemovePlaybackRegionFromRegionSequence (playbackRegion->getRegionSequence (), playbackRegion);
 
     willRemovePlaybackRegionFromAudioModification (playbackRegion->getAudioModification (), playbackRegion);
 
@@ -2797,7 +2766,7 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
 #if ARA_CPU_ARM
     ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
 #else
-    ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_1_0_Draft);
+    ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_2_0_Draft);
 #endif
     ARA_INTERNAL_ASSERT (_factory.highestSupportedApiGeneration >= _factory.lowestSupportedApiGeneration);
 

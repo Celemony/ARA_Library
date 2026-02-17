@@ -337,15 +337,6 @@ public:
 
     EditorViewInterface* getEditorView () const noexcept
     { return fromRef (editorViewRef); }
-
-#if ARA_SUPPORT_VERSION_1
-    void setPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept;
-    void removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept;
-
-private:
-    ARAPlaybackRegionRef _playbackRegionRef { nullptr };    // only valid if _hasPlaybackRegion is true
-    bool _hasPlaybackRegion { false };
-#endif
 };
 
 //! @}

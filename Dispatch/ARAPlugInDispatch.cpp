@@ -505,79 +505,15 @@ namespace EditorViewDispatcher
 }
 
 /*******************************************************************************/
-// ARA1PlugInExtensionDispatcher
-/*******************************************************************************/
-
-#if ARA_SUPPORT_VERSION_1
-
-ARA_MAP_REF (PlugInExtensionInstance, ARAPlugInExtensionRef)
-
-namespace ARA1PlugInExtensionDispatcher
-{
-    static void ARA_CALL setPlaybackRegion (ARAPlugInExtensionRef plugInExtensionRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
-    {
-        fromRef (plugInExtensionRef)->setPlaybackRegion (playbackRegionRef);
-    }
-
-    static void ARA_CALL removePlaybackRegion (ARAPlugInExtensionRef plugInExtensionRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
-    {
-        fromRef (plugInExtensionRef)->removePlaybackRegion (playbackRegionRef);
-    }
-
-    static const ARAPlugInExtensionInterface* getInterface () noexcept
-    {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAPlugInExtensionInterface, removePlaybackRegion)> ifc =
-        {
-            ARA1PlugInExtensionDispatcher::setPlaybackRegion,
-            ARA1PlugInExtensionDispatcher::removePlaybackRegion
-        };
-        return &ifc;
-    }
-}
-
-#endif
-
-/*******************************************************************************/
 // PlugInExtensionInstance
 /*******************************************************************************/
 
 PlugInExtensionInstance::PlugInExtensionInstance (PlaybackRendererInterface* playbackRenderer, EditorRendererInterface* editorRenderer, EditorViewInterface* editorView) noexcept
-#if ARA_SUPPORT_VERSION_1
-: BaseType { toRef (this), ARA1PlugInExtensionDispatcher::getInterface (),
-#else
 : BaseType { nullptr, nullptr,
-#endif
              toRef (playbackRenderer), (playbackRenderer) ? PlaybackRendererDispatcher::getInterface () : nullptr,
              toRef (editorRenderer), (editorRenderer) ? EditorRendererDispatcher::getInterface () : nullptr,
              toRef (editorView), (editorView) ? EditorViewDispatcher::getInterface () : nullptr }
 {}
-
-#if ARA_SUPPORT_VERSION_1
-void PlugInExtensionInstance::setPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept
-{
-    if (_hasPlaybackRegion)
-        removePlaybackRegion (_playbackRegionRef);
-
-    if (getPlaybackRenderer ())
-        getPlaybackRenderer ()->addPlaybackRegion (playbackRegionRef);
-    if (getEditorRenderer ())
-        getEditorRenderer ()->addPlaybackRegion (playbackRegionRef);
-
-    _playbackRegionRef = playbackRegionRef;
-    _hasPlaybackRegion = true;
-}
-
-void PlugInExtensionInstance::removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept
-{
-    if (getPlaybackRenderer ())
-        getPlaybackRenderer ()->removePlaybackRegion (playbackRegionRef);
-    if (getEditorRenderer ())
-        getEditorRenderer ()->removePlaybackRegion (playbackRegionRef);
-
-    _playbackRegionRef = nullptr;
-    _hasPlaybackRegion = false;
-}
-#endif
 
 /*******************************************************************************/
 // AudioAccessController

@@ -31,11 +31,6 @@
 #include <vector>
 
 
-#if ARA_SUPPORT_VERSION_1
-    #error "The ARA IPC proxy host implementation does not support ARA 1."
-#endif
-
-
 namespace ARA {
 namespace IPC {
 namespace ProxyHostImpl {

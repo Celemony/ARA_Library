@@ -31,11 +31,6 @@
 #include <string>
 
 
-#if ARA_SUPPORT_VERSION_1
-    #error "The ARA IPC proxy plug-in implementation does not support ARA 1."
-#endif
-
-
 /*******************************************************************************/
 // configuration switches for debug output
 // each can be defined as a nonzero integer to enable the associated logging

@@ -3,6 +3,7 @@ This is a development build of the ARA Library 3.0.
 
 
 Changes since previous releases:
+- support for ARA 1 dropped
 - initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,
   based on heavily refactored IPC Example from earlier SDK releases
 
