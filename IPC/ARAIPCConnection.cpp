@@ -168,11 +168,11 @@ void MessageDispatcher::_sendMessage (MessageID messageID, std::unique_ptr<Messa
     _messageChannel->sendMessage (messageID, std::move (encoder));
 }
 
-void MessageDispatcher::_handleReply (std::unique_ptr<const MessageDecoder> && decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+void MessageDispatcher::_handleReply (std::unique_ptr<const MessageDecoder> && decoder, ReplyHandler && replyHandler)
 {
     ARA_IPC_LOG ("handles reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
     if (replyHandler)
-        (replyHandler) (decoder.get (), replyHandlerUserData);
+        replyHandler (decoder.get ());
     else
         ARA_INTERNAL_ASSERT (!decoder || !decoder->hasDataForKey (0));  // replies should be empty when not handled (i.e. void functions)
 }
@@ -191,13 +191,13 @@ std::unique_ptr<MessageEncoder> MessageDispatcher::_handleReceivedMessage (Messa
 
 
 void MainThreadMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                                               Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+                                               ReplyHandler && replyHandler)
 {
     ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
     ARA_INTERNAL_ASSERT (!isReply (messageID));
 
     const auto previousPendingReplyHandler { _pendingReplyHandler };
-    const PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData, previousPendingReplyHandler };
+    const PendingReplyHandler pendingReplyHandler { &replyHandler, previousPendingReplyHandler };
     _pendingReplyHandler = &pendingReplyHandler;
 
     const auto isResponse { _processingMessagesCount > 0 };
@@ -225,7 +225,7 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
         if (isReply (pendingMessageID))
         {
             ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
-            _handleReply (std::move (ownedPendingMessageDecoder), _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
+            _handleReply (std::move (ownedPendingMessageDecoder), std::move (*_pendingReplyHandler->_replyHandler));
             _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
         }
         else
@@ -287,7 +287,7 @@ thread_local OtherThreadsMessageDispatcher::ThreadRef _remoteTargetThread { 0 };
 thread_local const OtherThreadsMessageDispatcher::PendingReplyHandler* _pendingReplyHandler { nullptr };
 
 void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                                                 Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+                                                 ReplyHandler && replyHandler)
 {
     const auto currentThread { getCurrentThread () };
     encoder->appendThreadRef (kSendThreadKey, currentThread);
@@ -302,7 +302,7 @@ void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::uniqu
     if (getConnection ()->wasCreatedOnCurrentThread ())
     {
         const auto previousPendingReplyHandler { _pendingReplyHandler };
-        const PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData, previousPendingReplyHandler };
+        const PendingReplyHandler pendingReplyHandler { &replyHandler, previousPendingReplyHandler };
         _pendingReplyHandler = &pendingReplyHandler;
         do
         {
@@ -324,7 +324,7 @@ void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::uniqu
 
             if (isReply (receivedMessageID))
             {
-                _handleReply (std::move (receivedDecoder), replyHandler, replyHandlerUserData);
+                _handleReply (std::move (receivedDecoder), std::move (replyHandler));
                 break;
             }
             else
@@ -357,7 +357,7 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, s
             {
                 ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
                 ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
-                _handleReply (std::move (decoder), _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
+                _handleReply (std::move (decoder), std::move (*_pendingReplyHandler->_replyHandler));
                 _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
             }
             else
@@ -523,13 +523,13 @@ void Connection::setOtherThreadsChannel (std::unique_ptr<MessageChannel> && mess
     _otherThreadsDispatcher = std::make_unique<OtherThreadsMessageDispatcher> (this, std::move (messageChannel));
 }
 
-void Connection::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
+void Connection::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, ReplyHandler && replyHandler)
 {
     ARA_INTERNAL_ASSERT ((_mainThreadDispatcher != nullptr) && (_otherThreadsDispatcher != nullptr) && (_messageHandler != nullptr));
     if (wasCreatedOnCurrentThread ())
-        _mainThreadDispatcher->sendMessage (messageID, std::move (encoder), replyHandler, replyHandlerUserData);
+        _mainThreadDispatcher->sendMessage (messageID, std::move (encoder), std::move (replyHandler));
     else
-        _otherThreadsDispatcher->sendMessage (messageID, std::move (encoder), replyHandler, replyHandlerUserData);
+        _otherThreadsDispatcher->sendMessage (messageID, std::move (encoder), std::move (replyHandler));
 }
 
 void Connection::dispatchToCreationThread (DispatchableFunction func)
