@@ -54,7 +54,7 @@ private:
 
 
 // wrap key value into CFString (no reference count transferred to caller)
-CFStringRef _getEncodedKey (MessageArgumentKey argKey)
+static CFStringRef _getEncodedKey (MessageArgumentKey argKey)
 {
     // \todo All plist formats available for CFPropertyListCreateData () in createEncodedMessage () need CFString keys.
     //       Once we switch to the more modern (NS)XPC API we shall be able to use CFNumber keys directly...

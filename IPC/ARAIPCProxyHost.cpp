@@ -99,7 +99,7 @@ private:
 
 /*******************************************************************************/
 
-void _swap (float* ptr)
+static void _swap (float* ptr)
 {
     auto asIntPtr { reinterpret_cast<uint32_t*> (ptr) };
 #if defined (_MSC_VER)
@@ -110,7 +110,7 @@ void _swap (float* ptr)
     #error "not implemented for this compiler."
 #endif
 }
-void _swap (double* ptr)
+static void _swap (double* ptr)
 {
     auto asIntPtr { reinterpret_cast<uint64_t*> (ptr) };
 #if defined (_MSC_VER)
@@ -637,7 +637,7 @@ void ARAIPCProxyHostSetBindingHandler (ARAIPCBindingHandler handler)
     _bindingHandler = handler;
 }
 
-const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
+static const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
 {
     for (const auto& factory : _factories)
     {

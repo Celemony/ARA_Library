@@ -256,6 +256,7 @@ void ARASetExternalAssertReference(ARAAssertFunction * address)
     _Pragma("GCC diagnostic push")
     _Pragma("GCC diagnostic ignored \"-Wmissing-noreturn\"")
 #endif
+void ARAAssertionFailure(ARAAssertCategory category, const void * problematicArgument, const char * file, int line, const char * diagnosis);
 void ARAAssertionFailure(ARAAssertCategory category, const void * problematicArgument, const char * file, int line, const char * diagnosis)
 {
 #if ARA_ENABLE_INTERNAL_ASSERTS

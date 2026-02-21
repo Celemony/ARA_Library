@@ -113,7 +113,7 @@ struct SortByOrderIndex
 /*******************************************************************************/
 
 // stream operator for color (r,g,b)
-std::ostream& operator<< (std::ostream& oss, const ARAColor& color)
+[[maybe_unused]] static std::ostream& operator<< (std::ostream& oss, const ARAColor& color)
 {
     oss << "(" << color.r << "," << color.g << "," << color.b << ")";
     return oss;
@@ -150,7 +150,7 @@ std::ostream& operator<< (std::ostream& oss, const OptionalProperty<ARAUtf8Strin
 
 // logging the contents of our model graph objects
 
-void logToStream (const PlaybackRegion* playbackRegion, std::ostringstream& oss, bool detailed, bool /*recursive*/, std::string indentation)
+[[maybe_unused]] static void logToStream (const PlaybackRegion* playbackRegion, std::ostringstream& oss, bool detailed, bool /*recursive*/, std::string indentation)
 {
     oss << indentation <<  playbackRegion << "(" << playbackRegion->getHostRef () << "):" << playbackRegion->getName ()
         << ", playback time:" << playbackRegion->getStartInPlaybackTime () << " to " << playbackRegion->getEndInPlaybackTime ();
@@ -165,7 +165,7 @@ void logToStream (const PlaybackRegion* playbackRegion, std::ostringstream& oss,
     oss << "\n";
 }
 
-void logToStream (const AudioModification* audioModification, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
+[[maybe_unused]] static void logToStream (const AudioModification* audioModification, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
 {
     oss << indentation <<  audioModification << "(" << audioModification->getHostRef () << "):" << audioModification->getName () << ", ID: \"" << audioModification->getPersistentID () << "\"";
 
@@ -179,7 +179,7 @@ void logToStream (const AudioModification* audioModification, std::ostringstream
     }
 }
 
-void logToStream (const AudioSource* audioSource, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
+[[maybe_unused]] static void logToStream (const AudioSource* audioSource, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
 {
     oss << indentation <<  audioSource << "(" << audioSource->getHostRef () << "):" << audioSource->getName () << ", ID: \"" << audioSource->getPersistentID () << "\"\n";
     if (detailed)
@@ -193,7 +193,7 @@ void logToStream (const AudioSource* audioSource, std::ostringstream& oss, bool 
     }
 }
 
-void logToStream (const RegionSequence* regionSequence, std::ostringstream& oss, bool detailed, bool /*recursive*/, std::string indentation)
+[[maybe_unused]] static void logToStream (const RegionSequence* regionSequence, std::ostringstream& oss, bool detailed, bool /*recursive*/, std::string indentation)
 {
     oss << indentation <<  regionSequence << "(" << regionSequence->getHostRef () << "):" << regionSequence->getName ();
     if (detailed)
@@ -223,7 +223,7 @@ void logToStream (const RegionSequence* regionSequence, std::ostringstream& oss,
     }
 }
 
-void logToStream (const MusicalContext* musicalContext, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
+[[maybe_unused]] static void logToStream (const MusicalContext* musicalContext, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
 {
     oss << indentation <<  musicalContext << "(" << musicalContext->getHostRef () << "):" << musicalContext->getName ();
     if (detailed)
@@ -239,7 +239,7 @@ void logToStream (const MusicalContext* musicalContext, std::ostringstream& oss,
     }
 }
 
-void logToStream (const Document* document, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
+[[maybe_unused]] static void logToStream (const Document* document, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
 {
     oss << indentation << document << ":" << document->getName () << "\n";
 
@@ -2367,7 +2367,7 @@ void HostArchiveWriter::notifyDocumentArchivingProgress (float value) noexcept
 
 /*******************************************************************************/
 
-std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize playbackRegionsCount, const ARAPlaybackRegionRef playbackRegionRefs[])
+static std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize playbackRegionsCount, const ARAPlaybackRegionRef playbackRegionRefs[])
 {
     std::vector<PlaybackRegion*> playbackRegions;
     if (playbackRegionsCount > 0)
@@ -2385,7 +2385,7 @@ std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentControl
     return playbackRegions;
 }
 
-std::vector<RegionSequence*> _convertRegionSequencesArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[])
+static std::vector<RegionSequence*> _convertRegionSequencesArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[])
 {
     std::vector<RegionSequence*> regionSequences;
     if (regionSequenceRefsCount > 0)
@@ -2446,7 +2446,7 @@ std::vector<RegionSequence*> ViewSelection::getEffectiveRegionSequences () const
     return result;
 }
 
-ARAContentTimeRange getUnionTimeRangeOfPlaybackRegions (std::vector<PlaybackRegion*> const& playbackRegions) noexcept
+static ARAContentTimeRange getUnionTimeRangeOfPlaybackRegions (std::vector<PlaybackRegion*> const& playbackRegions) noexcept
 {
     ARA_INTERNAL_ASSERT (!playbackRegions.empty ());
 
