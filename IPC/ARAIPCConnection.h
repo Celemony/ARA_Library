@@ -51,17 +51,11 @@ class MainThreadMessageDispatcher;
 class OtherThreadsMessageDispatcher;
 
 
-//! delegate interface for processing messages received through an IPC connection
-class MessageHandler
-{
-public:
-    virtual ~MessageHandler () = default;
-
-    //! IPC connections will call this method for incoming messages after
-    //! after filtering replies and routing them to the correct thread.
-    virtual void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
-                                        MessageEncoder* const replyEncoder) = 0;
-};
+//! delegate function for processing messages received through an IPC connection
+//! IPC connections will call this function for incoming messages after
+//! filtering replies and routing them to the correct thread.
+using MessageHandler = std::function<void (const MessageID messageID, const MessageDecoder* const decoder,
+                                           MessageEncoder* const replyEncoder)>;
 
 
 //! IPC message channel: primitive for sending and receiving messages
@@ -115,9 +109,9 @@ public:
     //! set the message handler for all communication on all threads
     //! Must be done before sending or receiving the first message on any channel.
     //! The connection does not take ownership of the message handler.
-    void setMessageHandler (MessageHandler* messageHandler);
+    void setMessageHandler (MessageHandler&& messageHandler) { _messageHandler = std::move(messageHandler); }
 
-    MessageHandler* getMessageHandler () const { return _messageHandler; }
+    const MessageHandler& getMessageHandler () const { return _messageHandler; }
 
     //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
     //! decoder will be nullptr if incoming message was empty
@@ -171,7 +165,7 @@ private:
     void* const _waitForMessageSemaphore;   // concrete type is platform-dependent
     MainThreadMessageDispatcher* _mainThreadDispatcher {};
     OtherThreadsMessageDispatcher* _otherThreadsDispatcher {};
-    MessageHandler* _messageHandler {};
+    MessageHandler _messageHandler;
     std::thread::id const _creationThreadID;
 #if defined (_WIN32)
     HANDLE const _creationThreadHandle;
