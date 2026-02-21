@@ -85,9 +85,6 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
 //! plug-in side: implementation for AUMessageChannel<NSObject> -callAudioUnit:
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler(ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message);
 
-//! plug-in side: implementation for AUMessageChannel<NSObject> -dealloc
-void ARA_CALL ARAIPCAUProxyHostUninitializeMessageChannel(ARAIPCMessageChannelRef _Nonnull messageChannelRef);
-
 //! plug-in side: static cleanup upon shutdown
 void ARA_CALL ARAIPCAUProxyHostUninitialize(void);
 

@@ -364,11 +364,6 @@ NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageC
     return [NSDictionary dictionary];   // \todo it would yield better performance if -callAudioUnit: would allow nil as return value
 }
 
-void ARA_CALL ARAIPCAUProxyHostUninitializeMessageChannel (ARAIPCMessageChannelRef _Nonnull messageChannelRef)
-{
-    delete fromIPCRef (messageChannelRef);
-}
-
 void ARA_CALL ARAIPCAUProxyHostUninitialize (void)
 {
     if (_proxyHost)
