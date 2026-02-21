@@ -60,19 +60,20 @@ extern "C" {
 
 //! IPC reference markup type identifier. \br\br
 //! Examples:                           \br
-//! ::ARAARAIPCConnectionRef            \br
+//! ::ARAARAIPCProxyHostRef             \br
+//! ::ARAARAIPCProxyPlugInRef           \br
 //! ::ARAIPCMessageChannelRef           \br
 //! ::ARAIPCPlugInInstanceRef           \br
 #define ARA_IPC_REF(IPCRefType) struct IPCRefType##MarkupType * IPCRefType
 
+//! C-compatible wrapper of ARA IPC ProxyHost
+typedef ARA_IPC_REF(ARAIPCProxyHostRef);
 
-//! C-compatible wrapper of ARA IPC Connection
-typedef ARA_IPC_REF(ARAIPCConnectionRef);
-
+//! C-compatible wrapper of ARA IPC ProxyPlugIn
+typedef ARA_IPC_REF(ARAIPCProxyPlugInRef);
 
 //! C-compatible wrapper of ARA IPC MessageChannel
 typedef ARA_IPC_REF(ARAIPCMessageChannelRef);
-
 
 //! to keep the IPC decoupled from the companion API in use, the IPC code uses
 //! an opaque encapsulation to represent a companion API plug-in instance

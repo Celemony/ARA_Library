@@ -56,13 +56,13 @@ typedef void (*ARAMainThreadWaitForMessageDelegate) (void * _Nullable delegateUs
 //! must be balanced with ARAIPCAUProxyPlugInUninitialize()
 //! the optional delegate will be called periodically when the IPC needs to block the main thread,
 //! with the opaque user data pointer being passed back into the call
-ARAIPCConnectionRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitialize(AUAudioUnit * _Nonnull audioUnit,
-                                                                     ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
-                                                                     void * _Nullable delegateUserData);
+ARAIPCProxyPlugInRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitialize(AUAudioUnit * _Nonnull audioUnit,
+                                                                      ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
+                                                                      void * _Nullable delegateUserData);
 
 //! allows the host to let the plug-in perform ARA IPC on the main thread when otherwise
 //! blocking it for an extended period of time
-void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCConnectionRef _Nonnull proxyRef);
+void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks(ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef);
 
 //! host side: Audio Unit specialization of ARAIPCProxyPlugInBindToDocumentController()
 //! must be balanced with ARAIPCProxyPlugInCleanupBinding() when the given audioUnit is destroyed
@@ -72,7 +72,7 @@ const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDo
                                                                                                  ARAPlugInInstanceRoleFlags assignedRoles);
 
 //! host side: uninitialize the proxy component set up in ARAIPCAUProxyPlugInInitialize()
-void ARA_CALL ARAIPCAUProxyPlugInUninitialize(ARAIPCConnectionRef _Nonnull proxyRef);
+void ARA_CALL ARAIPCAUProxyPlugInUninitialize(ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef);
 
 
 

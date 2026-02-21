@@ -52,18 +52,18 @@ public:
 
 
 //! counts the factories available through the given message channel
-size_t ARAIPCProxyPlugInGetFactoriesCount(ARAIPCConnectionRef connectionRef);
+size_t ARAIPCProxyPlugInGetFactoriesCount(ARAIPCProxyPlugInRef proxyPlugInRef);
 
 //! get a static copy of the remote factory data, with all function calls removed
 //! index must be smaller than the result of ARAIPCProxyPlugInGetFactoriesCount()
-const ARAFactory * ARAIPCProxyPlugInGetFactoryAtIndex(ARAIPCConnectionRef connectionRef, size_t index);
+const ARAFactory * ARAIPCProxyPlugInGetFactoryAtIndex(ARAIPCProxyPlugInRef proxyPlugInRef, size_t index);
 
 //! proxy initialization call, to be used instead of ARAFactory.initializeARAWithConfiguration()
 // \todo we're currently not supporting propagating ARA assertions through IPC...
-void ARAIPCProxyPlugInInitializeARA(ARAIPCConnectionRef connectionRef, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration);
+void ARAIPCProxyPlugInInitializeARA(ARAIPCProxyPlugInRef proxyPlugInRef, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration);
 
 //! proxy document controller creation call, to be used instead of ARAFactory.createDocumentControllerWithDocument()
-const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCConnectionRef connectionRef,
+const ARADocumentControllerInstance * ARAIPCProxyPlugInCreateDocumentControllerWithDocument(ARAIPCProxyPlugInRef proxyPlugInRef,
                                                                                             const ARAPersistentID factoryID,
                                                                                             const ARADocumentControllerHostInstance * hostInstance,
                                                                                             const ARADocumentProperties * properties);
@@ -76,7 +76,7 @@ const ARAPlugInExtensionInstance * ARAIPCProxyPlugInBindToDocumentController(ARA
 void ARAIPCProxyPlugInCleanupBinding(const ARAPlugInExtensionInstance * plugInExtension);
 
 //! proxy uninitialization call, to be used instead of ARAFactory.uninitializeARA()
-void ARAIPCProxyPlugInUninitializeARA(ARAIPCConnectionRef connectionRef, const ARAPersistentID factoryID);
+void ARAIPCProxyPlugInUninitializeARA(ARAIPCProxyPlugInRef proxyPlugInRef, const ARAPersistentID factoryID);
 
 
 #if defined(__cplusplus)

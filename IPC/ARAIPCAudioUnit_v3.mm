@@ -266,7 +266,7 @@ private:
 #endif
 
 ARA_MAP_IPC_REF (AudioUnitMessageChannel, ARAIPCMessageChannelRef)
-ARA_MAP_IPC_REF (AUConnection, ARAIPCConnectionRef)
+ARA_MAP_IPC_REF (AUProxyPlugIn, ARAIPCProxyPlugInRef)
 
 #if defined (__GNUC__)
     _Pragma ("GCC diagnostic pop")
@@ -279,16 +279,16 @@ extern "C" {
 // host side: proxy plug-in C adapter
 #if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
-ARAIPCConnectionRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit,
-                                                            ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
-                                                            void * _Nullable delegateUserData)
+ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit,
+                                                             ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
+                                                             void * _Nullable delegateUserData)
 {
     return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit, waitForMessageDelegate, delegateUserData));
 }
 
-void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCConnectionRef _Nonnull proxyRef)
+void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef)
 {
-    fromIPCRef (proxyRef)->performPendingMainThreadTasks ();
+    fromIPCRef (proxyPlugInRef)->performPendingMainThreadTasks ();
 }
 
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,
@@ -303,9 +303,9 @@ const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDo
     return plugInExtensionInstance;
 }
 
-void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCConnectionRef _Nonnull proxyRef)
+void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef)
 {
-    delete fromIPCRef (proxyRef);
+    delete fromIPCRef (proxyPlugInRef);
 }
 
 #endif // !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
