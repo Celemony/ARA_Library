@@ -1072,7 +1072,7 @@ inline constexpr auto kUninitializeARAMethodID { MethodID::createWithARAGlobalMe
 
 
 // for debugging: translate IDs of messages sent by the host back to human-readable text
-inline const char* decodeHostMessageID (const MessageID messageID)
+inline const char* decodeHostMessageID (const MessageID messageID, const bool omitInterfaceName = true)
 {
     switch (messageID)
     {
@@ -1088,7 +1088,7 @@ inline const char* decodeHostMessageID (const MessageID messageID)
 #undef ARA_IPC_GLOBAL_MESSAGE_CASE
 
 #define ARA_IPC_PLUGIN_INTERFACE_CASE(StructT, member) \
-        case ARA_IPC_PLUGIN_METHOD_ID (StructT, member).getMessageID (): return #StructT "::" #member;
+        case ARA_IPC_PLUGIN_METHOD_ID (StructT, member).getMessageID (): return (omitInterfaceName) ? #member : #StructT "::" #member;
         ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyDocumentController)
         ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getFactory)
         ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, beginEditing)
@@ -1153,17 +1153,19 @@ inline const char* decodeHostMessageID (const MessageID messageID)
         ARA_IPC_PLUGIN_INTERFACE_CASE (ARAEditorViewInterface, notifyHideRegionSequences)
 #undef ARA_IPC_PLUGIN_INTERFACE_CASE
     }
+    if (MethodID::isCustomMessageID (messageID))
+        return "custom message";
     ARA_INTERNAL_ASSERT (false);
-    return "unknown message ID";
+    return "unknown message";
 }
 
 // for debugging: translate IDs of messages sent by the host back to human-readable text
-inline const char* decodePlugInMessageID (const MessageID messageID)
+inline const char* decodePlugInMessageID (const MessageID messageID, const bool omitInterfaceName = true)
 {
     switch (messageID)
     {
 #define ARA_IPC_HOST_INTERFACE_CASE(StructT, member) \
-        case ARA_IPC_HOST_METHOD_ID (StructT, member).getMessageID (): return #StructT "::" #member;
+        case ARA_IPC_HOST_METHOD_ID (StructT, member).getMessageID (): return (omitInterfaceName) ? #member : #StructT "::" #member;
         ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, createAudioReaderForSource)
         ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, readAudioSamples)
         ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, destroyAudioReader)
@@ -1194,8 +1196,10 @@ inline const char* decodePlugInMessageID (const MessageID messageID)
         ARA_IPC_HOST_INTERFACE_CASE (ARAPlaybackControllerInterface, requestEnableCycle)
 #undef ARA_IPC_HOST_INTERFACE_CASE
     }
+    if (MethodID::isCustomMessageID (messageID))
+        return "custom message";
     ARA_INTERNAL_ASSERT (false);
-    return "unknown message ID";
+    return "unknown message";
 }
 
 // helper template to identify pointers to ARA structs in message arguments

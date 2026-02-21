@@ -233,6 +233,8 @@ public:
 #endif
     }
 
+    bool sendsHostMessages () const override { return true; }
+
 private:
     AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel,
                    NSObject<AUMessageChannel> * _Nonnull otherChannel,
@@ -322,6 +324,8 @@ public:
         ARAIPCProxyHostSetBindingHandler (handleBinding);
         setMessageHandler (this);
     }
+
+    bool sendsHostMessages () const override { return false; }
 
 private:
     static const ARAPlugInExtensionInstance * ARA_CALL handleBinding (ARAIPCPlugInInstanceRef plugInInstanceRef,

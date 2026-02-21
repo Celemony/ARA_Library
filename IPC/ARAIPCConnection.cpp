@@ -36,6 +36,18 @@
 #endif
 
 
+#if ARA_ENABLE_DEBUG_OUTPUT && 0
+    #define ARA_IPC_LOG(...) ARA_LOG ("ARA IPC " __VA_ARGS__)
+    #define ARA_IPC_DECODE_MESSAGE_FORMAT " %i=%s "
+    #define ARA_IPC_DECODE_SENT_MESSAGE_ARGS(messageID) messageID, (getConnection ()->sendsHostMessages ()) ? decodeHostMessageID (messageID) : decodePlugInMessageID (messageID)
+    #define ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS(messageID) messageID, (!getConnection ()->sendsHostMessages ()) ? decodeHostMessageID (messageID) : decodePlugInMessageID (messageID)
+    #define ARA_IPC_LABEL_THREAD_FORMAT " %sthread %p"
+    #define ARA_IPC_LABEL_THREAD_ARGS (getConnection ()->wasCreatedOnCurrentThread ()) ? "creation " : "other ", MessageDispatcher::getCurrentThread ()
+#else
+    #define ARA_IPC_LOG(...) ((void) 0)
+#endif
+
+
 // ARA IPC design overview
 //
 // ARA API calls can be stacked multiple times.
@@ -145,7 +157,7 @@ MessageDispatcher::~MessageDispatcher ()
     delete _messageChannel;
 }
 
-MessageDispatcher::ThreadRef MessageDispatcher::_getCurrentThread ()
+MessageDispatcher::ThreadRef MessageDispatcher::getCurrentThread ()
 {
     const auto thisThread { std::this_thread::get_id () };
     const auto result { *reinterpret_cast<const ThreadRef*> (&thisThread) };
@@ -153,12 +165,14 @@ MessageDispatcher::ThreadRef MessageDispatcher::_getCurrentThread ()
     return result;
 }
 
-void MessageDispatcher::_sendMessage (MessageID messageID, MessageEncoder* encoder)
+void MessageDispatcher::_sendMessage (MessageID messageID, MessageEncoder* encoder, [[maybe_unused]] bool isNewTransaction)
 {
     if (isReply (messageID))
-        ARA_IPC_LOG ("replies to message on thread %p", _getCurrentThread ());
+        ARA_IPC_LOG ("replies to message on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
     else
-        ARA_IPC_LOG ("sends message with ID %i on thread %p", messageID, _getCurrentThread ());
+        ARA_IPC_LOG ("sends" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT "%s",
+                     ARA_IPC_DECODE_SENT_MESSAGE_ARGS (messageID),  ARA_IPC_LABEL_THREAD_ARGS,
+                     (isNewTransaction) ? " (new transaction)" : "");
 
     _messageChannel->sendMessage (messageID, encoder);
 
@@ -167,7 +181,7 @@ void MessageDispatcher::_sendMessage (MessageID messageID, MessageEncoder* encod
 
 void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
-    ARA_IPC_LOG ("handles received reply on thread %p", _getCurrentThread ());
+    ARA_IPC_LOG ("handles reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
     if (replyHandler)
         (replyHandler) (decoder, replyHandlerUserData);
     else
@@ -179,7 +193,8 @@ MessageEncoder* MessageDispatcher::_handleReceivedMessage (MessageID messageID, 
 {
     ARA_INTERNAL_ASSERT (!isReply (messageID));
 
-    ARA_IPC_LOG ("handles received message with ID %i on thread %p", messageID, _getCurrentThread ());
+    ARA_IPC_LOG ("handles" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
+                 ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
     auto replyEncoder { _connection->createEncoder () };
     _connection->getMessageHandler ()->handleReceivedMessage (messageID, decoder, replyEncoder);
 
@@ -199,10 +214,11 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncod
     const PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData, previousPendingReplyHandler };
     _pendingReplyHandler = &pendingReplyHandler;
 
-    if (_processingMessagesCount > 0)
+    const auto isResponse { _processingMessagesCount > 0 };
+    if (isResponse)
         encoder->appendInt32 (isResponseKey, 1);
 
-    _sendMessage (messageID, encoder);
+    _sendMessage (messageID, encoder, !isResponse);
 
     while (previousPendingReplyHandler != _pendingReplyHandler)
     {
@@ -230,7 +246,7 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
             ++_processingMessagesCount;
             auto replyEncoder { _handleReceivedMessage (pendingMessageID, pendingMessageDecoder) };
             --_processingMessagesCount;
-            _sendMessage (0, replyEncoder);
+            _sendMessage (0, replyEncoder, false);
         }
     }
 }
@@ -240,24 +256,38 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, con
     const auto isResponse { isReply (messageID) ||      // replies implicitly are responses
                             (decoder && decoder->hasDataForKey (isResponseKey)) };
 
+    // if on creation thread, responses can be processed immediately, and
+    // new transaction can only be processed immediately when no other transaction is going on
+    const auto processSynchronously { getConnection ()->wasCreatedOnCurrentThread () &&
+                                      (isResponse || (_pendingReplyHandler == nullptr)) };
+
+    if (processSynchronously)
+    {
+        if (isReply (messageID))
+            ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
+        else
+            ARA_IPC_LOG ("processes" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
+                         ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
+    }
+    else
+    {
+        if (isReply (messageID))
+            ARA_IPC_LOG ("dispatches reply from" ARA_IPC_LABEL_THREAD_FORMAT " to creation thread", ARA_IPC_LABEL_THREAD_ARGS);
+        else
+            ARA_IPC_LOG ("dispatches" ARA_IPC_DECODE_MESSAGE_FORMAT "from" ARA_IPC_LABEL_THREAD_FORMAT " to creation thread",
+                         ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
+    }
+
     _pendingMessageID = messageID;
     _pendingMessageDecoder.store (decoder, std::memory_order_release);
     getConnection ()->signalMesssageReceived ();
 
-    // if on creation thread, responses can be processed immediately, and
-    // new transaction can only be processed immediately when no other transaction is going on
-    if (getConnection ()->wasCreatedOnCurrentThread () &&
-        (isResponse || (_pendingReplyHandler == nullptr)))
+    if (processSynchronously)
     {
         processPendingMessageIfNeeded ();
     }
     else
     {
-        if (isReply (messageID))
-            ARA_IPC_LOG ("dispatched received reply from thread %p to creation thread", _getCurrentThread ());
-        else
-            ARA_IPC_LOG ("dispatched received message with ID %i from thread %p to creation thread", messageID, _getCurrentThread ());
-
         // only new transactions must be dispatched, otherwise the target thread is already waiting for the message received signal
         if (!isResponse)
             getConnection ()->dispatchToCreationThread (std::bind (&MainThreadMessageDispatcher::processPendingMessageIfNeeded, this));
@@ -272,13 +302,14 @@ thread_local const OtherThreadsMessageDispatcher::PendingReplyHandler* _pendingR
 void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encoder,
                                                  Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
-    const auto currentThread { _getCurrentThread () };
+    const auto currentThread { getCurrentThread () };
     encoder->appendThreadRef (sendThreadKey, currentThread);
-    if (_remoteTargetThread != _invalidThread)
+    const auto isResponse { _remoteTargetThread != _invalidThread };
+    if (isResponse)
         encoder->appendThreadRef (receiveThreadKey, _remoteTargetThread);
 
     _sendLock.lock ();
-    _sendMessage (messageID, encoder);
+    _sendMessage (messageID, encoder, !isResponse);
     _sendLock.unlock ();
 
     if (getConnection ()->wasCreatedOnCurrentThread ())
@@ -333,25 +364,29 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, c
     if (decoder->readThreadRef (receiveThreadKey, &targetThread))
     {
         ARA_INTERNAL_ASSERT (targetThread != _invalidThread);
-        if (targetThread == _getCurrentThread ())
+        if (targetThread == getCurrentThread ())
         {
             if (isReply (messageID))
             {
+                ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
                 ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
                 _handleReply (decoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
                 _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
             }
             else
             {
+                ARA_IPC_LOG ("processes" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
+                             ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
                 _processReceivedMessage (messageID, decoder);
             }
         }
         else
         {
             if (isReply (messageID))
-                ARA_IPC_LOG ("dispatches received reply from thread %p to sending thread %p", _getCurrentThread (), targetThread);
+                ARA_IPC_LOG ("dispatches reply from" ARA_IPC_LABEL_THREAD_FORMAT " to sending thread %p", ARA_IPC_LABEL_THREAD_ARGS, targetThread);
             else
-                ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to sending thread %p", messageID, _getCurrentThread (), targetThread);
+                ARA_IPC_LOG ("dispatches" ARA_IPC_DECODE_MESSAGE_FORMAT "from" ARA_IPC_LABEL_THREAD_FORMAT " to sending thread %p",
+                             ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS, targetThread);
 
             _routeLock.lock ();
             RoutedMessage* message { _getRoutedMessageForThread (_invalidThread) };
@@ -387,7 +422,7 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
     replyEncoder->appendThreadRef (receiveThreadKey, remoteTargetThread);
 
     _sendLock.lock ();
-    _sendMessage (0, replyEncoder);
+    _sendMessage (0, replyEncoder, false);
     _sendLock.unlock ();
 
     _remoteTargetThread = previousRemoteTargetThread;

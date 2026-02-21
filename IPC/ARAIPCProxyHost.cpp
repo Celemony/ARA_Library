@@ -659,8 +659,6 @@ ProxyHost::ProxyHost (Connection* connection)
 void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                        MessageEncoder* const replyEncoder)
 {
-    ARA_IPC_LOG ("ProxyHost handles '%s'", decodeHostMessageID (messageID));
-
     // ARAFactory
     if (messageID == kGetFactoriesCountMethodID)
     {
