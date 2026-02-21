@@ -957,30 +957,29 @@ inline void _decodeArgumentsHelper (const MessageDecoder* decoder, const Message
     _decodeArgumentsHelper (decoder, argKey + 1, moreArgs...);
 }
 
-// private helpers for ARA_IPC_HOST_METHOD_ID and ARA_IPC_PLUGIN_METHOD_ID
+// private helper for ARA_IPC_METHOD_ID
 template<typename StructT>
-constexpr MessageID _getHostInterfaceID ();
+constexpr MessageID _getInterfaceID ();
+// host interface specializations
 template<>
-constexpr MessageID _getHostInterfaceID<ARAAudioAccessControllerInterface> () { return 0; }
+constexpr MessageID _getInterfaceID<ARAAudioAccessControllerInterface> () { return 0; }
 template<>
-constexpr MessageID _getHostInterfaceID<ARAArchivingControllerInterface> () { return 1; }
+constexpr MessageID _getInterfaceID<ARAArchivingControllerInterface> () { return 1; }
 template<>
-constexpr MessageID _getHostInterfaceID<ARAContentAccessControllerInterface> () { return 2; }
+constexpr MessageID _getInterfaceID<ARAContentAccessControllerInterface> () { return 2; }
 template<>
-constexpr MessageID _getHostInterfaceID<ARAModelUpdateControllerInterface> () { return 3; }
+constexpr MessageID _getInterfaceID<ARAModelUpdateControllerInterface> () { return 3; }
 template<>
-constexpr MessageID _getHostInterfaceID<ARAPlaybackControllerInterface> () { return 4; }
-
-template<typename StructT>
-constexpr MessageID _getPlugInInterfaceID ();
+constexpr MessageID _getInterfaceID<ARAPlaybackControllerInterface> () { return 4; }
+// plug-in interface specializations
 template<>
-constexpr MessageID _getPlugInInterfaceID<ARADocumentControllerInterface> () { return 0; }
+constexpr MessageID _getInterfaceID<ARADocumentControllerInterface> () { return 0; }
 template<>
-constexpr MessageID _getPlugInInterfaceID<ARAPlaybackRendererInterface> () { return 1; }
+constexpr MessageID _getInterfaceID<ARAPlaybackRendererInterface> () { return 1; }
 template<>
-constexpr MessageID _getPlugInInterfaceID<ARAEditorRendererInterface> () { return 2; }
+constexpr MessageID _getInterfaceID<ARAEditorRendererInterface> () { return 2; }
 template<>
-constexpr MessageID _getPlugInInterfaceID<ARAEditorViewInterface> () { return 3; }
+constexpr MessageID _getInterfaceID<ARAEditorViewInterface> () { return 3; }
 
 
 //------------------------------------------------------------------------------
@@ -1057,8 +1056,7 @@ inline bool operator!= (const MethodID methodID, const MessageID messageID)
 
 
 // create a MethodID for a given host-side or plug-in-side ARA method
-#define ARA_IPC_HOST_METHOD_ID(StructT, member) MethodID::createWithARAInterfaceIDAndOffset <_getHostInterfaceID<StructT> (), offsetof (StructT, member)> ()
-#define ARA_IPC_PLUGIN_METHOD_ID(StructT, member) MethodID::createWithARAInterfaceIDAndOffset <_getPlugInInterfaceID<StructT> (), offsetof (StructT, member)> ()
+#define ARA_IPC_METHOD_ID(StructT, member) MethodID::createWithARAInterfaceIDAndOffset <_getInterfaceID<StructT> (), offsetof (StructT, member)> ()
 
 
 // "global" messages for startup and teardown that are not calculated based on interface structs
@@ -1071,13 +1069,18 @@ inline constexpr auto kCleanupBindingMethodID { MethodID::createWithARAGlobalMes
 inline constexpr auto kUninitializeARAMethodID { MethodID::createWithARAGlobalMessageID<7> () };
 
 
+// private helpers for decodeHost/PlugInMessageID()
+#define ARA_IPC_GLOBAL_MESSAGE_CASE(methodID) \
+        case methodID.getMessageID (): return #methodID;
+
+#define ARA_IPC_INTERFACE_MESSAGE_CASE(StructT, member) \
+        case ARA_IPC_METHOD_ID (StructT, member).getMessageID (): return (omitInterfaceName) ? #member : #StructT "::" #member;
+
 // for debugging: translate IDs of messages sent by the host back to human-readable text
 inline const char* decodeHostMessageID (const MessageID messageID, const bool omitInterfaceName = true)
 {
     switch (messageID)
     {
- #define ARA_IPC_GLOBAL_MESSAGE_CASE(methodID) \
-        case methodID.getMessageID (): return #methodID;
         ARA_IPC_GLOBAL_MESSAGE_CASE (kGetFactoriesCountMethodID);
         ARA_IPC_GLOBAL_MESSAGE_CASE (kGetFactoryMethodID);
         ARA_IPC_GLOBAL_MESSAGE_CASE (kInitializeARAMethodID);
@@ -1085,73 +1088,69 @@ inline const char* decodeHostMessageID (const MessageID messageID, const bool om
         ARA_IPC_GLOBAL_MESSAGE_CASE (kBindToDocumentControllerMethodID);
         ARA_IPC_GLOBAL_MESSAGE_CASE (kCleanupBindingMethodID);
         ARA_IPC_GLOBAL_MESSAGE_CASE (kUninitializeARAMethodID);
-#undef ARA_IPC_GLOBAL_MESSAGE_CASE
 
-#define ARA_IPC_PLUGIN_INTERFACE_CASE(StructT, member) \
-        case ARA_IPC_PLUGIN_METHOD_ID (StructT, member).getMessageID (): return (omitInterfaceName) ? #member : #StructT "::" #member;
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyDocumentController)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getFactory)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, beginEditing)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, endEditing)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, notifyModelUpdates)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, beginRestoringDocumentFromArchive)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, endRestoringDocumentFromArchive)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, storeDocumentToArchive)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, updateDocumentProperties)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, createMusicalContext)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, updateMusicalContextProperties)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, updateMusicalContextContent)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyMusicalContext)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, createAudioSource)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, updateAudioSourceProperties)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, updateAudioSourceContent)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, enableAudioSourceSamplesAccess)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, deactivateAudioSourceForUndoHistory)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyAudioSource)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, createAudioModification)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, cloneAudioModification)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, updateAudioModificationProperties)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, deactivateAudioModificationForUndoHistory)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyAudioModification)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, createPlaybackRegion)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, updatePlaybackRegionProperties)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyPlaybackRegion)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, isAudioSourceContentAvailable)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, isAudioSourceContentAnalysisIncomplete)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, requestAudioSourceContentAnalysis)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getAudioSourceContentGrade)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, createAudioSourceContentReader)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, isAudioModificationContentAvailable)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getAudioModificationContentGrade)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, createAudioModificationContentReader)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, isPlaybackRegionContentAvailable)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getPlaybackRegionContentGrade)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, createPlaybackRegionContentReader)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getContentReaderEventCount)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getContentReaderDataForEvent)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyContentReader)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, createRegionSequence)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, updateRegionSequenceProperties)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, destroyRegionSequence)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getPlaybackRegionHeadAndTailTime)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, restoreObjectsFromArchive)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, storeObjectsToArchive)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getProcessingAlgorithmsCount)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getProcessingAlgorithmProperties)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, getProcessingAlgorithmForAudioSource)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, requestProcessingAlgorithmForAudioSource)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, isLicensedForCapabilities)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARAPlaybackRendererInterface, addPlaybackRegion)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARAPlaybackRendererInterface, removePlaybackRegion)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARAEditorRendererInterface, addPlaybackRegion)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARAEditorRendererInterface, removePlaybackRegion)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARAEditorRendererInterface, addRegionSequence)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARAEditorRendererInterface, removeRegionSequence)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARAEditorViewInterface, notifySelection)
-        ARA_IPC_PLUGIN_INTERFACE_CASE (ARAEditorViewInterface, notifyHideRegionSequences)
-#undef ARA_IPC_PLUGIN_INTERFACE_CASE
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, destroyDocumentController)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getFactory)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, beginEditing)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, endEditing)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, notifyModelUpdates)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, beginRestoringDocumentFromArchive)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, endRestoringDocumentFromArchive)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, storeDocumentToArchive)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, updateDocumentProperties)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, createMusicalContext)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, updateMusicalContextProperties)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, updateMusicalContextContent)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, destroyMusicalContext)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, createAudioSource)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, updateAudioSourceProperties)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, updateAudioSourceContent)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, enableAudioSourceSamplesAccess)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, deactivateAudioSourceForUndoHistory)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, destroyAudioSource)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, createAudioModification)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, cloneAudioModification)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, updateAudioModificationProperties)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, deactivateAudioModificationForUndoHistory)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, destroyAudioModification)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, createPlaybackRegion)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, updatePlaybackRegionProperties)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, destroyPlaybackRegion)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isAudioSourceContentAvailable)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isAudioSourceContentAnalysisIncomplete)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, requestAudioSourceContentAnalysis)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getAudioSourceContentGrade)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, createAudioSourceContentReader)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isAudioModificationContentAvailable)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getAudioModificationContentGrade)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, createAudioModificationContentReader)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isPlaybackRegionContentAvailable)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getPlaybackRegionContentGrade)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, createPlaybackRegionContentReader)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getContentReaderEventCount)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getContentReaderDataForEvent)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, destroyContentReader)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, createRegionSequence)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, updateRegionSequenceProperties)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, destroyRegionSequence)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getPlaybackRegionHeadAndTailTime)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, restoreObjectsFromArchive)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, storeObjectsToArchive)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getProcessingAlgorithmsCount)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getProcessingAlgorithmProperties)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, getProcessingAlgorithmForAudioSource)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, requestProcessingAlgorithmForAudioSource)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isLicensedForCapabilities)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackRendererInterface, addPlaybackRegion)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackRendererInterface, removePlaybackRegion)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAEditorRendererInterface, addPlaybackRegion)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAEditorRendererInterface, removePlaybackRegion)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAEditorRendererInterface, addRegionSequence)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAEditorRendererInterface, removeRegionSequence)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAEditorViewInterface, notifySelection)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAEditorViewInterface, notifyHideRegionSequences)
     }
     if (MethodID::isCustomMessageID (messageID))
         return "custom message";
@@ -1164,43 +1163,43 @@ inline const char* decodePlugInMessageID (const MessageID messageID, const bool 
 {
     switch (messageID)
     {
-#define ARA_IPC_HOST_INTERFACE_CASE(StructT, member) \
-        case ARA_IPC_HOST_METHOD_ID (StructT, member).getMessageID (): return (omitInterfaceName) ? #member : #StructT "::" #member;
-        ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, createAudioReaderForSource)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, readAudioSamples)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAAudioAccessControllerInterface, destroyAudioReader)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAArchivingControllerInterface, getArchiveSize)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAArchivingControllerInterface, readBytesFromArchive)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAArchivingControllerInterface, writeBytesToArchive)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAArchivingControllerInterface, notifyDocumentArchivingProgress)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAArchivingControllerInterface, notifyDocumentUnarchivingProgress)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAArchivingControllerInterface, getDocumentArchiveID)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, isMusicalContextContentAvailable)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, getMusicalContextContentGrade)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, createMusicalContextContentReader)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, isAudioSourceContentAvailable)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, getAudioSourceContentGrade)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, createAudioSourceContentReader)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, getContentReaderEventCount)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, getContentReaderDataForEvent)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAContentAccessControllerInterface, destroyContentReader)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAModelUpdateControllerInterface, notifyAudioSourceAnalysisProgress)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAModelUpdateControllerInterface, notifyAudioSourceContentChanged)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAModelUpdateControllerInterface, notifyAudioModificationContentChanged)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAModelUpdateControllerInterface, notifyPlaybackRegionContentChanged)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAModelUpdateControllerInterface, notifyDocumentDataChanged)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAPlaybackControllerInterface, requestStartPlayback)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAPlaybackControllerInterface, requestStopPlayback)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAPlaybackControllerInterface, requestSetPlaybackPosition)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAPlaybackControllerInterface, requestSetCycleRange)
-        ARA_IPC_HOST_INTERFACE_CASE (ARAPlaybackControllerInterface, requestEnableCycle)
-#undef ARA_IPC_HOST_INTERFACE_CASE
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAAudioAccessControllerInterface, createAudioReaderForSource)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAAudioAccessControllerInterface, readAudioSamples)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAAudioAccessControllerInterface, destroyAudioReader)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAArchivingControllerInterface, getArchiveSize)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAArchivingControllerInterface, readBytesFromArchive)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAArchivingControllerInterface, writeBytesToArchive)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAArchivingControllerInterface, notifyDocumentArchivingProgress)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAArchivingControllerInterface, notifyDocumentUnarchivingProgress)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAArchivingControllerInterface, getDocumentArchiveID)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, isMusicalContextContentAvailable)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, getMusicalContextContentGrade)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, createMusicalContextContentReader)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, isAudioSourceContentAvailable)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, getAudioSourceContentGrade)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, createAudioSourceContentReader)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, getContentReaderEventCount)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, getContentReaderDataForEvent)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAContentAccessControllerInterface, destroyContentReader)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyAudioSourceAnalysisProgress)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyAudioSourceContentChanged)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyAudioModificationContentChanged)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyPlaybackRegionContentChanged)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyDocumentDataChanged)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackControllerInterface, requestStartPlayback)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackControllerInterface, requestStopPlayback)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackControllerInterface, requestSetPlaybackPosition)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackControllerInterface, requestSetCycleRange)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackControllerInterface, requestEnableCycle)
     }
     if (MethodID::isCustomMessageID (messageID))
         return "custom message";
     ARA_INTERNAL_ASSERT (false);
     return "unknown message";
 }
+
+#undef ARA_IPC_GLOBAL_MESSAGE_CASE
+#undef ARA_IPC_INTERFACE_MESSAGE_CASE
 
 // helper template to identify pointers to ARA structs in message arguments
 template<typename ArgT>
