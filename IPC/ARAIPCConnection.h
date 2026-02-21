@@ -261,6 +261,13 @@ public:
     void processPendingMessageIfNeeded ();
 
 private:
+    // key to indicate whether an outgoing call is made in response to a currently handled incoming call
+    // or a new call, which is necessary to deal with the decoupled main threads concurrency
+    // to optimize for performance, it is only added when the call is a response, being a new call is implicit
+    // (it is also never added to replies because they always are a response anyways)
+    static constexpr MessageArgumentKey kIsResponseKey { -1 };
+
+private:
     int32_t _processingMessagesCount { 0 };
 
 // \todo this is not allowed for some reason, so we must cast at every use of _noPendingMessageDecoder...
@@ -284,6 +291,10 @@ public:
     void routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder) override;
 
 private:
+    // keys to store the threading information in the IPC messages
+    static constexpr MessageArgumentKey kSendThreadKey { -1 };
+    static constexpr MessageArgumentKey kReceiveThreadKey { -2 };
+
     struct RoutedMessage
     {
         MessageID _messageID { 0 };
