@@ -85,28 +85,6 @@ public:
     }
 };
 
-class AUPlugInConnection : public AUConnection
-{
-public:
-    using AUConnection::AUConnection;
-    
-    bool sendsHostMessages () const override
-    {
-        return true;
-    }
-};
-
-class AUHostConnection : public AUConnection
-{
-public:
-    using AUConnection::AUConnection;
-    
-    bool sendsHostMessages () const override
-    {
-        return false;
-    }
-};
-
 // message channel base class for both proxy implementations
 class AudioUnitMessageChannel : public MessageChannel
 {
@@ -260,7 +238,7 @@ private:
                    AUAudioUnit * _Nonnull initAU,
                    ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
                    void * _Nullable delegateUserData)
-    : ProxyPlugIn { std::make_unique<AUPlugInConnection> (waitForMessageDelegate, delegateUserData) },
+    : ProxyPlugIn { std::make_unique<AUConnection> (waitForMessageDelegate, delegateUserData) },
       _initAU { initAU }
     {
         getConnection ()->setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel });
@@ -336,7 +314,7 @@ class AUProxyHost : public ProxyHost
 {
 public:
     AUProxyHost ()
-    : ProxyHost { std::make_unique<AUHostConnection> ( nullptr, nullptr ) }
+    : ProxyHost { std::make_unique<AUConnection> ( nullptr, nullptr ) }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
         getConnection ()->setMessageHandler ([this] (auto&& ...args) { handleReceivedMessage (args...); });
