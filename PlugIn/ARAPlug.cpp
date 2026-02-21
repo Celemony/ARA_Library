@@ -2367,7 +2367,7 @@ void HostArchiveWriter::notifyDocumentArchivingProgress (float value) noexcept
 
 /*******************************************************************************/
 
-static std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize playbackRegionsCount, const ARAPlaybackRegionRef playbackRegionRefs[])
+static std::vector<PlaybackRegion*> _convertPlaybackRegionsArray ([[maybe_unused]] const DocumentController* documentController, ARASize playbackRegionsCount, const ARAPlaybackRegionRef playbackRegionRefs[])
 {
     std::vector<PlaybackRegion*> playbackRegions;
     if (playbackRegionsCount > 0)
@@ -2385,7 +2385,7 @@ static std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const Document
     return playbackRegions;
 }
 
-static std::vector<RegionSequence*> _convertRegionSequencesArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[])
+static std::vector<RegionSequence*> _convertRegionSequencesArray ([[maybe_unused]] const DocumentController* documentController, ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[])
 {
     std::vector<RegionSequence*> regionSequences;
     if (regionSequenceRefsCount > 0)

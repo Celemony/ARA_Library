@@ -262,8 +262,8 @@ bool CFMessageDecoder::readString (MessageArgumentKey argKey, const char ** argV
     {
         const auto length { CFStringGetLength (string) };
         std::string temp;   // \todo does not work: { static_cast<size_t> (length), char { 0 } };
-        temp.assign ( static_cast<size_t> (length) , char { 0 } );
-        CFIndex ARA_MAYBE_UNUSED_VAR (count) { CFStringGetBytes (string, CFRangeMake (0, length), kCFStringEncodingUTF8, 0, false, (UInt8*)(&temp[0]), length, nullptr) };
+        temp.assign (static_cast<size_t> (length) , char { 0 });
+        [[maybe_unused]] const auto count { CFStringGetBytes (string, CFRangeMake (0, length), kCFStringEncodingUTF8, 0, false, (UInt8*)(&temp[0]), length, nullptr) };
         ARA_INTERNAL_ASSERT (count == length);
         static std::set<std::string> strings;   // \todo static cache of "undecodeable" strings requires single-threaded use - maybe make iVar instead?
         strings.insert (temp);
