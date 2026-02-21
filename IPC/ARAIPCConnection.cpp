@@ -458,7 +458,7 @@ void APCRouteNewTransactionFunc (ULONG_PTR parameter)
 
 #elif defined (__APPLE__)
 
-void Connection::performRunloopSource (void* info)
+void Connection::_performRunLoopSource (void* info)
 {
     auto connection { reinterpret_cast<Connection*> (info) };
     connection->_mutex.lock ();
@@ -497,7 +497,7 @@ Connection::Connection (WaitForMessageDelegate waitForMessageDelegate, void* del
 #elif defined (__APPLE__)
   _creationThreadRunLoop { CFRunLoopGetCurrent () }
 {
-    CFRunLoopSourceContext context { 0, this, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, performRunloopSource };
+    CFRunLoopSourceContext context { 0, this, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, _performRunLoopSource };
     _runloopSource = CFRunLoopSourceCreate (kCFAllocatorDefault, 0, &context);
     CFRunLoopAddSource (_creationThreadRunLoop, _runloopSource, kCFRunLoopCommonModes);
 }
