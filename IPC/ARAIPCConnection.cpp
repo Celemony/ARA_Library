@@ -466,8 +466,11 @@ void Connection::_performRunLoopSource (void* info)
 #endif
 
 
-Connection::Connection (MessageHandler&& messageHandler, WaitForMessageDelegate && waitForMessageDelegate)
-: _messageHandler { std::move (messageHandler) },
+Connection::Connection (MessageEncoderFactory && messageEncoderFactory, MessageHandler&& messageHandler,
+                        bool receiverEndianessMatches, WaitForMessageDelegate && waitForMessageDelegate)
+: _messageEncoderFactory { std::move (messageEncoderFactory) },
+  _messageHandler { std::move (messageHandler) },
+  _receiverEndianessMatches { receiverEndianessMatches },
   _waitForMessageDelegate { std::move (waitForMessageDelegate) },
 #if __cplusplus >= 202002L
   _waitForMessageSemaphore { new std::binary_semaphore { 0 } },
