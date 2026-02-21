@@ -334,6 +334,8 @@ public:
     static constexpr ContentUpdateScopes tuningIsAffected () noexcept { return nothingIsAffected ()._flags & ~kARAContentUpdateTuningScopeRemainsUnchanged; }
     //! Content readers for key signatures, chords etc. are affected by the change.
     static constexpr ContentUpdateScopes harmoniesAreAffected () noexcept { return nothingIsAffected ()._flags & ~kARAContentUpdateHarmonicScopeRemainsUnchanged; }
+    //! Content readers for lyrics, phonemes etc. are affected by the change.
+    static constexpr ContentUpdateScopes lyricsAreAffected () noexcept { return nothingIsAffected ()._flags & ~kARAContentUpdateLyricsScopeRemainsUnchanged; }
 
     //! Everything is affected by the change.
     static constexpr ContentUpdateScopes everythingIsAffected () noexcept { return kARAContentUpdateEverythingChanged; }
@@ -376,14 +378,16 @@ public:
     constexpr bool affectTuning () const noexcept { return ((_flags & kARAContentUpdateTuningScopeRemainsUnchanged) == 0); }
     //! \copybrief harmoniesAreAffected
     constexpr bool affectHarmonies () const noexcept { return ((_flags & kARAContentUpdateHarmonicScopeRemainsUnchanged) == 0); }
+    //! \copybrief lyricsAreAffected
+    constexpr bool affectLyrics () const noexcept { return ((_flags & kARAContentUpdateLyricsScopeRemainsUnchanged) == 0); }
     //! \copybrief everythingIsAffected
     constexpr bool affectEverything () const noexcept { return ((_flags & _knownFlags) == 0); }
 //@}
 
 private:
-    static constexpr ARAContentUpdateFlags _knownFlags { (kARAContentUpdateSignalScopeRemainsUnchanged |
-                                                          kARAContentUpdateNoteScopeRemainsUnchanged | kARAContentUpdateTimingScopeRemainsUnchanged |
-                                                          kARAContentUpdateTuningScopeRemainsUnchanged | kARAContentUpdateHarmonicScopeRemainsUnchanged) };
+    static constexpr ARAContentUpdateFlags _knownFlags { (kARAContentUpdateSignalScopeRemainsUnchanged | kARAContentUpdateNoteScopeRemainsUnchanged |
+                                                          kARAContentUpdateTimingScopeRemainsUnchanged | kARAContentUpdateTuningScopeRemainsUnchanged |
+                                                          kARAContentUpdateHarmonicScopeRemainsUnchanged | kARAContentUpdateLyricsScopeRemainsUnchanged) };
     ARAContentUpdateFlags _flags;
 };
 
