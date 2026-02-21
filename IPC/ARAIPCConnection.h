@@ -264,6 +264,8 @@ public:
     void processPendingMessageIfNeeded ();
 
 private:
+    int32_t _processingMessagesCount { 0 };
+
 // \todo this is not allowed for some reason, so we must cast at every use of _noPendingMessageDecoder...
 //  static constexpr auto _noPendingMessageDecoder { reinterpret_cast<const MessageDecoder*> (static_cast<intptr_t> (-1)) };
     static constexpr auto _noPendingMessageDecoder { static_cast<intptr_t> (-1) };
