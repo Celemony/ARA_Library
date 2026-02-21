@@ -89,8 +89,8 @@ private:
 class Connection
 {
 public:
-    using WaitForMessageDelegate = void (*) (void* delegateUserData);
-    explicit Connection (MessageHandler&& messageHandler, WaitForMessageDelegate waitForMessageDelegate = nullptr, void* delegateUserData = nullptr);
+    using WaitForMessageDelegate = std::function<void ()>;
+    explicit Connection (MessageHandler&& messageHandler, WaitForMessageDelegate && waitForMessageDelegate = {});
     virtual ~Connection ();
 
     //! set the message channel for all main thread communication
@@ -154,7 +154,6 @@ private:
 private:
     const MessageHandler _messageHandler;
     const WaitForMessageDelegate _waitForMessageDelegate;
-    void* const _delegateUserData;
     void* const _waitForMessageSemaphore;       // concrete type is platform-dependent
     std::unique_ptr<MainThreadMessageDispatcher> _mainThreadDispatcher {};
     std::unique_ptr<OtherThreadsMessageDispatcher> _otherThreadsDispatcher {};
