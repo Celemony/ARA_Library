@@ -1032,18 +1032,6 @@ public:
         return (messageID < kReservedMessageIDRangeStart) || (kReservedMessageIDRangeEnd <= messageID);
     }
 
-    template<typename StructT>
-    static inline constexpr bool isMessageToHostInterface (MessageID messageID)
-    {
-        return _getHostInterfaceID<StructT> () == (messageID % 8);
-    }
-
-    template<typename StructT>
-    static inline constexpr bool isMessageToPlugInInterface (MessageID messageID)
-    {
-        return _getPlugInInterfaceID<StructT> () == (messageID % 8);
-    }
-
     constexpr MessageID getMessageID () const { return _id; }
 
 private:
