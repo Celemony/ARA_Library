@@ -89,7 +89,7 @@ class Connection
 {
 public:
     using WaitForMessageDelegate = void (*) (void* delegateUserData);
-    explicit Connection (WaitForMessageDelegate waitForMessageDelegate, void* delegateUserData);
+    explicit Connection (MessageHandler&& messageHandler, WaitForMessageDelegate waitForMessageDelegate = nullptr, void* delegateUserData = nullptr);
     virtual ~Connection ();
 
     //! set the message channel for all main thread communication
@@ -105,11 +105,6 @@ public:
     void setOtherThreadsChannel (MessageChannel* messageChannel);
 
     OtherThreadsMessageDispatcher* getOtherThreadsDispatcher () const { return _otherThreadsDispatcher; }
-
-    //! set the message handler for all communication on all threads
-    //! Must be done before sending or receiving the first message on any channel.
-    //! The connection does not take ownership of the message handler.
-    void setMessageHandler (MessageHandler&& messageHandler) { _messageHandler = std::move(messageHandler); }
 
     const MessageHandler& getMessageHandler () const { return _messageHandler; }
 
@@ -160,12 +155,12 @@ private:
 #endif
 
 private:
+    const MessageHandler _messageHandler;
     const WaitForMessageDelegate _waitForMessageDelegate;
     void* const _delegateUserData;
-    void* const _waitForMessageSemaphore;   // concrete type is platform-dependent
+    void* const _waitForMessageSemaphore;       // concrete type is platform-dependent
     MainThreadMessageDispatcher* _mainThreadDispatcher {};
     OtherThreadsMessageDispatcher* _otherThreadsDispatcher {};
-    MessageHandler _messageHandler;
     std::thread::id const _creationThreadID;
 #if defined (_WIN32)
     HANDLE const _creationThreadHandle;
