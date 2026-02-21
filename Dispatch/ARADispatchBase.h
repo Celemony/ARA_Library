@@ -187,7 +187,7 @@ public:
     //! the size of the struct as though \p member was the last implemented field.
     static constexpr inline size_t getImplementedSize ()
     {
-        static_assert (std::is_class<StructType>::value && std::is_standard_layout<StructType>::value, "C compatible standard layout struct required");
+        static_assert (std::is_class_v<StructType> && std::is_standard_layout_v<StructType>, "C compatible standard layout struct required");
         return reinterpret_cast<intptr_t> (&(static_cast<StructType*> (nullptr)->*member)) + sizeof (static_cast<StructType*> (nullptr)->*member);
     }
 

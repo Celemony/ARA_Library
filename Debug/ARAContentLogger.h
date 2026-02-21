@@ -190,12 +190,12 @@ struct ContentLogger
 
     // internal helper for log ()
 
-    template <ARAContentType contentType, typename ContentReader, typename std::enable_if<contentType != kARAContentTypeTempoEntries, bool>::type = true>
+    template <ARAContentType contentType, typename ContentReader, std::enable_if_t<contentType != kARAContentTypeTempoEntries, bool> = true>
     static inline void logEventIteration (ContentReader& reader, ARAInt32 i)
     {
         logEvent (i, reader[i]);
     }
-    template <ARAContentType contentType, typename ContentReader, typename std::enable_if<contentType == kARAContentTypeTempoEntries, bool>::type = true>
+    template <ARAContentType contentType, typename ContentReader, std::enable_if_t<contentType == kARAContentTypeTempoEntries, bool> = true>
     static inline void logEventIteration (ContentReader& reader, ARAInt32 i)
     {
         const auto event { reader[i] };

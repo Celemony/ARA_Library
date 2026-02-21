@@ -119,16 +119,10 @@ struct ArrayArgument
 
 // private helper template to detect ARA ref types
 template<typename T>
-struct _IsRefType
-{
-    static constexpr bool value { false };
-};
+inline constexpr bool _IsRefType { false };
 #define ARA_IPC_SPECIALIZE_FOR_REF_TYPE(Type)   \
 template<>                                      \
-struct _IsRefType<Type>                         \
-{                                               \
-    static constexpr bool value { true };       \
-};
+inline constexpr bool _IsRefType<Type> { true };
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAMusicalContextRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARARegionSequenceRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAAudioSourceRef)
@@ -158,23 +152,6 @@ ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAIPCConnectionRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAIPCMessageChannelRef)
 ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAIPCPlugInInstanceRef)
 #undef ARA_IPC_SPECIALIZE_FOR_REF_TYPE
-
-
-// helper template to identify pointers to ARA structs in message arguments
-template<typename ArgT>
-struct _IsStructPointerArg
-{
-    struct _False
-    {
-        static constexpr bool value { false };
-    };
-    struct _True
-    {
-        static constexpr bool value { true };
-    };
-    using type = typename std::conditional<!_IsRefType<ArgT>::value &&
-                                            std::is_pointer<ArgT>::value && !std::is_same<ArgT, const char*>::value, _True, _False>::type;
-};
 
 
 //------------------------------------------------------------------------------
@@ -264,12 +241,12 @@ inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgume
 
 // templated overloads of the IPCMessageEn-/Decoder primitives for ARA (host) ref types,
 // which are stored as size_t
-template<typename T, typename std::enable_if<_IsRefType<T>::value, bool>::type = true>
+template<typename T, std::enable_if_t<_IsRefType<T>, bool> = true>
 inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const T argValue)
 {
     encoder->appendSize (argKey, reinterpret_cast<size_t> (argValue));
 }
-template<typename T, typename std::enable_if<_IsRefType<T>::value, bool>::type = true>
+template<typename T, std::enable_if_t<_IsRefType<T>, bool> = true>
 inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, T& argValue)
 {
     // \todo is there a safe/proper way across all compilers for this cast to avoid the copy?
@@ -433,11 +410,11 @@ template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<Stru
         const BytesEncoder tmp_##member { reinterpret_cast<const uint8_t*> (value.member), sizeof (value.member), true }; \
         _encodeAndAppend (encoder, offsetof (StructType, member), tmp_##member);
 #define ARA_IPC_ENCODE_EMBEDDED_ARRAY(member)                                                   \
-        const ArrayArgument<const std::remove_extent<decltype (value.member)>::type> tmp_##member { value.member, std::extent<decltype (value.member)>::value }; \
+        const ArrayArgument<const std::remove_extent_t<decltype (value.member)>> tmp_##member { value.member, std::extent_v<decltype (value.member)> }; \
         _encodeAndAppend (encoder, offsetof (StructType, member), tmp_##member);
 #define ARA_IPC_ENCODE_VARIABLE_ARRAY(member, count)                                            \
         if ((value.count > 0) && (value.member != nullptr)) {                                   \
-            const ArrayArgument<const std::remove_pointer<decltype (value.member)>::type> tmp_##member { value.member, value.count }; \
+            const ArrayArgument<const std::remove_pointer_t<decltype (value.member)>> tmp_##member { value.member, value.count }; \
             _encodeAndAppend (encoder, offsetof (StructType, member), tmp_##member);            \
         }
 #define ARA_IPC_ENCODE_OPTIONAL_MEMBER(member)                                                  \
@@ -446,7 +423,7 @@ template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<Stru
 #define ARA_IPC_HAS_ADDENDUM_MEMBER(member)                                                     \
         /* \todo ARA_IMPLEMENTS_FIELD decorates the type with the ARA:: namespace,     */       \
         /* this conflicts with decltype's result - this copied version drops the ARA:: */       \
-        (value.structSize > offsetof (std::remove_reference<decltype (value)>::type, member))
+        (value.structSize > offsetof (std::remove_reference_t<decltype (value)>, member))
 #define ARA_IPC_ENCODE_ADDENDUM_MEMBER(member)                                                  \
         if (ARA_IPC_HAS_ADDENDUM_MEMBER (member))                                               \
             ARA_IPC_ENCODE_MEMBER (member)
@@ -484,13 +461,13 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
         success &= (resultSize_##member == sizeof (result.member));                             \
         ARA_INTERNAL_ASSERT (success);
 #define ARA_IPC_DECODE_EMBEDDED_ARRAY(member)                                                   \
-        ArrayArgument<std::remove_extent<decltype (result.member)>::type> tmp_##member { result.member, std::extent<decltype (result.member)>::value }; \
+        ArrayArgument<std::remove_extent_t<decltype (result.member)>> tmp_##member { result.member, std::extent_v<decltype (result.member)> }; \
         success &= _readAndDecode (tmp_##member, decoder, offsetof (StructType, member));       \
         ARA_INTERNAL_ASSERT (success);
 #define ARA_IPC_DECODE_VARIABLE_ARRAY(member, count, updateCount)                               \
         /* \todo the outer struct contains a pointer to the inner struct, so we need some */    \
         /*       thread-safe place to store it - is there a better way to achieve this?   */    \
-        thread_local std::vector<typename std::remove_const<std::remove_pointer<decltype (result.member)>::type>::type> tmp_##member; \
+        thread_local std::vector<typename std::remove_const_t<std::remove_pointer_t<decltype (result.member)>>> tmp_##member; \
         if (_readAndDecode (tmp_##member, decoder, offsetof (StructType, member))) {            \
             result.member = tmp_##member.data ();                                               \
             if (updateCount) { result.count = tmp_##member.size (); }                           \
@@ -520,7 +497,7 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
         if (subDecoder_##member != nullptr) {                                                   \
             /* \todo the outer struct contains a pointer to the inner struct, so we need some */\
             /*       thread-safe place to store it - is there a better way to achieve this?   */\
-            thread_local std::remove_const<std::remove_pointer<decltype (result.member)>::type>::type cache; \
+            thread_local std::remove_const_t<std::remove_pointer_t<decltype (result.member)>> cache; \
             success &= _ValueDecoder<decltype (cache)>::decode (cache, subDecoder_##member);    \
             ARA_INTERNAL_ASSERT (success);                                                      \
             result.member = &cache;                                                             \
@@ -923,49 +900,21 @@ inline bool _readAndDecode (ValueT& result, const MessageDecoder* decoder, const
 
 // private helper for decodeArguments() to deal with optional arguments
 template<typename ArgT>
-struct _IsOptionalArgument
-{
-    static constexpr bool value { false };
-};
+inline constexpr bool _IsOptionalArgument { false };
 template<typename ArgT>
-struct _IsOptionalArgument<std::pair<ArgT, bool>>
-{
-    static constexpr bool value { true };
-};
+inline constexpr bool _IsOptionalArgument<std::pair<ArgT, bool>> { true };
 
-// private helpers for encodeArguments() and decodeArguments() to deal with the variable arguments one at a time
-inline void _encodeArgumentsHelper (MessageEncoder* /*encoder*/, const MessageArgumentKey /*argKey*/)
-{
-}
-template<typename ArgT, typename... MoreArgs, typename std::enable_if<!_IsStructPointerArg<ArgT>::type::value, bool>::type = true>
-inline void _encodeArgumentsHelper (MessageEncoder* encoder, const MessageArgumentKey argKey, const ArgT& argValue, const MoreArgs &... moreArgs)
-{
-    _encodeAndAppend (encoder, argKey, argValue);
-    _encodeArgumentsHelper (encoder, argKey + 1, moreArgs...);
-}
-template<typename ArgT, typename... MoreArgs, typename std::enable_if<_IsStructPointerArg<ArgT>::type::value, bool>::type = true>
-inline void _encodeArgumentsHelper (MessageEncoder* encoder, const MessageArgumentKey argKey, const ArgT& argValue, const MoreArgs &... moreArgs)
-{
-    if (argValue != nullptr)
-        _encodeAndAppend (encoder, argKey, *argValue);
-    _encodeArgumentsHelper (encoder, argKey + 1, moreArgs...);
-}
-template<typename... MoreArgs>
-inline void _encodeArgumentsHelper (MessageEncoder* encoder, const MessageArgumentKey argKey, const std::nullptr_t& /*argValue*/, const MoreArgs &... moreArgs)
-{
-    _encodeArgumentsHelper (encoder, argKey + 1, moreArgs...);
-}
-
+// private helpers for decodeArguments() to deal with the variable arguments one at a time
 inline void _decodeArgumentsHelper (const MessageDecoder* /*decoder*/, const MessageArgumentKey /*argKey*/)
 {
 }
-template<typename ArgT, typename... MoreArgs, typename std::enable_if<!_IsOptionalArgument<ArgT>::value, bool>::type = true>
+template<typename ArgT, typename... MoreArgs, std::enable_if_t<!_IsOptionalArgument<ArgT>, bool> = true>
 inline void _decodeArgumentsHelper (const MessageDecoder* decoder, const MessageArgumentKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
 {
     _readAndDecode (argValue, decoder, argKey);
     _decodeArgumentsHelper (decoder, argKey + 1, moreArgs...);
 }
-template<typename ArgT, typename... MoreArgs, typename std::enable_if<_IsOptionalArgument<ArgT>::value, bool>::type = true>
+template<typename ArgT, typename... MoreArgs, std::enable_if_t<_IsOptionalArgument<ArgT>, bool> = true>
 inline void _decodeArgumentsHelper (const MessageDecoder* decoder, const MessageArgumentKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
 {
     argValue.second = _readAndDecode (argValue.first, decoder, argKey);
@@ -1089,13 +1038,13 @@ inline bool operator!= (const MethodID methodID, const MessageID messageID)
 
 
 // "global" messages for startup and teardown that are not calculated based on interface structs
-constexpr auto kGetFactoriesCountMethodID { MethodID::createWithARAGlobalMessageID<1> () };
-constexpr auto kGetFactoryMethodID { MethodID::createWithARAGlobalMessageID<2> () };
-constexpr auto kInitializeARAMethodID { MethodID::createWithARAGlobalMessageID<3> () };
-constexpr auto kCreateDocumentControllerMethodID { MethodID::createWithARAGlobalMessageID<4> () };
-constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARAGlobalMessageID<5> () };
-constexpr auto kCleanupBindingMethodID { MethodID::createWithARAGlobalMessageID<6> () };
-constexpr auto kUninitializeARAMethodID { MethodID::createWithARAGlobalMessageID<7> () };
+inline constexpr auto kGetFactoriesCountMethodID { MethodID::createWithARAGlobalMessageID<1> () };
+inline constexpr auto kGetFactoryMethodID { MethodID::createWithARAGlobalMessageID<2> () };
+inline constexpr auto kInitializeARAMethodID { MethodID::createWithARAGlobalMessageID<3> () };
+inline constexpr auto kCreateDocumentControllerMethodID { MethodID::createWithARAGlobalMessageID<4> () };
+inline constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARAGlobalMessageID<5> () };
+inline constexpr auto kCleanupBindingMethodID { MethodID::createWithARAGlobalMessageID<6> () };
+inline constexpr auto kUninitializeARAMethodID { MethodID::createWithARAGlobalMessageID<7> () };
 
 
 // for debugging: translate IDs of messages sent by the host back to human-readable text
@@ -1225,21 +1174,39 @@ inline const char* decodePlugInMessageID (const MessageID messageID)
     return "unknown message ID";
 }
 
+// helper template to identify pointers to ARA structs in message arguments
+template<typename ArgT>
+inline constexpr auto _IsStructPointerArg = !_IsRefType<ArgT> && std::is_pointer_v<ArgT> && !std::is_same_v<ArgT, const char*>;
+
+template<typename ArgT, std::enable_if_t<!_IsStructPointerArg<ArgT>, int> = 0>
+inline void _encodeAndAppendHelper (MessageEncoder* encoder, const MessageArgumentKey argKey, const ArgT& argValue)
+{
+    _encodeAndAppend (encoder, argKey, argValue);
+}
+template<typename ArgT, std::enable_if_t<_IsStructPointerArg<ArgT>, int> = 0>
+inline void _encodeAndAppendHelper (MessageEncoder* encoder, const MessageArgumentKey argKey, const ArgT& argValue)
+{
+    if (argValue != nullptr)
+        _encodeAndAppend (encoder, argKey, *argValue);
+}
+inline void _encodeAndAppendHelper (MessageEncoder* /*encoder*/, const MessageArgumentKey /*argKey*/, const std::nullptr_t& /*argValue*/)
+{}
 
 // caller side: create a message with the specified arguments
 template<typename... Args>
 inline void encodeArguments (MessageEncoder* encoder, const Args &... args)
 {
-    _encodeArgumentsHelper (encoder, 0, args...);
+    MessageArgumentKey key { 0 };
+    ((_encodeAndAppendHelper(encoder, key++, args)), ...);
 }
 
 // caller side: decode the received reply to a sent message
-template<typename RetT, typename std::enable_if<!std::is_class<RetT>::value || !std::is_pod<RetT>::value, bool>::type = true>
+template<typename RetT, std::enable_if_t<!std::is_class_v<RetT> || !std::is_pod_v<RetT>, bool> = true>
 inline bool decodeReply (RetT& result, const MessageDecoder* decoder)
 {
     return _readAndDecode (result, decoder, 0);
 }
-template<typename RetT, typename std::enable_if<std::is_class<RetT>::value && std::is_pod<RetT>::value, bool>::type = true>
+template<typename RetT, std::enable_if_t<std::is_class_v<RetT> && std::is_pod_v<RetT>, bool> = true>
 inline bool decodeReply (RetT& result, const MessageDecoder* decoder)
 {
     return _ValueDecoder<RetT>::decode (result, decoder);
@@ -1259,13 +1226,13 @@ template<typename ArgT>
 using OptionalArgument = typename std::pair<ArgT, bool>;
 
 // callee side: encode the reply to a received message
-template<typename ValueT, typename std::enable_if<!std::is_class<ValueT>::value || !std::is_pod<ValueT>::value, bool>::type = true>
+template<typename ValueT, std::enable_if_t<!std::is_class_v<ValueT> || !std::is_pod_v<ValueT>, bool> = true>
 inline void encodeReply (MessageEncoder* encoder, const ValueT& value)
 {
     ARA_INTERNAL_ASSERT (encoder != nullptr);
     _encodeAndAppend (encoder, 0, value);
 }
-template<typename ValueT, typename std::enable_if<std::is_class<ValueT>::value && std::is_pod<ValueT>::value, bool>::type = true>
+template<typename ValueT, std::enable_if_t<std::is_class_v<ValueT> && std::is_pod_v<ValueT>, bool> = true>
 inline void encodeReply (MessageEncoder* encoder, const ValueT& value)
 {
     ARA_INTERNAL_ASSERT (encoder != nullptr);

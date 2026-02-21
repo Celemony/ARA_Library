@@ -56,7 +56,7 @@ namespace PlugIn {
 #if !defined (ARA_MAP_REF)
     #define ARA_MAP_REF(ClassType, FirstRefType, ...) \
         static inline ARA::ToRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__> toRef (const ClassType* ptr) noexcept { return ARA::ToRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__> { ptr }; } \
-        template <typename DesiredClassType = ClassType, typename RefType, typename std::enable_if<std::is_constructible<ARA::FromRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__>, RefType>::value, bool>::type = true> \
+        template <typename DesiredClassType = ClassType, typename RefType, std::enable_if_t<std::is_constructible_v<ARA::FromRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__>, RefType>, bool> = true> \
         static inline DesiredClassType* fromRef (RefType ref) noexcept { ClassType* object { ARA::FromRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__> (ref) }; return static_cast<DesiredClassType*> (object); }
 #endif
 

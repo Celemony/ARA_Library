@@ -182,9 +182,9 @@ public:
     inline bool operator!= (const OptionalProperty& other) const noexcept { return !(*this == other._data); }
 
 private:
-    template<typename Q = T*, typename std::enable_if<!std::is_same<Q, ARAUtf8String>::value, bool>::type = true>
+    template<typename Q = T*, std::enable_if_t<!std::is_same_v<Q, ARAUtf8String>, bool> = true>
     static constexpr inline size_t getAllocSize (const T* /*value*/) noexcept { return sizeof (T); }
-    template<typename Q = T*, typename std::enable_if<std::is_same<Q, ARAUtf8String>::value, bool>::type = true>
+    template<typename Q = T*, std::enable_if_t<std::is_same_v<Q, ARAUtf8String>, bool> = true>
     static inline size_t getAllocSize (const ARAUtf8String value) noexcept { return std::strlen (value) + 1; }
 
 private:

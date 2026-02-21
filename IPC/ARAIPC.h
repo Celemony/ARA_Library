@@ -47,7 +47,7 @@ extern "C" {
 #if !defined (ARA_MAP_IPC_REF)
     #define ARA_MAP_IPC_REF(IPCClassType, FirstIPCRefType, ...) \
         static inline ARA::ToRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__> toIPCRef (const IPCClassType* ptr) noexcept { return ARA::ToRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__> { ptr }; } \
-        template <typename DesiredIPCClassType = IPCClassType, typename IPCRefType, typename std::enable_if<std::is_constructible<ARA::FromRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__>, IPCRefType>::value, bool>::type = true> \
+        template <typename DesiredIPCClassType = IPCClassType, typename IPCRefType, std::enable_if_t<std::is_constructible_v<ARA::FromRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__>, IPCRefType>, bool> = true> \
         static inline DesiredIPCClassType* fromIPCRef (IPCRefType ref) noexcept { IPCClassType* object { ARA::FromRefConversionHelper<IPCClassType, FirstIPCRefType, ##__VA_ARGS__> (ref) }; return static_cast<DesiredIPCClassType*> (object); }
 #endif
 

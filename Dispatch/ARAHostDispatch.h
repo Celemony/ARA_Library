@@ -62,7 +62,7 @@ ARA_DISABLE_DOCUMENTATION_DEPRECATED_WARNINGS_BEGIN
 #if !defined (ARA_MAP_HOST_REF)
     #define ARA_MAP_HOST_REF(HostClassType, FirstHostRefType, ...) \
         static inline ARA::ToRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__> toHostRef (const HostClassType* ptr) noexcept { return ARA::ToRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__> { ptr }; } \
-        template <typename DesiredHostClassType = HostClassType, typename HostRefType, typename std::enable_if<std::is_constructible<ARA::FromRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__>, HostRefType>::value, bool>::type = true> \
+        template <typename DesiredHostClassType = HostClassType, typename HostRefType, std::enable_if_t<std::is_constructible_v<ARA::FromRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__>, HostRefType>, bool> = true> \
         static inline DesiredHostClassType* fromHostRef (HostRefType ref) noexcept { HostClassType* object { ARA::FromRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__> (ref) }; return static_cast<DesiredHostClassType*> (object); }
 #endif
 
