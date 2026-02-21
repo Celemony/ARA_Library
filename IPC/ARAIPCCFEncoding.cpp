@@ -131,9 +131,9 @@ void CFMessageEncoder::appendBytes (MessageArgumentKey argKey, const uint8_t * a
     CFRelease (argObject);
 }
 
-MessageEncoder* CFMessageEncoder::appendSubMessage (MessageArgumentKey argKey)
+std::unique_ptr<MessageEncoder> CFMessageEncoder::appendSubMessage (MessageArgumentKey argKey)
 {
-    auto argObject = new CFMessageEncoder {};
+    auto argObject { CFMessageEncoder::create () };
     CFDictionarySetValue (_dictionary, _getEncodedKey (argKey), argObject->_dictionary);
     return argObject;
 }
@@ -151,10 +151,6 @@ __attribute__((cf_returns_retained)) CFDataRef CFMessageEncoder::createMessageEn
     return CFPropertyListCreateData (kCFAllocatorDefault, _dictionary, kCFPropertyListBinaryFormat_v1_0, 0, nullptr);
 }
 
-
-CFMessageDecoder::CFMessageDecoder (CFDictionaryRef dictionary)
-: CFMessageDecoder::CFMessageDecoder (dictionary, true)
-{}
 
 CFMessageDecoder::CFMessageDecoder (CFDictionaryRef dictionary, bool retain)
 : _dictionary { dictionary }
@@ -296,13 +292,13 @@ void CFMessageDecoder::readBytes (MessageArgumentKey argKey, uint8_t* argValue) 
     CFDataGetBytes (bytes, CFRangeMake (0, length), argValue);
 }
 
-MessageDecoder* CFMessageDecoder::readSubMessage (MessageArgumentKey argKey) const
+std::unique_ptr<MessageDecoder> CFMessageDecoder::readSubMessage (MessageArgumentKey argKey) const
 {
     auto dictionary { (CFDictionaryRef) CFDictionaryGetValue (_dictionary, _getEncodedKey (argKey)) };
     ARA_INTERNAL_ASSERT (!dictionary || (CFGetTypeID (dictionary) == CFDictionaryGetTypeID ()));
     if (dictionary == nullptr)
         return nullptr;
-    return new CFMessageDecoder { dictionary };
+    return std::make_unique<CFMessageDecoder> (dictionary);
 }
 
 bool CFMessageDecoder::hasDataForKey (MessageArgumentKey argKey) const
@@ -310,14 +306,14 @@ bool CFMessageDecoder::hasDataForKey (MessageArgumentKey argKey) const
     return CFDictionaryContainsKey (_dictionary, _getEncodedKey (argKey));
 }
 
-CFMessageDecoder* CFMessageDecoder::createWithMessageData (CFDataRef messageData)
+std::unique_ptr<CFMessageDecoder> CFMessageDecoder::createWithMessageData (CFDataRef messageData)
 {
     if (CFDataGetLength (messageData) == 0)
         return nullptr;
 
     auto dictionary { (CFDictionaryRef) CFPropertyListCreateWithData (kCFAllocatorDefault, messageData, kCFPropertyListImmutable, nullptr, nullptr) };
     ARA_INTERNAL_ASSERT (dictionary && (CFGetTypeID (dictionary) == CFDictionaryGetTypeID ()));
-    return new CFMessageDecoder { dictionary, false };
+    return std::make_unique<CFMessageDecoder> (dictionary, false);
 }
 
 #if defined (__APPLE__)

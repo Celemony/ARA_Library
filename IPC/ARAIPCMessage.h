@@ -24,6 +24,9 @@
 #if ARA_ENABLE_IPC
 
 
+#include <memory>
+
+
 //! @addtogroup ARA_Library_IPC
 //! @{
 
@@ -69,8 +72,7 @@ public:
     virtual void appendBytes (MessageArgumentKey argKey, const uint8_t* argValue, size_t argSize, bool copy) = 0;
 
     //! sub-messages to encode compound types
-    //! The caller is responsible for deleting the returned sub-encoder after use.
-    virtual MessageEncoder* appendSubMessage (MessageArgumentKey argKey) = 0;
+    virtual std::unique_ptr<MessageEncoder> appendSubMessage (MessageArgumentKey argKey) = 0;
 };
 //! @}
 
@@ -109,8 +111,7 @@ public:
 
     //! sub-messages to decode compound types
     //! returns nullptr if key not found or if the value for the key is not representing a sub-message
-    //! The caller is responsible for deleting the encoder after use.
-    virtual MessageDecoder* readSubMessage (MessageArgumentKey argKey) const = 0;
+    virtual std::unique_ptr<MessageDecoder> readSubMessage (MessageArgumentKey argKey) const = 0;
 
     //! test whether a given argument is present in the message
     virtual bool hasDataForKey (MessageArgumentKey argKey) const = 0;
