@@ -58,7 +58,7 @@ _Pragma ("GCC diagnostic ignored \"-Wnullability-completeness\"")   // \todo add
 API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 
 
-// key for transaction locking through the IPC channel
+// key to store message ID in XPC message
 constexpr NSString * _messageIDKey { @"msgID" };
 
 

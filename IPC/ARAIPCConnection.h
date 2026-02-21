@@ -88,7 +88,7 @@ private:
 //! @}
 
 
-//! IPC connection: gateway for sending and receiving messages,
+//! IPC connection: client interface for sending and receiving messages,
 //! utilizing potentially multiple MessageChannel instances
 //! @{
 class Connection
@@ -100,14 +100,14 @@ public:
 
     //! set the message channel for all main thread communication
     //! Must be done before sending or receiving the first message on any channel.
-    //! The connection takes ownership of the channel and deletes them upon teardown.
+    //! The connection takes ownership of the channel and deletes it upon teardown.
     void setMainThreadChannel (MessageChannel* messageChannel);
 
     MainThreadMessageDispatcher* getMainThreadDispatcher () const { return _mainThreadDispatcher; }
 
     //! set the message channel for all non-main thread communication
     //! Must be done before sending or receiving the first message on any channel.
-    //! The connection takes ownership of the channel and deletes them upon teardown.
+    //! The connection takes ownership of the channel and deletes it upon teardown.
     void setOtherThreadsChannel (MessageChannel* messageChannel);
 
     OtherThreadsMessageDispatcher* getOtherThreadsDispatcher () const { return _otherThreadsDispatcher; }
