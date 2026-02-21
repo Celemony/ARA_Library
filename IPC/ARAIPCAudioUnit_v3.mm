@@ -85,6 +85,27 @@ public:
     }
 };
 
+class AUPlugInConnection : public AUConnection
+{
+public:
+    using AUConnection::AUConnection;
+    
+    bool sendsHostMessages () const override
+    {
+        return true;
+    }
+};
+
+class AUHostConnection : public AUConnection
+{
+public:
+    using AUConnection::AUConnection;
+    
+    bool sendsHostMessages () const override
+    {
+        return false;
+    }
+};
 
 // message channel base class for both proxy implementations
 class AudioUnitMessageChannel : public MessageChannel
@@ -202,7 +223,7 @@ protected:
 
 // host side: proxy plug-in implementation
 #if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
-class AUProxyPlugIn : public ProxyPlugIn, public AUConnection
+class AUProxyPlugIn : public ProxyPlugIn
 {
 public:
     static AUProxyPlugIn* createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit,
@@ -226,14 +247,12 @@ public:
                                    audioUnit, waitForMessageDelegate, delegateUserData };
     }
 
-    ~AUProxyPlugIn () override
+    ~AUProxyPlugIn ()
     {
 #if !__has_feature(objc_arc)
         [_initAU release];
 #endif
     }
-
-    bool sendsHostMessages () const override { return true; }
 
 private:
     AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel,
@@ -241,13 +260,12 @@ private:
                    AUAudioUnit * _Nonnull initAU,
                    ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
                    void * _Nullable delegateUserData)
-    : ProxyPlugIn { this },
-      AUConnection { waitForMessageDelegate, delegateUserData },
+    : ProxyPlugIn { std::make_unique<AUPlugInConnection> (waitForMessageDelegate, delegateUserData) },
       _initAU { initAU }
     {
-        setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel });
-        setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel });
-        setMessageHandler (ProxyPlugIn::handleReceivedMessage);
+        getConnection ()->setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel });
+        getConnection ()->setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel });
+        getConnection ()->setMessageHandler (ProxyPlugIn::handleReceivedMessage);
 #if !__has_feature(objc_arc)
         [_initAU retain];
 #endif
@@ -288,7 +306,7 @@ ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonn
 
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef)
 {
-    fromIPCRef (proxyPlugInRef)->performPendingMainThreadTasks ();
+    static_cast<AUConnection*> (fromIPCRef (proxyPlugInRef)->getConnection ())->performPendingMainThreadTasks ();
 }
 
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,
@@ -314,18 +332,15 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCProxyPlugInRef _Nonnull pro
 // plug-in side: proxy host C adapter
 #if !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
 
-class AUProxyHost : public ProxyHost, public AUConnection
+class AUProxyHost : public ProxyHost
 {
 public:
     AUProxyHost ()
-    : ProxyHost { this },
-      AUConnection { nullptr, nullptr }
+    : ProxyHost { std::make_unique<AUHostConnection> ( nullptr, nullptr ) }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
-        setMessageHandler ([this] (auto&& ...args) { handleReceivedMessage (args...); });
+        getConnection ()->setMessageHandler ([this] (auto&& ...args) { handleReceivedMessage (args...); });
     }
-
-    bool sendsHostMessages () const override { return false; }
 
 private:
     static const ARAPlugInExtensionInstance * ARA_CALL handleBinding (ARAIPCPlugInInstanceRef plugInInstanceRef,
@@ -359,9 +374,9 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
 
     auto result { new ProxyHostMessageChannel { audioUnitChannel } };
     if (isMainThreadChannel)
-        _proxyHost->setMainThreadChannel (result);
+        _proxyHost->getConnection ()->setMainThreadChannel (result);
     else
-        _proxyHost->setOtherThreadsChannel (result);
+        _proxyHost->getConnection ()->setOtherThreadsChannel (result);
 
     return toIPCRef (result);
 }
