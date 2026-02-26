@@ -357,7 +357,7 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
 {
     const auto previousRemoteTargetThread { _remoteTargetThread };
     ThreadRef remoteTargetThread;
-    const auto success { decoder->readThreadRef (sendThreadKey, &remoteTargetThread) };
+    [[maybe_unused]] const auto success { decoder->readThreadRef (sendThreadKey, &remoteTargetThread) };
     ARA_INTERNAL_ASSERT (success);
     _remoteTargetThread = remoteTargetThread;
 
@@ -388,7 +388,7 @@ BOOL ConvertToRealHandle(HANDLE h,
 HANDLE _GetRealCurrentThread ()
 {
     HANDLE currentThread {};
-    auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
+    [[maybe_unused]] const auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
     ARA_INTERNAL_ASSERT (success);
     return currentThread;
 }
@@ -497,7 +497,7 @@ void Connection::dispatchToCreationThread (DispatchableFunction func)
 {
 #if defined (_WIN32)
     auto funcPtr { new DispatchableFunction { func } };
-    const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, _creationThreadHandle, reinterpret_cast<ULONG_PTR> (funcPtr)) };
+    [[maybe_unused]] const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, _creationThreadHandle, reinterpret_cast<ULONG_PTR> (funcPtr)) };
     ARA_INTERNAL_ASSERT (result != 0);
 #elif defined (__APPLE__)
     _mutex.lock ();
