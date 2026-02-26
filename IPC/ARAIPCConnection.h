@@ -73,6 +73,12 @@ public:
     //! implemented by subclasses to perform the actual message (or reply) sending
     virtual void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) = 0;
 
+    //! implemented by subclasses to inform the message dispatching code of the threading requirements
+    virtual bool receivesMessagesOnCurrentThread () = 0;
+
+    //! implemented by subclasses to receive messages if receivesMessagesOnCurrentThread() returns true
+    virtual bool waitForMessageOnCurrentThread () = 0;
+
 protected:
     //! called by subclasses when messages arrive
     void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
@@ -133,17 +139,11 @@ public:
     using DispatchableFunction = std::function<void ()>;
     void dispatchToCreationThread (DispatchableFunction func);
 
-    //! when a message dispatcher blocks the creation thread for some time, it needs to periodically
-    //! call this method to let other main thread tasks execute cooperatively
-    //! returns true if a message was received, false otherwise
-    bool waitForMessageOnCreationThread ();
-
     //! spins message processing on the creation thread in case the thread is blocked by some outer loop
     void processPendingMessageOnCreationThreadIfNeeded ();
 
-    //! message dispatcher need to call this when routing a message to the creation thread
-    //! in order to wake it up
-    void signalMesssageReceived ();
+    // internal API: called by message dispatchers when blocking the current thread in a receive loop
+    void _callWaitForMessageDelegate ();
 
     // internal API: debug output helper
     static void _setDebugMessageHint (bool isHost);
@@ -158,7 +158,6 @@ private:
     const MessageHandler _messageHandler;
     const bool _receiverEndianessMatches;
     const WaitForMessageDelegate _waitForMessageDelegate;
-    void* const _waitForMessageSemaphore;       // concrete type is platform-dependent
     std::unique_ptr<MainThreadMessageDispatcher> _mainThreadDispatcher {};
     std::unique_ptr<OtherThreadsMessageDispatcher> _otherThreadsDispatcher {};
     std::thread::id const _creationThreadID;
