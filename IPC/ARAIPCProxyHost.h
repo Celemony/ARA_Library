@@ -42,11 +42,13 @@ extern "C" {
 class ProxyHost : public RemoteCaller
 {
 protected:
-    explicit ProxyHost (Connection* connection);
+    explicit ProxyHost (std::unique_ptr<Connection> && connection);
 
 public:
     void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                 MessageEncoder* const replyEncoder);
+private:
+    const std::unique_ptr<Connection> _connection;
 };
 #endif
 
