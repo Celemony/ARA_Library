@@ -701,13 +701,13 @@ RestoreObjectsFilter::RestoreObjectsFilter (const SizedStructPtr<ARARestoreObjec
 {
     for (const auto& audioSource : document->getAudioSources ())
     {
-        auto audioSourceID { audioSource->getPersistentID ().c_str () };
+        const auto audioSourceID { audioSource->getPersistentID ().c_str () };
         ARA_VALIDATE_API_STATE (_audioSourcesByID.count (audioSourceID) == 0);                  // make sure all current audio source persistentIDs are unique
         _audioSourcesByID[audioSourceID] = audioSource;
 
         for (const auto& audioModification : audioSource->getAudioModifications ())
         {
-            auto audioModificationID { audioModification->getPersistentID ().c_str () };
+            const auto audioModificationID { audioModification->getPersistentID ().c_str () };
             ARA_VALIDATE_API_STATE (_audioModificationsByID.count (audioModificationID) == 0);  // make sure all current audio modification persistentIDs are unique
             _audioModificationsByID[audioModificationID] = audioModification;
         }
@@ -1179,7 +1179,7 @@ bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef arch
     }
 #endif
 
-    const RestoreObjectsFilter restoreObjectsFilter (filter, getDocument ());
+    const RestoreObjectsFilter restoreObjectsFilter { filter, getDocument () };
 
     return doRestoreObjectsFromArchive (&archiveReader, &restoreObjectsFilter);
 }

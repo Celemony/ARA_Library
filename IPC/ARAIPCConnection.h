@@ -160,9 +160,9 @@ public:
     //! intended for debug output only: helper to properly decode message IDs
     virtual bool sendsHostMessages () const = 0;
 
-private:
 #if defined (__APPLE__)
-    static void performRunloopSource (void* info);
+private:
+    static void _performRunLoopSource (void* info);
 #endif
 
 private:
