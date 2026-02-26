@@ -51,13 +51,6 @@ class MainThreadMessageDispatcher;
 class OtherThreadsMessageDispatcher;
 
 
-#if ARA_ENABLE_DEBUG_OUTPUT && 0
-    #define ARA_IPC_LOG(...) ARA_LOG ("ARA IPC " __VA_ARGS__)
-#else
-    #define ARA_IPC_LOG(...) ((void) 0)
-#endif
-
-
 //! delegate interface for processing messages received through an IPC connection
 class MessageHandler
 {
@@ -164,6 +157,10 @@ public:
     //! in order to wake it up
     void signalMesssageReceived ();
 
+    //! intended for debug output only: helper to properly decode message IDs
+    virtual bool sendsHostMessages () const = 0;
+
+private:
 #if defined (__APPLE__)
     static void performRunloopSource (void* info);
 #endif
@@ -237,13 +234,13 @@ public:
 
     static bool isReply (MessageID messageID) { return messageID == 0; }
 
+    static ThreadRef getCurrentThread ();
+
 protected:
-    void _sendMessage (MessageID messageID, MessageEncoder* encoder);
+    void _sendMessage (MessageID messageID, MessageEncoder* encoder, bool isNewTransaction);
     bool _waitForMessage ();
     void _handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
     MessageEncoder* _handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder);
-
-    static ThreadRef _getCurrentThread ();
 
 private:
     Connection* const _connection;
