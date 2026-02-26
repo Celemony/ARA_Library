@@ -475,8 +475,9 @@ void Connection::_performRunLoopSource (void* info)
 #endif
 
 
-Connection::Connection (WaitForMessageDelegate waitForMessageDelegate, void* delegateUserData)
-: _waitForMessageDelegate { waitForMessageDelegate },
+Connection::Connection (MessageHandler&& messageHandler, WaitForMessageDelegate waitForMessageDelegate, void* delegateUserData)
+: _messageHandler { std::move (messageHandler) },
+  _waitForMessageDelegate { waitForMessageDelegate },
   _delegateUserData { delegateUserData },
 #if __cplusplus >= 202002L
   _waitForMessageSemaphore { new std::binary_semaphore { 0 } },
