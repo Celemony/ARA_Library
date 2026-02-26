@@ -62,29 +62,6 @@ API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 constexpr NSString * _messageIDKey { @"msgID" };
 
 
-// connection implementation for both proxy implementations
-class AUConnection : public Connection
-{
-public:
-    using Connection::Connection;
-
-    std::unique_ptr<MessageEncoder> createEncoder () override
-    {
-        return CFMessageEncoder::create ();
-    }
-
-    bool receiverEndianessMatches () override
-    {
-        // \todo shouldn't the AUMessageChannel provide this information?
-        return true;
-    }
-
-    void performPendingMainThreadTasks ()
-    {
-        getMainThreadDispatcher ()->processPendingMessageIfNeeded ();
-    }
-};
-
 // message channel base class for both proxy implementations
 class AudioUnitMessageChannel : public MessageChannel
 {
@@ -238,8 +215,12 @@ private:
                    AUAudioUnit * _Nonnull initAU,
                    ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
                    void * _Nullable delegateUserData)
-    : ProxyPlugIn { std::make_unique<AUConnection> (ProxyPlugIn::handleReceivedMessage,
-                        (waitForMessageDelegate) ? [waitForMessageDelegate, delegateUserData] { waitForMessageDelegate(delegateUserData); } : Connection::WaitForMessageDelegate {}) },
+    : ProxyPlugIn { std::make_unique<Connection> (&CFMessageEncoder::create,
+                                                  ProxyPlugIn::handleReceivedMessage,
+                                                  true, // \todo shouldn't the AUMessageChannel provide this information?
+                                                  (waitForMessageDelegate) ?
+                                                        [waitForMessageDelegate, delegateUserData] { waitForMessageDelegate(delegateUserData); } :
+                                                        Connection::WaitForMessageDelegate {}) },
       _initAU { initAU }
     {
         getConnection ()->setMainThreadChannel (std::make_unique<ProxyPlugInMessageChannel> (mainChannel));
@@ -284,7 +265,7 @@ ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonn
 
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef)
 {
-    static_cast<AUConnection*> (fromIPCRef (proxyPlugInRef)->getConnection ())->performPendingMainThreadTasks ();
+    fromIPCRef (proxyPlugInRef)->getConnection ()->getMainThreadDispatcher ()->processPendingMessageIfNeeded ();
 }
 
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,
@@ -314,7 +295,9 @@ class AUProxyHost : public ProxyHost
 {
 public:
     AUProxyHost ()
-    : ProxyHost { std::make_unique<AUConnection> ( [this] (auto&& ...args) { handleReceivedMessage (args...); }) }
+    : ProxyHost { std::make_unique<Connection> (&CFMessageEncoder::create,
+                                                [this] (auto&& ...args) { handleReceivedMessage (args...); },
+                                                true) } // \todo shouldn't the AUMessageChannel provide this information?                                                
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
     }

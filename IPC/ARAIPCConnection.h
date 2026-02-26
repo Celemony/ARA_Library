@@ -89,9 +89,11 @@ private:
 class Connection
 {
 public:
+    using MessageEncoderFactory = std::function<std::unique_ptr<MessageEncoder> ()>;
     using WaitForMessageDelegate = std::function<void ()>;
-    explicit Connection (MessageHandler&& messageHandler, WaitForMessageDelegate && waitForMessageDelegate = {});
-    virtual ~Connection ();
+    Connection (MessageEncoderFactory && messageEncoderFactory, MessageHandler && messageHandler,
+                bool receiverEndianessMatches, WaitForMessageDelegate && waitForMessageDelegate = {});
+    ~Connection ();
 
     //! set the message channel for all main thread communication
     //! Must be done before sending or receiving the first message on any channel.
@@ -119,12 +121,11 @@ public:
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
                       ReplyHandler replyHandler, void* replyHandlerUserData);
 
-    //! implemented by subclasses: generate an encoder to encode a new message,
-    virtual std::unique_ptr<MessageEncoder> createEncoder () = 0;
+    //! message encoder factory for users of the connection
+    std::unique_ptr<MessageEncoder> createEncoder () { return _messageEncoderFactory (); }
 
-    //! implemented by subclasses: indicate byte order mismatch between sending
-    //! and receiving machine
-    virtual bool receiverEndianessMatches () = 0;
+    //! indicate byte order mismatch between sending and receiving machine
+    bool receiverEndianessMatches () const { return _receiverEndianessMatches; }
 
     bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
 
@@ -152,7 +153,9 @@ private:
 #endif
 
 private:
+    const MessageEncoderFactory _messageEncoderFactory;
     const MessageHandler _messageHandler;
+    const bool _receiverEndianessMatches;
     const WaitForMessageDelegate _waitForMessageDelegate;
     void* const _waitForMessageSemaphore;       // concrete type is platform-dependent
     std::unique_ptr<MainThreadMessageDispatcher> _mainThreadDispatcher {};
