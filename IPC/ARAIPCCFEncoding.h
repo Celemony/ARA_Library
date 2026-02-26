@@ -25,6 +25,7 @@
 
 
 #include <CoreFoundation/CoreFoundation.h>
+#include <memory>
 
 
 //! @addtogroup ARA_Library_IPC
@@ -38,7 +39,6 @@ namespace IPC {
 class CFMessageEncoder : public MessageEncoder
 {
 public:
-    CFMessageEncoder ();
     ~CFMessageEncoder () override;
 
     void appendInt32 (MessageArgumentKey argKey, int32_t argValue) override;
@@ -48,10 +48,15 @@ public:
     void appendDouble (MessageArgumentKey argKey, double argValue) override;
     void appendString (MessageArgumentKey argKey, const char * argValue) override;
     void appendBytes (MessageArgumentKey argKey, const uint8_t * argValue, size_t argSize, bool copy) override;
-    MessageEncoder* appendSubMessage (MessageArgumentKey argKey) override;
+    std::unique_ptr<MessageEncoder> appendSubMessage (MessageArgumentKey argKey) override;
 
     __attribute__((cf_returns_retained)) CFMutableDictionaryRef copyDictionary () const;
     __attribute__((cf_returns_retained)) CFDataRef createMessageEncoderData ()  const;
+
+    static std::unique_ptr<CFMessageEncoder> create () { return std::unique_ptr<CFMessageEncoder> { new CFMessageEncoder }; }
+
+private:
+    CFMessageEncoder ();
 
 private:
     CFMutableDictionaryRef const _dictionary;
@@ -61,7 +66,7 @@ private:
 class CFMessageDecoder : public MessageDecoder
 {
 public:
-    explicit CFMessageDecoder (CFDictionaryRef dictionary);
+    CFMessageDecoder (CFDictionaryRef dictionary, bool retain = true);
     ~CFMessageDecoder () override;
 
     bool readInt32 (MessageArgumentKey argKey, int32_t* argValue) const override;
@@ -72,13 +77,10 @@ public:
     bool readString (MessageArgumentKey argKey, const char ** argValue) const override;
     bool readBytesSize (MessageArgumentKey argKey, size_t* argSize) const override;
     void readBytes (MessageArgumentKey argKey, uint8_t* argValue) const override;
-    MessageDecoder* readSubMessage (MessageArgumentKey argKey) const override;
+    std::unique_ptr<MessageDecoder> readSubMessage (MessageArgumentKey argKey) const override;
     bool hasDataForKey (MessageArgumentKey argKey) const override;
 
-    static CFMessageDecoder* createWithMessageData (CFDataRef messageData);
-
-private:
-    CFMessageDecoder (CFDictionaryRef dictionary, bool retain);
+    static std::unique_ptr<CFMessageDecoder> createWithMessageData (CFDataRef messageData);
 
 private:
     CFDictionaryRef const _dictionary;

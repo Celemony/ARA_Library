@@ -68,9 +68,9 @@ class AUConnection : public Connection
 public:
     using Connection::Connection;
 
-    MessageEncoder * createEncoder () override
+    std::unique_ptr<MessageEncoder> createEncoder () override
     {
-        return new CFMessageEncoder {};
+        return CFMessageEncoder::create ();
     }
 
     bool receiverEndianessMatches () override
@@ -109,13 +109,13 @@ public:
     {
         ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
         const MessageID messageID { [(NSNumber *) [message objectForKey:_messageIDKey] intValue] };
-        const auto decoder { new CFMessageDecoder { (__bridge CFDictionaryRef) message } };
-        getMessageDispatcher ()->routeReceivedMessage (messageID, decoder);
+        auto decoder { std::make_unique<CFMessageDecoder> ((__bridge CFDictionaryRef) message) };
+        getMessageDispatcher ()->routeReceivedMessage (messageID, std::move (decoder));
     }
 
-    void sendMessage (MessageID messageID, MessageEncoder * encoder) override
+    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) override
     {
-        const auto dictionary { static_cast<CFMessageEncoder *> (encoder)->copyDictionary () };
+        const auto dictionary { static_cast<CFMessageEncoder *> (encoder.get ())->copyDictionary () };
 #if !__has_feature(objc_arc)
         auto message { (__bridge NSMutableDictionary *) dictionary };
 #else
@@ -241,8 +241,8 @@ private:
     : ProxyPlugIn { std::make_unique<AUConnection> (ProxyPlugIn::handleReceivedMessage, waitForMessageDelegate, delegateUserData) },
       _initAU { initAU }
     {
-        getConnection ()->setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel });
-        getConnection ()->setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel });
+        getConnection ()->setMainThreadChannel (std::make_unique<ProxyPlugInMessageChannel> (mainChannel));
+        getConnection ()->setOtherThreadsChannel (std::make_unique<ProxyPlugInMessageChannel> (otherChannel));
 #if !__has_feature(objc_arc)
         [_initAU retain];
 #endif
@@ -348,13 +348,15 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
      else
          dispatch_sync (dispatch_get_main_queue (), createProxyIfNeeded);
 
-    auto result { new ProxyHostMessageChannel { audioUnitChannel } };
-    if (isMainThreadChannel)
-        _proxyHost->getConnection ()->setMainThreadChannel (result);
-    else
-        _proxyHost->getConnection ()->setOtherThreadsChannel (result);
+    auto channel { std::make_unique<ProxyHostMessageChannel> (audioUnitChannel) };
+    const auto result { toIPCRef (channel.get ()) };
 
-    return toIPCRef (result);
+    if (isMainThreadChannel)
+        _proxyHost->getConnection ()->setMainThreadChannel (std::move (channel));
+    else
+        _proxyHost->getConnection ()->setOtherThreadsChannel (std::move (channel));
+
+    return result;
 }
 
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message)

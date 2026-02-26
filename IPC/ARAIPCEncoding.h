@@ -328,8 +328,7 @@ struct _CompoundValueEncoderBase
     {
         auto subEncoder { encoder->appendSubMessage (argKey) };
         ARA_INTERNAL_ASSERT (subEncoder != nullptr);
-        _ValueEncoder<ValueT>::encode (subEncoder, argValue);
-        delete subEncoder;
+        _ValueEncoder<ValueT>::encode (subEncoder.get (), argValue);
     }
 };
 template<typename ValueT>
@@ -340,8 +339,7 @@ struct _CompoundValueDecoderBase
         auto subDecoder { decoder->readSubMessage (argKey) };
         if (subDecoder == nullptr)
             return false;
-        const auto success { _ValueDecoder<ValueT>::decode (result, subDecoder) };
-        delete subDecoder;
+        const auto success { _ValueDecoder<ValueT>::decode (result, subDecoder.get ()) };
         return success;
     }
 };
@@ -502,11 +500,10 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
             /* \todo the outer struct contains a pointer to the inner struct, so we need some */\
             /*       thread-safe place to store it - is there a better way to achieve this?   */\
             thread_local std::remove_const_t<std::remove_pointer_t<decltype (result.member)>> cache; \
-            success &= _ValueDecoder<decltype (cache)>::decode (cache, subDecoder_##member);    \
+            success &= _ValueDecoder<decltype (cache)>::decode (cache, subDecoder_##member.get ());  \
             ARA_INTERNAL_ASSERT (success);                                                      \
             result.member = &cache;                                                             \
             { OPTIONAL_UPDATE_MACRO }                                                           \
-            delete subDecoder_##member;                                                         \
         }                                                                                       \
         else {                                                                                  \
             result.member = nullptr;                                                            \
@@ -1386,34 +1383,34 @@ public:
     void remoteCall (const MethodID methodID, const Args &... args) const
     {
         auto encoder { _connection->createEncoder () };
-        encodeArguments (encoder, args...);
-        _connection->sendMessage (methodID.getMessageID (), encoder, nullptr, nullptr);
+        encodeArguments (encoder.get (), args...);
+        _connection->sendMessage (methodID.getMessageID (), std::move (encoder), nullptr, nullptr);
     }
 
     template<typename RetT, typename... Args>
     void remoteCall (RetT& result, const MethodID methodID, const Args &... args) const
     {
         auto encoder { _connection->createEncoder () };
-        encodeArguments (encoder, args...);
+        encodeArguments (encoder.get (), args...);
         const auto replyHandler { [] (const MessageDecoder* decoder, void* userData) -> void
             {
                 ARA_INTERNAL_ASSERT (decoder);
                 decodeReply (*reinterpret_cast<RetT*> (userData), decoder);
             } };
-        _connection->sendMessage (methodID.getMessageID (), encoder, replyHandler, &result);
+        _connection->sendMessage (methodID.getMessageID (), std::move (encoder), replyHandler, &result);
     }
 
     template<typename... Args>
     void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args) const
     {
         auto encoder { _connection->createEncoder () };
-        encodeArguments (encoder, args...);
+        encodeArguments (encoder.get (), args...);
         const auto replyHandler { [] (const MessageDecoder* decoder, void* userData) -> void
             {
                 ARA_INTERNAL_ASSERT (decoder);
                 (*reinterpret_cast<CustomDecodeFunction*> (userData)) (decoder);
             } };
-        _connection->sendMessage (methodID.getMessageID (), encoder, replyHandler, &decodeFunction);
+        _connection->sendMessage (methodID.getMessageID (), std::move (encoder), replyHandler, &decodeFunction);
     }
 
     bool receiverEndianessMatches () const { return _connection->receiverEndianessMatches (); }

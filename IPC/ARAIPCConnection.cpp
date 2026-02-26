@@ -136,9 +136,9 @@ namespace IPC {
 
 static bool _debugAsHost {};
 
-MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* messageChannel)
+MessageDispatcher::MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel)
 : _connection { connection },
-  _messageChannel { messageChannel }
+  _messageChannel { std::move (messageChannel) }
 {
     static_assert (sizeof (std::thread::id) == sizeof (ThreadRef), "the current implementation relies on a specific thread ID size");
 // unfortunately at least in clang std::thread::id's c'tor isn't constexpr
@@ -146,11 +146,6 @@ MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* me
     ARA_INTERNAL_ASSERT (std::thread::id {} == *reinterpret_cast<const std::thread::id*>(&_invalidThread));
     
     _messageChannel->setMessageDispatcher (this);
-}
-
-MessageDispatcher::~MessageDispatcher ()
-{
-    delete _messageChannel;
 }
 
 MessageDispatcher::ThreadRef MessageDispatcher::getCurrentThread ()
@@ -161,7 +156,7 @@ MessageDispatcher::ThreadRef MessageDispatcher::getCurrentThread ()
     return result;
 }
 
-void MessageDispatcher::_sendMessage (MessageID messageID, MessageEncoder* encoder, [[maybe_unused]] bool isNewTransaction)
+void MessageDispatcher::_sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, [[maybe_unused]] bool isNewTransaction)
 {
     if (isReply (messageID))
         ARA_IPC_LOG ("replies to message on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
@@ -170,37 +165,32 @@ void MessageDispatcher::_sendMessage (MessageID messageID, MessageEncoder* encod
                      ARA_IPC_DECODE_SENT_MESSAGE_ARGS (messageID),  ARA_IPC_LABEL_THREAD_ARGS,
                      (isNewTransaction) ? " (new transaction)" : "");
 
-    _messageChannel->sendMessage (messageID, encoder);
-
-    delete encoder;
+    _messageChannel->sendMessage (messageID, std::move (encoder));
 }
 
-void MessageDispatcher::_handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
+void MessageDispatcher::_handleReply (std::unique_ptr<const MessageDecoder> && decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_IPC_LOG ("handles reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
     if (replyHandler)
-        (replyHandler) (decoder, replyHandlerUserData);
+        (replyHandler) (decoder.get (), replyHandlerUserData);
     else
         ARA_INTERNAL_ASSERT (!decoder || !decoder->hasDataForKey (0));  // replies should be empty when not handled (i.e. void functions)
-    delete decoder;
 }
 
-MessageEncoder* MessageDispatcher::_handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+std::unique_ptr<MessageEncoder> MessageDispatcher::_handleReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
 {
     ARA_INTERNAL_ASSERT (!isReply (messageID));
 
     ARA_IPC_LOG ("handles" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
                  ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
     auto replyEncoder { _connection->createEncoder () };
-    _connection->getMessageHandler () (messageID, decoder, replyEncoder);
-
-    delete decoder;
+    _connection->getMessageHandler () (messageID, decoder.get (), replyEncoder.get ());
 
     return replyEncoder;
 }
 
 
-void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encoder,
+void MainThreadMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
                                                Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
@@ -214,7 +204,7 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncod
     if (isResponse)
         encoder->appendInt32 (kIsResponseKey, 1);
 
-    _sendMessage (messageID, encoder, !isResponse);
+    _sendMessage (messageID, std::move (encoder), !isResponse);
 
     while (previousPendingReplyHandler != _pendingReplyHandler)
     {
@@ -230,24 +220,25 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
     const auto pendingMessageDecoder { _pendingMessageDecoder.exchange (reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder), std::memory_order_acquire) };
     if (pendingMessageDecoder != reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder))
     {
+        std::unique_ptr<const MessageDecoder> ownedPendingMessageDecoder { pendingMessageDecoder };
         const auto pendingMessageID { _pendingMessageID };
         if (isReply (pendingMessageID))
         {
             ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
-            _handleReply (pendingMessageDecoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
+            _handleReply (std::move (ownedPendingMessageDecoder), _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
             _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
         }
         else
         {
             ++_processingMessagesCount;
-            auto replyEncoder { _handleReceivedMessage (pendingMessageID, pendingMessageDecoder) };
+            auto replyEncoder { _handleReceivedMessage (pendingMessageID, std::move (ownedPendingMessageDecoder)) };
             --_processingMessagesCount;
-            _sendMessage (0, replyEncoder, false);
+            _sendMessage (0, std::move (replyEncoder), false);
         }
     }
 }
 
-void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
 {
     const auto isResponse { isReply (messageID) ||      // replies implicitly are responses
                             (decoder && decoder->hasDataForKey (kIsResponseKey)) };
@@ -275,7 +266,7 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, con
     }
 
     _pendingMessageID = messageID;
-    _pendingMessageDecoder.store (decoder, std::memory_order_release);
+    _pendingMessageDecoder.store (decoder.release (), std::memory_order_release);
     getConnection ()->signalMesssageReceived ();
 
     if (processSynchronously)
@@ -295,7 +286,7 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, con
 thread_local OtherThreadsMessageDispatcher::ThreadRef _remoteTargetThread { 0 };
 thread_local const OtherThreadsMessageDispatcher::PendingReplyHandler* _pendingReplyHandler { nullptr };
 
-void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, MessageEncoder* encoder,
+void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
                                                  Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     const auto currentThread { getCurrentThread () };
@@ -305,7 +296,7 @@ void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, MessageEnc
         encoder->appendThreadRef (kReceiveThreadKey, _remoteTargetThread);
 
     _sendLock.lock ();
-    _sendMessage (messageID, encoder, !isResponse);
+    _sendMessage (messageID, std::move (encoder), !isResponse);
     _sendLock.unlock ();
 
     if (getConnection ()->wasCreatedOnCurrentThread ())
@@ -327,18 +318,18 @@ void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, MessageEnc
                                     { return _getRoutedMessageForThread (currentThread) != nullptr; });
             RoutedMessage* message = _getRoutedMessageForThread (currentThread);
             const auto receivedMessageID { message->_messageID };
-            const auto receivedDecoder { message->_decoder };
+            auto receivedDecoder { std::move (message->_decoder) };
             message->_targetThread = _invalidThread;
             lock.unlock ();
 
             if (isReply (receivedMessageID))
             {
-                _handleReply (receivedDecoder, replyHandler, replyHandlerUserData); // will also delete receivedDecoder
+                _handleReply (std::move (receivedDecoder), replyHandler, replyHandlerUserData);
                 break;
             }
             else
             {
-                _processReceivedMessage (receivedMessageID, receivedDecoder);       // will also delete receivedDecoder
+                _processReceivedMessage (receivedMessageID, std::move (receivedDecoder));
             }
         }
     }
@@ -354,7 +345,7 @@ OtherThreadsMessageDispatcher::RoutedMessage* OtherThreadsMessageDispatcher::_ge
     return nullptr;
 }
 
-void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
 {
     ThreadRef targetThread;
     if (decoder->readThreadRef (kReceiveThreadKey, &targetThread))
@@ -366,14 +357,14 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, c
             {
                 ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
                 ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
-                _handleReply (decoder, _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
+                _handleReply (std::move (decoder), _pendingReplyHandler->_replyHandler, _pendingReplyHandler->_replyHandlerUserData);
                 _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
             }
             else
             {
                 ARA_IPC_LOG ("processes" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
                              ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
-                _processReceivedMessage (messageID, decoder);
+                _processReceivedMessage (messageID, std::move (decoder));
             }
         }
         else
@@ -392,7 +383,7 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, c
                 message = &_routedMessages.back ();
             }
             message->_messageID = messageID;
-            message->_decoder = decoder;
+            message->_decoder = std::move (decoder);
             message->_targetThread = targetThread;
             _routeReceiveCondition.notify_all ();
             _routeLock.unlock ();
@@ -401,11 +392,11 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, c
     else
     {
         ARA_INTERNAL_ASSERT (!isReply (messageID));
-        _processReceivedMessage (messageID, decoder);
+        _processReceivedMessage (messageID, std::move (decoder));
     }
 }
 
-void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
+void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
 {
     const auto previousRemoteTargetThread { _remoteTargetThread };
     ThreadRef remoteTargetThread;
@@ -414,12 +405,12 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
     ARA_INTERNAL_ASSERT (remoteTargetThread != _invalidThread);
     _remoteTargetThread = remoteTargetThread;
 
-    auto replyEncoder { _handleReceivedMessage (messageID, decoder) };
+    auto replyEncoder { _handleReceivedMessage (messageID, std::move (decoder)) };
 
     replyEncoder->appendThreadRef (kReceiveThreadKey, remoteTargetThread);
 
     _sendLock.lock ();
-    _sendMessage (0, replyEncoder, false);
+    _sendMessage (0, std::move (replyEncoder), false);
     _sendLock.unlock ();
 
     _remoteTargetThread = previousRemoteTargetThread;
@@ -507,8 +498,6 @@ Connection::~Connection ()
     CFRunLoopRemoveSource (_creationThreadRunLoop, _runloopSource, kCFRunLoopCommonModes);
     CFRelease (_runloopSource);
 #endif
-    delete _otherThreadsDispatcher;
-    delete _mainThreadDispatcher;
 #if __cplusplus >= 202002L
     delete static_cast<std::binary_semaphore*> (_waitForMessageSemaphore);
 #elif defined (_WIN32)
@@ -520,25 +509,25 @@ Connection::~Connection ()
 #endif
 }
 
-void Connection::setMainThreadChannel (MessageChannel* messageChannel)
+void Connection::setMainThreadChannel (std::unique_ptr<MessageChannel> && messageChannel)
 {
     ARA_INTERNAL_ASSERT (_mainThreadDispatcher == nullptr);
-    _mainThreadDispatcher = new MainThreadMessageDispatcher { this, messageChannel };
+    _mainThreadDispatcher = std::make_unique<MainThreadMessageDispatcher> (this, std::move (messageChannel));
 }
 
-void Connection::setOtherThreadsChannel (MessageChannel* messageChannel)
+void Connection::setOtherThreadsChannel (std::unique_ptr<MessageChannel> && messageChannel)
 {
     ARA_INTERNAL_ASSERT (_otherThreadsDispatcher == nullptr);
-    _otherThreadsDispatcher = new OtherThreadsMessageDispatcher { this, messageChannel };
+    _otherThreadsDispatcher = std::make_unique<OtherThreadsMessageDispatcher> (this, std::move (messageChannel));
 }
 
-void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
+void Connection::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_INTERNAL_ASSERT ((_mainThreadDispatcher != nullptr) && (_otherThreadsDispatcher != nullptr) && (_messageHandler != nullptr));
     if (wasCreatedOnCurrentThread ())
-        _mainThreadDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
+        _mainThreadDispatcher->sendMessage (messageID, std::move (encoder), replyHandler, replyHandlerUserData);
     else
-        _otherThreadsDispatcher->sendMessage (messageID, encoder, replyHandler, replyHandlerUserData);
+        _otherThreadsDispatcher->sendMessage (messageID, std::move (encoder), replyHandler, replyHandlerUserData);
 }
 
 void Connection::dispatchToCreationThread (DispatchableFunction func)

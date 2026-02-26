@@ -33,6 +33,7 @@
 
 #include <functional>
 #include <mutex>
+#include <memory>
 #include <thread>
 #include <queue>
 #include <vector>
@@ -66,7 +67,7 @@ public:
     virtual ~MessageChannel () = default;
 
     //! implemented by subclasses to perform the actual message (or reply) sending
-    virtual void sendMessage (MessageID messageID, MessageEncoder* encoder) = 0;
+    virtual void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) = 0;
 
     void setMessageDispatcher (MessageDispatcher* messageDispatcher)
     {
@@ -94,17 +95,15 @@ public:
 
     //! set the message channel for all main thread communication
     //! Must be done before sending or receiving the first message on any channel.
-    //! The connection takes ownership of the channel and deletes it upon teardown.
-    void setMainThreadChannel (MessageChannel* messageChannel);
+    void setMainThreadChannel (std::unique_ptr<MessageChannel> && messageChannel);
 
-    MainThreadMessageDispatcher* getMainThreadDispatcher () const { return _mainThreadDispatcher; }
+    MainThreadMessageDispatcher* getMainThreadDispatcher () const { return _mainThreadDispatcher.get (); }
 
     //! set the message channel for all non-main thread communication
     //! Must be done before sending or receiving the first message on any channel.
-    //! The connection takes ownership of the channel and deletes it upon teardown.
-    void setOtherThreadsChannel (MessageChannel* messageChannel);
+    void setOtherThreadsChannel (std::unique_ptr<MessageChannel> && messageChannel);
 
-    OtherThreadsMessageDispatcher* getOtherThreadsDispatcher () const { return _otherThreadsDispatcher; }
+    OtherThreadsMessageDispatcher* getOtherThreadsDispatcher () const { return _otherThreadsDispatcher.get (); }
 
     const MessageHandler& getMessageHandler () const { return _messageHandler; }
 
@@ -113,17 +112,15 @@ public:
     using ReplyHandler = void (ARA_CALL *) (const MessageDecoder* decoder, void* userData);
 
     //! send an encoded messages to the receiving process
-    //! The encoder will be deleted after sending the message.
     //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
     //! This method can be called from any thread, concurrent calls will be serialized.
     //! The calling thread will be blocked until the receiver has processed the message and
     //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
-    void sendMessage (MessageID messageID, MessageEncoder* encoder,
+    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
                       ReplyHandler replyHandler, void* replyHandlerUserData);
 
     //! implemented by subclasses: generate an encoder to encode a new message,
-    //! later passed to sendMessage(), which will destroy the encoder after sending
-    virtual MessageEncoder* createEncoder () = 0;
+    virtual std::unique_ptr<MessageEncoder> createEncoder () = 0;
 
     //! implemented by subclasses: indicate byte order mismatch between sending
     //! and receiving machine
@@ -159,8 +156,8 @@ private:
     const WaitForMessageDelegate _waitForMessageDelegate;
     void* const _delegateUserData;
     void* const _waitForMessageSemaphore;       // concrete type is platform-dependent
-    MainThreadMessageDispatcher* _mainThreadDispatcher {};
-    OtherThreadsMessageDispatcher* _otherThreadsDispatcher {};
+    std::unique_ptr<MainThreadMessageDispatcher> _mainThreadDispatcher {};
+    std::unique_ptr<OtherThreadsMessageDispatcher> _otherThreadsDispatcher {};
     std::thread::id const _creationThreadID;
 #if defined (_WIN32)
     HANDLE const _creationThreadHandle;
@@ -193,25 +190,22 @@ public:     // needs to be public for thread-local variables (which cannot be cl
     static constexpr ThreadRef _invalidThread { 0 };
 
 public:
-    //! the dispatcher takes ownership of the channel and will delete it upon teardown
-    explicit MessageDispatcher (Connection* connection, MessageChannel* messageChannel);
-    virtual ~MessageDispatcher ();
+    explicit MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel);
+    virtual ~MessageDispatcher () = default;
 
     Connection* getConnection () const { return  _connection; }
-    MessageChannel* getMessageChannel () const { return  _messageChannel; }
+    MessageChannel* getMessageChannel () const { return _messageChannel.get (); }
 
     //! send an encoded messages to the receiving process
-    //! The encoder will be deleted after sending the message.
     //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
     //! This method can be called from any thread, concurrent calls will be serialized.
     //! The calling thread will be blocked until the receiver has processed the message and
     //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
-    virtual void sendMessage (MessageID messageID, MessageEncoder* encoder,
+    virtual void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
                               Connection::ReplyHandler replyHandler, void* replyHandlerUserData) = 0;
 
     //! route an incoming message to the correct target thread
-    //! takes ownership of the decoder and will eventually delete it
-    virtual void routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder) = 0;
+    virtual void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) = 0;
 
 // protected: this does not work with thread_local...
     struct PendingReplyHandler
@@ -226,14 +220,14 @@ public:
     static ThreadRef getCurrentThread ();
 
 protected:
-    void _sendMessage (MessageID messageID, MessageEncoder* encoder, bool isNewTransaction);
+    void _sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, bool isNewTransaction);
     bool _waitForMessage ();
-    void _handleReply (const MessageDecoder* decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
-    MessageEncoder* _handleReceivedMessage (MessageID messageID, const MessageDecoder* decoder);
+    void _handleReply (std::unique_ptr<const MessageDecoder> && decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
+    std::unique_ptr<MessageEncoder> _handleReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder);
 
 private:
     Connection* const _connection;
-    MessageChannel* const _messageChannel;
+    const std::unique_ptr<MessageChannel> _messageChannel;
 
 protected:
     static bool _debugAsHost;
@@ -245,10 +239,10 @@ class MainThreadMessageDispatcher : public MessageDispatcher
 public:
     using MessageDispatcher::MessageDispatcher;
 
-    void sendMessage (MessageID messageID, MessageEncoder* encoder,
+    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
                       Connection::ReplyHandler replyHandler, void* replyHandlerUserData) override;
 
-    void routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder) override;
+    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) override;
 
     void processPendingMessageIfNeeded ();
 
@@ -277,10 +271,10 @@ class OtherThreadsMessageDispatcher : public MessageDispatcher
 public:
     using MessageDispatcher::MessageDispatcher;
 
-    void sendMessage (MessageID messageID, MessageEncoder* encoder,
+    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
                       Connection::ReplyHandler replyHandler, void* replyHandlerUserData) override;
 
-    void routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder) override;
+    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) override;
 
 private:
     // keys to store the threading information in the IPC messages
@@ -290,12 +284,12 @@ private:
     struct RoutedMessage
     {
         MessageID _messageID { 0 };
-        const MessageDecoder* _decoder { nullptr };
+        std::unique_ptr<const MessageDecoder> _decoder;
         ThreadRef _targetThread { _invalidThread };
     };
     RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
 
-    void _processReceivedMessage (MessageID messageID, const MessageDecoder* decoder);
+    void _processReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder);
 
 private:
     // incoming data is stored in _routedMessages by the receive handler for the
