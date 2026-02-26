@@ -58,6 +58,10 @@ class OtherThreadsMessageDispatcher;
 using MessageHandler = std::function<void (const MessageID messageID, const MessageDecoder* const decoder,
                                            MessageEncoder* const replyEncoder)>;
 
+//! Reply Handler: a function passed to sendMessage() that is called to process the reply to a message
+//! decoder will be nullptr if incoming message was empty
+using ReplyHandler = std::function<void (const MessageDecoder* decoder)>;
+
 
 //! IPC message channel: primitive for sending and receiving messages
 //! @{
@@ -109,17 +113,12 @@ public:
 
     const MessageHandler& getMessageHandler () const { return _messageHandler; }
 
-    //! Reply Handler: a function passed to sendMessage () that is called to process the reply to a message
-    //! decoder will be nullptr if incoming message was empty
-    using ReplyHandler = void (ARA_CALL *) (const MessageDecoder* decoder, void* userData);
-
     //! send an encoded messages to the receiving process
-    //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
+    //! If an empty reply ("void") is expected, the replyHandler shall be omitted.
     //! This method can be called from any thread, concurrent calls will be serialized.
     //! The calling thread will be blocked until the receiver has processed the message and
     //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
-    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                      ReplyHandler replyHandler, void* replyHandlerUserData);
+    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, ReplyHandler && replyHandler = {});
 
     //! message encoder factory for users of the connection
     std::unique_ptr<MessageEncoder> createEncoder () { return _messageEncoderFactory (); }
@@ -204,7 +203,7 @@ public:
     //! The calling thread will be blocked until the receiver has processed the message and
     //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
     virtual void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                              Connection::ReplyHandler replyHandler, void* replyHandlerUserData) = 0;
+                              ReplyHandler && replyHandler) = 0;
 
     //! route an incoming message to the correct target thread
     virtual void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) = 0;
@@ -212,8 +211,7 @@ public:
 // protected: this does not work with thread_local...
     struct PendingReplyHandler
     {
-        Connection::ReplyHandler _replyHandler;
-        void* _replyHandlerUserData;
+        ReplyHandler* const _replyHandler;
         const PendingReplyHandler* _prevPendingReplyHandler;
     };
 
@@ -224,7 +222,7 @@ public:
 protected:
     void _sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, bool isNewTransaction);
     bool _waitForMessage ();
-    void _handleReply (std::unique_ptr<const MessageDecoder> && decoder, Connection::ReplyHandler replyHandler, void* replyHandlerUserData);
+    void _handleReply (std::unique_ptr<const MessageDecoder> && decoder, ReplyHandler && replyHandler);
     std::unique_ptr<MessageEncoder> _handleReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder);
 
 private:
@@ -242,7 +240,7 @@ public:
     using MessageDispatcher::MessageDispatcher;
 
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                      Connection::ReplyHandler replyHandler, void* replyHandlerUserData) override;
+                      ReplyHandler && replyHandler) override;
 
     void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) override;
 
@@ -274,7 +272,7 @@ public:
     using MessageDispatcher::MessageDispatcher;
 
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                      Connection::ReplyHandler replyHandler, void* replyHandlerUserData) override;
+                      ReplyHandler && replyHandler) override;
 
     void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) override;
 
