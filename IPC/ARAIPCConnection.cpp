@@ -71,10 +71,10 @@
 //
 // In this loop, extra efforts might be necessary to handle the IPC threading:
 // When e.g. using Audio Unit AUMessageChannel, Grand Central Dispatch will deliver
-// the incoming IPC messages on some undefined thread. In such cases, a dispatch
-// from the receiving thread to the target thread is necessary, implemented via
+// the incoming IPC messages on some undefined GDC worker thread, requiring a dispatch
+// from the receiving thread to the target thread. This is implemented via
 // a condition variable that the receive thread awakes when a message comes in.
-// Instead of looping, a sending thread will then wait on this condition for the reply.
+// Instead of looping, a sending thread will wait on this condition for the reply.
 //
 // While most ARA communication is happening on the main thread, there are
 // several calls that may be made from other threads. This poses several challenges
@@ -100,20 +100,26 @@
 // on the main thread or on any other thread, and chooses the appropriate channel accordingly.
 // On the receiving side, calls coming in on the main thread channel are forwarded to the main
 // thread (unless the receive code already runs there), and for the other threads the code is
-// executed directly on the receive thread.
+// executed directly on the receiving thread.
+// Because there's no mechanism to synchronize thread priorities between the host and the
+// plug-in for the non-main-threads, plug-ins will no longer be able to rely on their thread
+// priority configuration with respect to ARA calls. For this reason, it is recommended to
+// restrict these calls to audio sample reading, and order these explicitly before making them.
 //
-// Replies or callbacks are routed back to the originating thread in the sender. This is done
-// by adding a token when sending a message that identifies the sending thread, and replies and
-// callbacks pass this token back to allow for proper dispatching from the receive thread to the
-// thread that initiated the transaction.
+// Replies or callbacks made when processing an IPC call are routed back to the originating
+// thread in the sender. For non-main-thread communication, this is done by adding a token when
+// sending a message which identifies the sending thread, and this token passed back alongside
+// the reply or stacked callback to allow for proper dispatching from the IPC receive thread to
+// the thread that initiated the transaction.
 // Since the actual ARA code is agnostic to IPC being used, the receiving side uses
 // thread local storage to make the sender's thread token available for all stacked calls
 // that the ARA code might make in response to the message.
 //
 // Note that there is a crucial difference between the dispatch of a new transaction and
-// the dispatch of any follow-up messages in the transaction: the initial message is dispatched
-// to a thread that is potentially executing other code as well in some form of run loop,
-// whereas the follow-ups need to dispatch to a thread that is currently blocking inside ARA code.
+// the dispatch of any follow-up replies or callbacks in the transaction: the initial message
+// is dispatched to a thread that is potentially executing other code as well in some form of
+// run loop, whereas the follow-ups will be dispatched to a thread that is currently blocking
+// inside ARA code.
 
 
 namespace ARA {
