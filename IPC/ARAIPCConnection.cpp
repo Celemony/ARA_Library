@@ -26,6 +26,7 @@
 #include "ARA_Library/IPC/ARAIPCEncoding.h"
 
 #include <utility>
+#include <optional>
 #if __cplusplus >= 202002L
     #include <chrono>
     #include <semaphore>
@@ -233,48 +234,111 @@ std::unique_ptr<MessageEncoder> MessageDispatcher::_handleReceivedMessage (Messa
 
 //------------------------------------------------------------------------------
 
+// helper for MainThreadMessageDispatcher: single-object message queue with semaphore to wait on
+class WaitableSingleMessageQueue
+{
+    public:
+        WaitableSingleMessageQueue ()
+#if __cplusplus >= 202002L
+        : _waitForMessageSemaphore { new std::binary_semaphore { 0 } }
+#elif defined (_WIN32)
+        : _waitForMessageSemaphore { ::CreateSemaphore (nullptr, 0, LONG_MAX, nullptr) }
+#elif defined (__APPLE__)
+        : _waitForMessageSemaphore { dispatch_semaphore_create (0) }
+#else
+#error "IPC not yet implemented for this platform"
+#endif
+        {}
+
+        ~WaitableSingleMessageQueue ()
+        {
+#if __cplusplus >= 202002L
+            delete static_cast<std::binary_semaphore*> (_waitForMessageSemaphore);
+#elif defined (_WIN32)
+            ::CloseHandle (_waitForMessageSemaphore);
+#elif defined (__APPLE__)
+            dispatch_release (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore));
+#else
+#error "IPC not yet implemented for this platform"
+#endif
+        }
+
+        std::optional<std::pair<MessageID, std::unique_ptr<const MessageDecoder>>> waitOnSemaphore (ARATimeDuration timeout)
+        {
+            bool didReceiveMessage;
+#if __cplusplus >= 202002L
+            didReceiveMessage = static_cast<std::binary_semaphore*> (_waitForMessageSemaphore)->try_acquire_for (std::chrono::duration<ARATimeDuration> { timeout });
+#elif defined (_WIN32)
+            didReceiveMessage = (::WaitForSingleObject (_waitForMessageSemaphore, static_cast<DWORD> (timeout * 1000.0 + 0.5)) == WAIT_OBJECT_0);
+#elif defined (__APPLE__)
+            const auto deadline { dispatch_time (DISPATCH_TIME_NOW, static_cast<int64_t> (10e9 * timeout + 0.5)) };
+            didReceiveMessage = (dispatch_semaphore_wait (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore), deadline) == 0);
+#else
+#error "IPC not yet implemented for this platform"
+#endif
+            if (didReceiveMessage)
+            {
+                const auto messageID { _pendingMessageID };
+                const auto messageDecoder { _pendingMessageDecoder.load (std::memory_order_acquire) };
+                return std::make_pair (messageID, std::unique_ptr<const MessageDecoder> (messageDecoder));
+            }
+            else
+            {
+                return {};
+            }
+        }
+
+        void signalSemaphore (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
+        {
+            _pendingMessageID = messageID;
+            _pendingMessageDecoder.store (decoder.release (), std::memory_order_release);
+#if __cplusplus >= 202002L
+            static_cast<std::binary_semaphore*> (_waitForMessageSemaphore)->release ();
+#elif defined (_WIN32)
+            ::ReleaseSemaphore (_waitForMessageSemaphore, 1, nullptr);
+#elif defined (__APPLE__)
+            dispatch_semaphore_signal (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore));
+#else
+#error "IPC not yet implemented for this platform"
+#endif
+        }
+
+    private:
+        MessageID _pendingMessageID { 0 };      // read/write _pendingMessageDecoder with proper barrier before/after reading/writing this
+        std::atomic<const MessageDecoder*> _pendingMessageDecoder { nullptr };
+        void* const _waitForMessageSemaphore;   // concrete type is platform-dependent
+};
+
+//------------------------------------------------------------------------------
+
 // single-threaded variant for main thread communication only
 class MainThreadMessageDispatcher : public MessageDispatcher
 {
 public:
     MainThreadMessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel)
-    : MessageDispatcher { connection, std::move (messageChannel) },
-#if __cplusplus >= 202002L
-      _waitForMessageSemaphore { new std::binary_semaphore { 0 } }
-#elif defined (_WIN32)
-      _waitForMessageSemaphore { ::CreateSemaphore (nullptr, 0, LONG_MAX, nullptr) }
-#elif defined (__APPLE__)
-      _waitForMessageSemaphore { dispatch_semaphore_create (0) }
-#else
-    #error "IPC not yet implemented for this platform"
-#endif
+    : MessageDispatcher { connection, std::move (messageChannel) }
     {
         getMessageChannel ()->_receivedMessageRouter = [this] (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
                                                               { routeReceivedMessage (messageID, std::move (decoder)); };
     }
 
-    ~MainThreadMessageDispatcher () override
-    {
-#if __cplusplus >= 202002L
-        delete static_cast<std::binary_semaphore*> (_waitForMessageSemaphore);
-#elif defined (_WIN32)
-        ::CloseHandle (_waitForMessageSemaphore);
-#elif defined (__APPLE__)
-        dispatch_release (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore));
-#else
-    #error "IPC not yet implemented for this platform"
-#endif
-    }
+    ~MainThreadMessageDispatcher () override = default;
 
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, ReplyHandler && replyHandler);
 
     void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder);
 
-    void processPendingMessageIfNeeded ();
+    void processPendingMessageIfNeeded ()
+    {
+        ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
-private:
-    bool waitOnSemaphore ();
-    void signalSemaphore ();
+        auto receivedData { _messageQueue.waitOnSemaphore (0.0) };
+        if (receivedData)
+            processMessage (receivedData->first, std::move (receivedData->second));
+    }
+
+protected:
+    void processMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder);
 
 private:
     // key to indicate whether an outgoing call is made in response (reply or callback) to a
@@ -287,15 +351,9 @@ private:
 private:
     int32_t _processingMessagesCount { 0 };
 
-// \todo this is not allowed for some reason, so we must cast at every use of _noPendingMessageDecoder...
-//  static constexpr auto _noPendingMessageDecoder { reinterpret_cast<const MessageDecoder*> (static_cast<intptr_t> (-1)) };
-    static constexpr auto _noPendingMessageDecoder { static_cast<intptr_t> (-1) };
-    MessageID _pendingMessageID { 0 };  // read/write _pendingMessageDecoder with proper barrier before/after reading/writing this
-    std::atomic<const MessageDecoder*> _pendingMessageDecoder { reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder) };
-
     const PendingReplyHandler* _pendingReplyHandler { nullptr };
 
-    void* const _waitForMessageSemaphore;       // concrete type is platform-dependent
+    WaitableSingleMessageQueue _messageQueue {};
 };
 
 
@@ -324,36 +382,31 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, std::unique_
         }
         else
         {
-            if (waitOnSemaphore ())
-                processPendingMessageIfNeeded ();
+            auto receivedData { _messageQueue.waitOnSemaphore (0.010) };
+            if (receivedData )
+                processMessage (receivedData->first, std::move (receivedData->second));
             else
                 getConnection ()->_callWaitForMessageDelegate ();
         }
     }
 }
 
-void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
+void MainThreadMessageDispatcher::processMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
 {
     ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
-    const auto pendingMessageDecoder { _pendingMessageDecoder.exchange (reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder), std::memory_order_acquire) };
-    if (pendingMessageDecoder != reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder))
+    if (isReply (messageID))
     {
-        std::unique_ptr<const MessageDecoder> ownedPendingMessageDecoder { pendingMessageDecoder };
-        const auto pendingMessageID { _pendingMessageID };
-        if (isReply (pendingMessageID))
-        {
-            ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
-            _handleReply (std::move (ownedPendingMessageDecoder), std::move (*_pendingReplyHandler->_replyHandler));
-            _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
-        }
-        else
-        {
-            ++_processingMessagesCount;
-            auto replyEncoder { _handleReceivedMessage (pendingMessageID, std::move (ownedPendingMessageDecoder)) };
-            --_processingMessagesCount;
-            _sendMessage (0, std::move (replyEncoder), false);
-        }
+        ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
+        _handleReply (std::move (decoder), std::move (*_pendingReplyHandler->_replyHandler));
+        _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
+    }
+    else
+    {
+        ++_processingMessagesCount;
+        auto replyEncoder { _handleReceivedMessage (messageID, std::move (decoder)) };
+        --_processingMessagesCount;
+        _sendMessage (0, std::move (replyEncoder), false);
     }
 }
 
@@ -384,55 +437,19 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, std
                          ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
     }
 
-    _pendingMessageID = messageID;
     if (processSynchronously)
     {
-        _pendingMessageDecoder.store (decoder.release (), std::memory_order_relaxed);
-
-        processPendingMessageIfNeeded ();
+        processMessage (messageID, std::move (decoder));
     }
     else
     {
-        _pendingMessageDecoder.store (decoder.release (), std::memory_order_release);
-
         // only new transactions must be dispatched, otherwise the target thread is already waiting for the message received signal
         if (isResponse)
-            signalSemaphore ();
+            _messageQueue.signalSemaphore (messageID, std::move (decoder));
         else
-            getConnection ()->dispatchToCreationThread (std::bind (&MainThreadMessageDispatcher::processPendingMessageIfNeeded, this));
+            getConnection ()->dispatchToCreationThread ([this, messageID, d = decoder.release ()] ()
+                                                        { processMessage (messageID, std::unique_ptr<const MessageDecoder> (d)); });
     }
-}
-
-bool MainThreadMessageDispatcher::waitOnSemaphore ()
-{
-    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
-
-    constexpr ARATimeDuration timeout { 0.010 };
-    bool didReceiveMessage;
-#if __cplusplus >= 202002L
-    didReceiveMessage = static_cast<std::binary_semaphore*> (_waitForMessageSemaphore)->try_acquire_for (std::chrono::duration<ARATimeDuration> { timeout });
-#elif defined (_WIN32)
-    didReceiveMessage = (::WaitForSingleObject (_waitForMessageSemaphore, static_cast<DWORD> (timeout * 1000.0 + 0.5)) == WAIT_OBJECT_0);
-#elif defined (__APPLE__)
-    const auto deadline { dispatch_time (DISPATCH_TIME_NOW, static_cast<int64_t> (10e9 * timeout + 0.5)) };
-    didReceiveMessage = (dispatch_semaphore_wait (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore), deadline) == 0);
-#else
-    #error "IPC not yet implemented for this platform"
-#endif
-    return didReceiveMessage;
-}
-
-void MainThreadMessageDispatcher::signalSemaphore ()
-{
-#if __cplusplus >= 202002L
-    static_cast<std::binary_semaphore*> (_waitForMessageSemaphore)->release ();
-#elif defined (_WIN32)
-    ::ReleaseSemaphore (_waitForMessageSemaphore, 1, nullptr);
-#elif defined (__APPLE__)
-    dispatch_semaphore_signal (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore));
-#else
-    #error "IPC not yet implemented for this platform"
-#endif
 }
 
 //------------------------------------------------------------------------------
