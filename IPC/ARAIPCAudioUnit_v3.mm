@@ -82,12 +82,12 @@ public:
 #endif
 
 public:
-    void routeReceivedMessage (NSDictionary * _Nonnull message)
+    void routeReceivedDictionary (NSDictionary * _Nonnull message)
     {
         ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
         const MessageID messageID { [(NSNumber *) [message objectForKey:_messageIDKey] intValue] };
         auto decoder { std::make_unique<CFMessageDecoder> ((__bridge CFDictionaryRef) message) };
-        getMessageDispatcher ()->routeReceivedMessage (messageID, std::move (decoder));
+        routeReceivedMessage (messageID, std::move (decoder));
     }
 
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) override
@@ -150,7 +150,7 @@ public:
         _audioUnitChannel.callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
             {
-                routeReceivedMessage (message);
+                routeReceivedDictionary (message);
                 return [NSDictionary dictionary];   // \todo it would yield better performance if the callHostBlock would allow nil as return value
             };
 
@@ -265,7 +265,7 @@ ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonn
 
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef)
 {
-    fromIPCRef (proxyPlugInRef)->getConnection ()->getMainThreadDispatcher ()->processPendingMessageIfNeeded ();
+    fromIPCRef (proxyPlugInRef)->getConnection ()->processPendingMessageOnCreationThreadIfNeeded ();
 }
 
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,
@@ -346,7 +346,7 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
 NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message)
 {
     if ([message count])    // \todo filter dummy message sent in ProxyPlugInMessageChannel(), see there
-        static_cast<ProxyHostMessageChannel *> (fromIPCRef (messageChannelRef))->routeReceivedMessage (message);
+        static_cast<ProxyHostMessageChannel *> (fromIPCRef (messageChannelRef))->routeReceivedDictionary (message);
     return [NSDictionary dictionary];   // \todo it would yield better performance if -callAudioUnit: would allow nil as return value
 }
 
