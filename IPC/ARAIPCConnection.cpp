@@ -108,7 +108,13 @@ namespace ARA {
 namespace IPC {
 
 
-// keys to store the threading information in the IPC messages
+// key to indicate whether an outgoing call is made in response to a currently handled incoming call
+// or a new call, which is necessary to deal with the decoupled main threads concurrency
+// to optimize for performance, it is only added when the call is a response, being a new call is implicit
+// (it is also never added to replies because they always are a response anyways)
+constexpr MessageArgumentKey isResponseKey { -1 };
+
+// keys to store the threading information in the IPC messages for OtherThreadsMessageDispatcher
 constexpr MessageArgumentKey sendThreadKey { -1 };
 constexpr MessageArgumentKey receiveThreadKey { -2 };
 
@@ -187,11 +193,15 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncod
                                                Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
+    ARA_INTERNAL_ASSERT (!isReply (messageID));
 
     const auto previousPendingReplyHandler { _pendingReplyHandler };
     const PendingReplyHandler pendingReplyHandler { replyHandler, replyHandlerUserData, previousPendingReplyHandler };
     _pendingReplyHandler = &pendingReplyHandler;
- 
+
+    if (_processingMessagesCount > 0)
+        encoder->appendInt32 (isResponseKey, 1);
+
     _sendMessage (messageID, encoder);
 
     while (previousPendingReplyHandler != _pendingReplyHandler)
@@ -217,7 +227,9 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
         }
         else
         {
+            ++_processingMessagesCount;
             auto replyEncoder { _handleReceivedMessage (pendingMessageID, pendingMessageDecoder) };
+            --_processingMessagesCount;
             _sendMessage (0, replyEncoder);
         }
     }
@@ -225,21 +237,30 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
 
 void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
+    const auto isResponse { isReply (messageID) ||      // replies implicitly are responses
+                            (decoder && decoder->hasDataForKey (isResponseKey)) };
+
     _pendingMessageID = messageID;
     _pendingMessageDecoder.store (decoder, std::memory_order_release);
     getConnection ()->signalMesssageReceived ();
 
-    if (getConnection ()->wasCreatedOnCurrentThread ())
+    // if on creation thread, responses can be processed immediately, and
+    // new transaction can only be processed immediately when no other transaction is going on
+    if (getConnection ()->wasCreatedOnCurrentThread () &&
+        (isResponse || (_pendingReplyHandler == nullptr)))
     {
         processPendingMessageIfNeeded ();
     }
     else
     {
         if (isReply (messageID))
-            ARA_IPC_LOG ("dispatches received reply from thread %p to creation thread", _getCurrentThread ());
+            ARA_IPC_LOG ("dispatched received reply from thread %p to creation thread", _getCurrentThread ());
         else
-            ARA_IPC_LOG ("dispatches received message with ID %i from thread %p to creation thread", messageID, _getCurrentThread ());
-        getConnection ()->dispatchToCreationThread (std::bind (&MainThreadMessageDispatcher::processPendingMessageIfNeeded, this));
+            ARA_IPC_LOG ("dispatched received message with ID %i from thread %p to creation thread", messageID, _getCurrentThread ());
+
+        // only new transactions must be dispatched, otherwise the target thread is already waiting for the message received signal
+        if (!isResponse)
+            getConnection ()->dispatchToCreationThread (std::bind (&MainThreadMessageDispatcher::processPendingMessageIfNeeded, this));
     }
 }
 
