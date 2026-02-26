@@ -479,6 +479,18 @@ void RegionSequence::updateProperties (PropertiesPtr<ARARegionSequenceProperties
     auto musicalContext { fromRef (properties->musicalContextRef) };
     ARA_VALIDATE_API_ARGUMENT (properties->musicalContextRef, getDocumentController ()->isValidMusicalContext (musicalContext));
     setMusicalContext (musicalContext);
+
+    if (properties.implements<&ARARegionSequenceProperties::persistentID> ())
+    {
+        ARA_VALIDATE_API_ARGUMENT (properties->persistentID, properties->persistentID != nullptr);
+        ARA_VALIDATE_API_ARGUMENT (properties->persistentID, std::strlen (properties->persistentID) > 0);
+        _persistentID = properties->persistentID;
+    }
+    else
+    {
+        ARA_VALIDATE_API_ARGUMENT (properties, getDocumentController ()->getUsedApiGeneration () < kARAAPIGeneration_3_0_Draft);
+        _persistentID = nullptr;
+    }
 }
 
 void RegionSequence::setMusicalContext (MusicalContext* musicalContext) noexcept
@@ -684,7 +696,7 @@ void PlaybackRegion::setRegionSequence (RegionSequence* regionSequence) noexcept
 
 /*******************************************************************************/
 
-RestoreObjectsFilter::RestoreObjectsFilter (const ARARestoreObjectsFilter* filter, Document* document) noexcept
+RestoreObjectsFilter::RestoreObjectsFilter (const SizedStructPtr<ARARestoreObjectsFilter> filter, Document* document) noexcept
 : _filter { filter }
 {
     for (const auto& audioSource : document->getAudioSources ())
@@ -698,6 +710,15 @@ RestoreObjectsFilter::RestoreObjectsFilter (const ARARestoreObjectsFilter* filte
             auto audioModificationID { audioModification->getPersistentID ().c_str () };
             ARA_VALIDATE_API_STATE (_audioModificationsByID.count (audioModificationID) == 0);  // make sure all current audio modification persistentIDs are unique
             _audioModificationsByID[audioModificationID] = audioModification;
+        }
+    }
+
+    for (const auto& regionSequence : document->getRegionSequences ())
+    {
+        if (const auto& regionSequenceID { regionSequence->getPersistentID () })
+        {
+            ARA_VALIDATE_API_STATE (_regionSequencesByID.count (regionSequenceID) == 0);        // make sure all current region sequence persistentIDs are unique
+            _regionSequencesByID[regionSequenceID] = regionSequence;
         }
     }
 
@@ -728,6 +749,22 @@ RestoreObjectsFilter::RestoreObjectsFilter (const ARARestoreObjectsFilter* filte
                 audioModificationsByMappedIDs[audioModificationArchiveID] = it->second;
         }
         _audioModificationsByID = std::move (audioModificationsByMappedIDs);
+
+        if (filter.implements<&ARARestoreObjectsFilter::regionSequenceIDsCount> ())
+        {
+            decltype (_regionSequencesByID) regionSequencesByMappedIDs;
+            for (ARASize i { 0 }; i < filter->regionSequenceIDsCount; ++i)
+            {
+                auto regionSequenceArchiveID { filter->regionSequenceArchiveIDs[i] };
+                ARA_VALIDATE_API_STATE (regionSequencesByMappedIDs.count (regionSequenceArchiveID) == 0); // make sure audio Modification persistentIDs in filter are unique
+                auto regionSequenceCurrentID { (filter->regionSequenceCurrentIDs != nullptr) ? filter->regionSequenceCurrentIDs[i] : regionSequenceArchiveID };
+
+                const auto it { _regionSequencesByID.find (regionSequenceCurrentID) };
+                if (it != _regionSequencesByID.end ())
+                    regionSequencesByMappedIDs[regionSequenceArchiveID] = it->second;
+            }
+            _regionSequencesByID = std::move (regionSequencesByMappedIDs);
+        }
     }
 }
 
@@ -750,9 +787,15 @@ AudioModification* RestoreObjectsFilter::getAudioModificationToRestoreStateWithI
     return (it != _audioModificationsByID.end ()) ? it->second : nullptr;
 }
 
+RegionSequence* RestoreObjectsFilter::getRegionSequenceToRestoreStateWithID (ARAPersistentID regionSequenceID) const noexcept
+{
+    const auto it { _regionSequencesByID.find (regionSequenceID) };
+    return (it != _regionSequencesByID.end ()) ? it->second : nullptr;
+}
+
 /*******************************************************************************/
 
-StoreObjectsFilter::StoreObjectsFilter (const ARAStoreObjectsFilter* filter) noexcept
+StoreObjectsFilter::StoreObjectsFilter (const SizedStructPtr<ARAStoreObjectsFilter> filter) noexcept
 : _filter { filter }
 {
     ARA_INTERNAL_ASSERT (filter != nullptr);
@@ -760,6 +803,12 @@ StoreObjectsFilter::StoreObjectsFilter (const ARAStoreObjectsFilter* filter) noe
         _audioSourcesToStore.push_back (fromRef (_filter->audioSourceRefs[i]));
     for (ARASize i { 0 }; i < _filter->audioModificationRefsCount; ++i)
         _audioModificationsToStore.push_back (fromRef (_filter->audioModificationRefs[i]));
+
+    if (filter.implements<&ARAStoreObjectsFilter::regionSequenceRefs> ())
+    {
+        for (ARASize i { 0 }; i < _filter->regionSequenceRefsCount; ++i)
+            _regionSequencesToStore.push_back (fromRef (_filter->regionSequenceRefs[i]));
+    }
 }
 
 StoreObjectsFilter::StoreObjectsFilter (const Document* document) noexcept
@@ -769,6 +818,12 @@ StoreObjectsFilter::StoreObjectsFilter (const Document* document) noexcept
     _audioModificationsToStore.reserve (_audioSourcesToStore.size ());
     for (const auto& audioSource : _audioSourcesToStore)
         _audioModificationsToStore.insert (_audioModificationsToStore.end (), audioSource->getAudioModifications ().begin (), audioSource->getAudioModifications ().end ());
+
+    for (const auto& regionSequence : document->getRegionSequences ())
+    {
+        if (regionSequence->getPersistentID ())
+            _regionSequencesToStore.emplace_back (regionSequence);
+    }
 }
 
 bool StoreObjectsFilter::shouldStoreDocumentData () const noexcept
@@ -1189,10 +1244,11 @@ bool DocumentControllerDelegate::doStoreAudioSourceToAudioFileChunk (HostArchive
     *openAutomatically = false;
 
     ARAAudioSourceRef audioSourceRef { toRef (audioSource) };
-    const SizedStruct<&ARAStoreObjectsFilter::audioModificationRefs> filter { kARATrue,
-                                                                              1U, &audioSourceRef,
-                                                                              0U, nullptr
-                                                                            };
+    const SizedStruct<&ARAStoreObjectsFilter::regionSequenceRefs> filter { kARATrue,
+                                                                           1U, &audioSourceRef,
+                                                                           0U, nullptr,
+                                                                           0U, nullptr
+                                                                         };
     const StoreObjectsFilter storeObjectsFilter { &filter };
     return doStoreObjectsToArchive (archiveWriter, &storeObjectsFilter);
 }

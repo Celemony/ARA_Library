@@ -6,6 +6,7 @@ Changes since previous releases:
 - support for ARA 1 and 2.0 Draft and related APIs dropped
   If previously optionally supporting obsolete ARA 1 persistency, now exclusively use ARA 2 persistency.
 - C++17 is now consistently required on all platforms
+- initial draft of region sequence persistency
 - initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,
   based on heavily refactored IPC Example from earlier SDK releases
 
