@@ -466,10 +466,9 @@ void Connection::_performRunLoopSource (void* info)
 #endif
 
 
-Connection::Connection (MessageHandler&& messageHandler, WaitForMessageDelegate waitForMessageDelegate, void* delegateUserData)
+Connection::Connection (MessageHandler&& messageHandler, WaitForMessageDelegate && waitForMessageDelegate)
 : _messageHandler { std::move (messageHandler) },
-  _waitForMessageDelegate { waitForMessageDelegate },
-  _delegateUserData { delegateUserData },
+  _waitForMessageDelegate { std::move (waitForMessageDelegate) },
 #if __cplusplus >= 202002L
   _waitForMessageSemaphore { new std::binary_semaphore { 0 } },
 #elif defined (_WIN32)
@@ -565,7 +564,7 @@ bool Connection::waitForMessageOnCreationThread ()
         return true;
 
     if (_waitForMessageDelegate)
-        _waitForMessageDelegate (_delegateUserData);
+        _waitForMessageDelegate ();
 
     return false;
 }

@@ -238,7 +238,8 @@ private:
                    AUAudioUnit * _Nonnull initAU,
                    ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
                    void * _Nullable delegateUserData)
-    : ProxyPlugIn { std::make_unique<AUConnection> (ProxyPlugIn::handleReceivedMessage, waitForMessageDelegate, delegateUserData) },
+    : ProxyPlugIn { std::make_unique<AUConnection> (ProxyPlugIn::handleReceivedMessage,
+                        (waitForMessageDelegate) ? [waitForMessageDelegate, delegateUserData] { waitForMessageDelegate(delegateUserData); } : Connection::WaitForMessageDelegate {}) },
       _initAU { initAU }
     {
         getConnection ()->setMainThreadChannel (std::make_unique<ProxyPlugInMessageChannel> (mainChannel));
@@ -313,7 +314,7 @@ class AUProxyHost : public ProxyHost
 {
 public:
     AUProxyHost ()
-    : ProxyHost { std::make_unique<AUConnection> ( [this] (auto&& ...args) { handleReceivedMessage (args...); }, nullptr, nullptr ) }
+    : ProxyHost { std::make_unique<AUConnection> ( [this] (auto&& ...args) { handleReceivedMessage (args...); }) }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
     }
