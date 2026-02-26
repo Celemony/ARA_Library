@@ -1303,22 +1303,22 @@ using namespace ProxyPlugInImpl;
     _Pragma ("GCC diagnostic ignored \"-Wunused-function\"")
 #endif
 
-ARA_MAP_IPC_REF (Connection, ARAIPCConnectionRef)
+ARA_MAP_IPC_REF (ProxyPlugIn, ARAIPCProxyPlugInRef)
 
 #if defined (__GNUC__)
     _Pragma ("GCC diagnostic pop")
 #endif
 
 
-size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCConnectionRef connectionRef)
+size_t ARAIPCProxyPlugInGetFactoriesCount (ARAIPCProxyPlugInRef proxyPlugInRef)
 {
     size_t count;
-    RemoteCaller { fromIPCRef (connectionRef) }.remoteCall (count, kGetFactoriesCountMethodID);
+    fromIPCRef (proxyPlugInRef)->remoteCall (count, kGetFactoriesCountMethodID);
     ARA_INTERNAL_ASSERT (count > 0);
     return count;
 }
 
-const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCConnectionRef connectionRef, size_t index)
+const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCProxyPlugInRef proxyPlugInRef, size_t index)
 {
     RemoteFactory remoteFactory;
     RemoteCaller::CustomDecodeFunction customDecode {
@@ -1358,7 +1358,7 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCConnectionRef connec
             remoteFactory._factory.analyzeableContentTypes = remoteFactory._analyzableTypes.data ();
         } };
 
-    RemoteCaller { fromIPCRef (connectionRef) }.remoteCall (customDecode, kGetFactoryMethodID, index);
+    fromIPCRef (proxyPlugInRef)->remoteCall (customDecode, kGetFactoryMethodID, index);
 
     const auto result { _factories.insert (std::make_pair (remoteFactory._strings.factoryID, remoteFactory)) };
     if (result.second)
@@ -1382,14 +1382,14 @@ const ARAFactory* ARAIPCProxyPlugInGetFactoryAtIndex (ARAIPCConnectionRef connec
     return &result.first->second._factory;
 }
 
-void ARAIPCProxyPlugInInitializeARA (ARAIPCConnectionRef connectionRef, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration)
+void ARAIPCProxyPlugInInitializeARA (ARAIPCProxyPlugInRef proxyPlugInRef, const ARAPersistentID factoryID, ARAAPIGeneration desiredApiGeneration)
 {
     ARA_INTERNAL_ASSERT (desiredApiGeneration >= kARAAPIGeneration_2_0_Final);
-    RemoteCaller { fromIPCRef (connectionRef) }.remoteCall (kInitializeARAMethodID, factoryID, desiredApiGeneration);
+    fromIPCRef (proxyPlugInRef)->remoteCall (kInitializeARAMethodID, factoryID, desiredApiGeneration);
 }
 
 const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWithDocument (
-                                            ARAIPCConnectionRef connectionRef, const ARAPersistentID factoryID,
+                                            ARAIPCProxyPlugInRef proxyPlugInRef, const ARAPersistentID factoryID,
                                             const ARADocumentControllerHostInstance* hostInstance, const ARADocumentProperties* properties)
 {
     const auto cached { _factories.find (std::string { factoryID }) };
@@ -1397,7 +1397,7 @@ const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWi
     if (cached == _factories.end ())
         return nullptr;
 
-    auto result { new DocumentController { fromIPCRef (connectionRef), &cached->second._factory, hostInstance, properties } };
+    auto result { new DocumentController { fromIPCRef (proxyPlugInRef)->getConnection (), &cached->second._factory, hostInstance, properties } };
     return result->getInstance ();
 }
 
@@ -1418,9 +1418,9 @@ void ARAIPCProxyPlugInCleanupBinding (const ARAPlugInExtensionInstance* plugInEx
     delete static_cast<const PlugInExtension*> (plugInExtensionInstance);
 }
 
-void ARAIPCProxyPlugInUninitializeARA (ARAIPCConnectionRef connectionRef, const ARAPersistentID factoryID)
+void ARAIPCProxyPlugInUninitializeARA (ARAIPCProxyPlugInRef proxyPlugInRef, const ARAPersistentID factoryID)
 {
-    RemoteCaller { fromIPCRef (connectionRef) }.remoteCall (kUninitializeARAMethodID, factoryID);
+    fromIPCRef (proxyPlugInRef)->remoteCall (kUninitializeARAMethodID, factoryID);
 }
 
 
