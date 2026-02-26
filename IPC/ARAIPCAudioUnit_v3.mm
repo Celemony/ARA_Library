@@ -247,7 +247,7 @@ private:
     {
         setMainThreadChannel (new ProxyPlugInMessageChannel { mainChannel });
         setOtherThreadsChannel (new ProxyPlugInMessageChannel { otherChannel });
-        setMessageHandler (this);
+        setMessageHandler (ProxyPlugIn::handleReceivedMessage);
 #if !__has_feature(objc_arc)
         [_initAU retain];
 #endif
@@ -322,7 +322,7 @@ public:
       AUConnection { nullptr, nullptr }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
-        setMessageHandler (this);
+        setMessageHandler ([this] (auto&& ...args) { handleReceivedMessage (args...); });
     }
 
     bool sendsHostMessages () const override { return false; }

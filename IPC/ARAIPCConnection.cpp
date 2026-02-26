@@ -191,7 +191,7 @@ MessageEncoder* MessageDispatcher::_handleReceivedMessage (MessageID messageID, 
     ARA_IPC_LOG ("handles" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
                  ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
     auto replyEncoder { _connection->createEncoder () };
-    _connection->getMessageHandler ()->handleReceivedMessage (messageID, decoder, replyEncoder);
+    _connection->getMessageHandler () (messageID, decoder, replyEncoder);
 
     delete decoder;
 
@@ -528,12 +528,6 @@ void Connection::setOtherThreadsChannel (MessageChannel* messageChannel)
 {
     ARA_INTERNAL_ASSERT (_otherThreadsDispatcher == nullptr);
     _otherThreadsDispatcher = new OtherThreadsMessageDispatcher { this, messageChannel };
-}
-
-void Connection::setMessageHandler (MessageHandler* messageHandler)
-{
-    ARA_INTERNAL_ASSERT (_messageHandler == nullptr);
-    _messageHandler = messageHandler;
 }
 
 void Connection::sendMessage (MessageID messageID, MessageEncoder* encoder, ReplyHandler replyHandler, void* replyHandlerUserData)
