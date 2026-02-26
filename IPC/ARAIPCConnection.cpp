@@ -120,17 +120,6 @@ namespace ARA {
 namespace IPC {
 
 
-// key to indicate whether an outgoing call is made in response to a currently handled incoming call
-// or a new call, which is necessary to deal with the decoupled main threads concurrency
-// to optimize for performance, it is only added when the call is a response, being a new call is implicit
-// (it is also never added to replies because they always are a response anyways)
-constexpr MessageArgumentKey isResponseKey { -1 };
-
-// keys to store the threading information in the IPC messages for OtherThreadsMessageDispatcher
-constexpr MessageArgumentKey sendThreadKey { -1 };
-constexpr MessageArgumentKey receiveThreadKey { -2 };
-
-
 #if defined (_WIN32)
     #define readThreadRef readInt32
     #define appendThreadRef appendInt32
@@ -216,7 +205,7 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, MessageEncod
 
     const auto isResponse { _processingMessagesCount > 0 };
     if (isResponse)
-        encoder->appendInt32 (isResponseKey, 1);
+        encoder->appendInt32 (kIsResponseKey, 1);
 
     _sendMessage (messageID, encoder, !isResponse);
 
@@ -254,7 +243,7 @@ void MainThreadMessageDispatcher::processPendingMessageIfNeeded ()
 void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     const auto isResponse { isReply (messageID) ||      // replies implicitly are responses
-                            (decoder && decoder->hasDataForKey (isResponseKey)) };
+                            (decoder && decoder->hasDataForKey (kIsResponseKey)) };
 
     // if on creation thread, responses can be processed immediately, and
     // new transaction can only be processed immediately when no other transaction is going on
@@ -303,10 +292,10 @@ void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, MessageEnc
                                                  Connection::ReplyHandler replyHandler, void* replyHandlerUserData)
 {
     const auto currentThread { getCurrentThread () };
-    encoder->appendThreadRef (sendThreadKey, currentThread);
+    encoder->appendThreadRef (kSendThreadKey, currentThread);
     const auto isResponse { _remoteTargetThread != _invalidThread };
     if (isResponse)
-        encoder->appendThreadRef (receiveThreadKey, _remoteTargetThread);
+        encoder->appendThreadRef (kReceiveThreadKey, _remoteTargetThread);
 
     _sendLock.lock ();
     _sendMessage (messageID, encoder, !isResponse);
@@ -361,7 +350,7 @@ OtherThreadsMessageDispatcher::RoutedMessage* OtherThreadsMessageDispatcher::_ge
 void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, const MessageDecoder* decoder)
 {
     ThreadRef targetThread;
-    if (decoder->readThreadRef (receiveThreadKey, &targetThread))
+    if (decoder->readThreadRef (kReceiveThreadKey, &targetThread))
     {
         ARA_INTERNAL_ASSERT (targetThread != _invalidThread);
         if (targetThread == getCurrentThread ())
@@ -413,13 +402,14 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
 {
     const auto previousRemoteTargetThread { _remoteTargetThread };
     ThreadRef remoteTargetThread;
-    [[maybe_unused]] const auto success { decoder->readThreadRef (sendThreadKey, &remoteTargetThread) };
+    [[maybe_unused]] const auto success { decoder->readThreadRef (kSendThreadKey, &remoteTargetThread) };
     ARA_INTERNAL_ASSERT (success);
+    ARA_INTERNAL_ASSERT (remoteTargetThread != _invalidThread);
     _remoteTargetThread = remoteTargetThread;
 
     auto replyEncoder { _handleReceivedMessage (messageID, decoder) };
 
-    replyEncoder->appendThreadRef (receiveThreadKey, remoteTargetThread);
+    replyEncoder->appendThreadRef (kReceiveThreadKey, remoteTargetThread);
 
     _sendLock.lock ();
     _sendMessage (0, replyEncoder, false);
