@@ -39,8 +39,8 @@
 #if ARA_ENABLE_DEBUG_OUTPUT && 0
     #define ARA_IPC_LOG(...) ARA_LOG ("ARA IPC " __VA_ARGS__)
     #define ARA_IPC_DECODE_MESSAGE_FORMAT " %i=%s "
-    #define ARA_IPC_DECODE_SENT_MESSAGE_ARGS(messageID) messageID, (getConnection ()->sendsHostMessages ()) ? decodeHostMessageID (messageID) : decodePlugInMessageID (messageID)
-    #define ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS(messageID) messageID, (!getConnection ()->sendsHostMessages ()) ? decodeHostMessageID (messageID) : decodePlugInMessageID (messageID)
+    #define ARA_IPC_DECODE_SENT_MESSAGE_ARGS(messageID) messageID, (_debugAsHost) ? decodeHostMessageID (messageID) : decodePlugInMessageID (messageID)
+    #define ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS(messageID) messageID, (!_debugAsHost) ? decodeHostMessageID (messageID) : decodePlugInMessageID (messageID)
     #define ARA_IPC_LABEL_THREAD_FORMAT " %sthread %p"
     #define ARA_IPC_LABEL_THREAD_ARGS (getConnection ()->wasCreatedOnCurrentThread ()) ? "creation " : "other ", MessageDispatcher::getCurrentThread ()
 #else
@@ -134,6 +134,7 @@ namespace IPC {
     #define appendThreadRef appendSize
 #endif
 
+static bool _debugAsHost {};
 
 MessageDispatcher::MessageDispatcher (Connection* connection, MessageChannel* messageChannel)
 : _connection { connection },
@@ -590,6 +591,11 @@ void Connection::signalMesssageReceived ()
 #else
     #error "IPC not yet implemented for this platform"
 #endif
+}
+
+void Connection::_setDebugMessageHint (bool isHost)
+{
+    _debugAsHost = isHost;
 }
 
 

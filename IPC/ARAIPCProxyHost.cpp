@@ -655,7 +655,9 @@ static const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
 ProxyHost::ProxyHost (std::unique_ptr<Connection> && connection)
 : RemoteCaller { connection.get () },
   _connection { std::move (connection) }
-{}
+{
+    Connection::_setDebugMessageHint (false);
+}
 
 void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                        MessageEncoder* const replyEncoder)

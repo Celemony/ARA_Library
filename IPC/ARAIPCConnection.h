@@ -151,8 +151,8 @@ public:
     //! in order to wake it up
     void signalMesssageReceived ();
 
-    //! intended for debug output only: helper to properly decode message IDs
-    virtual bool sendsHostMessages () const = 0;
+    // internal API: debug output helper
+    static void _setDebugMessageHint (bool isHost);
 
 #if defined (__APPLE__)
 private:
@@ -239,6 +239,9 @@ protected:
 private:
     Connection* const _connection;
     MessageChannel* const _messageChannel;
+
+protected:
+    static bool _debugAsHost;
 };
 
 //! single-threaded variant for main thread communication only

@@ -1426,6 +1426,13 @@ void ARAIPCProxyPlugInUninitializeARA (ARAIPCProxyPlugInRef proxyPlugInRef, cons
 
 /*******************************************************************************/
 
+ProxyPlugIn::ProxyPlugIn (std::unique_ptr<Connection> && connection)
+: RemoteCaller (connection.get ()),
+  _connection (std::move (connection))
+{
+    Connection::_setDebugMessageHint (true);
+}
+
 void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
                                          MessageEncoder* const replyEncoder)
 {
