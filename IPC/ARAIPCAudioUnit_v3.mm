@@ -34,6 +34,8 @@
 
 #include <atomic>
 
+#import <objc/runtime.h>
+
 
 // JUCE hotfix: because JUCE directly includes the .cpp/.mm files from this SDK instead of properly
 //              compiling the ARA_IPC_Library, these switches allow for skipping the host- or the
@@ -43,6 +45,18 @@
 #endif
 #if !defined(ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY)
     #define ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY 0
+#endif
+
+
+// crude hack to use std::bit_width in C++17
+#if __cplusplus < 202002L
+namespace std
+{
+    constexpr size_t bit_width (size_t n)
+    {
+        return (n <= 1) ? n : 1 + bit_width (n / 2);
+    }
+}
 #endif
 
 
@@ -158,7 +172,7 @@ public:
         //       remote side until the first message is sent. However, if another channel is assigned
         //       its (same) callHostBlock, then the pending callHostBlock for the first channel is
         //       lost for some reason. We need to send an empty dummy message to work around this bug,
-        //       which them must be filtered in ARAIPCAUProxyHostCommandHandler().
+        //       which them must be filtered before calling routeReceivedDictionary().
         [audioUnitChannel callAudioUnit:[NSDictionary dictionary]];
     }
 
@@ -237,24 +251,12 @@ private:
 #endif // !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
 
-#if defined (__GNUC__)
-    _Pragma ("GCC diagnostic push")
-    _Pragma ("GCC diagnostic ignored \"-Wunguarded-availability\"")
-#endif
-
-ARA_MAP_IPC_REF (AudioUnitMessageChannel, ARAIPCMessageChannelRef)
-ARA_MAP_IPC_REF (AUProxyPlugIn, ARAIPCProxyPlugInRef)
-
-#if defined (__GNUC__)
-    _Pragma ("GCC diagnostic pop")
-#endif
-
-
-extern "C" {
-
-
 // host side: proxy plug-in C adapter
 #if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
+
+ARA_MAP_IPC_REF (AUProxyPlugIn, ARAIPCProxyPlugInRef)
+
+extern "C" {
 
 ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit,
                                                              ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
@@ -285,6 +287,8 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCProxyPlugInRef _Nonnull pro
     delete fromIPCRef (proxyPlugInRef);
 }
 
+}   // extern "C"
+
 #endif // !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
 
 
@@ -314,9 +318,11 @@ private:
 
 AUProxyHost* _proxyHost;
 
+typedef ARA_IPC_REF(ARAIPCMessageChannelRef);
+ARA_MAP_IPC_REF (AudioUnitMessageChannel, ARAIPCMessageChannelRef)
 
-ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel,
-                                                                                      bool isMainThreadChannel)
+static ARAIPCMessageChannelRef _Nullable initializeMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel,
+                                                                   bool isMainThreadChannel)
 {
     // \todo the connection currently stores the creation thread as main thread for Windows compatibility,
     //       so we need to make sure the proxy is created on the main thread
@@ -343,28 +349,226 @@ ARAIPCMessageChannelRef _Nullable ARA_CALL ARAIPCAUProxyHostInitializeMessageCha
     return result;
 }
 
-NSDictionary * _Nonnull ARA_CALL ARAIPCAUProxyHostCommandHandler (ARAIPCMessageChannelRef _Nonnull messageChannelRef, NSDictionary * _Nonnull message)
+#endif // !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
+
+
+// plug-in side: NSObject<AUMessageChannel> implementation
+#if !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
+
+
+/*
+The following code implements the below class at runtime to work around potential ObjC class name conflicts
+
+@interface ARAIPCAUMessageChannelImpl : NSObject<AUMessageChannel>
+@end
+
+@implementation ARAIPCAUMessageChannel {
+    ARA::IPC::ARAIPCMessageChannelRef _messageChannelRef;
+}
+
+@synthesize callHostBlock = _callHostBlock;
+
+- (instancetype)initAsMainThreadChannel:(BOOL) isMainThreadChannel {
+    self = [super init];
+
+    if (self == nil) { return nil; }
+
+    _callHostBlock = nil;
+    _messageChannelRef = initializeMessageChannel (self, isMainThreadChannel);
+
+    return self;
+}
+
+- (NSDictionary * _Nonnull)callAudioUnit:(NSDictionary *)message {
+    if ([message count])
+        static_cast<ProxyHostMessageChannel *> (fromIPCRef (_messageChannelRef))->routeReceivedDictionary (message);
+    return [NSDictionary dictionary];
+}
+
+@end
+*/
+
+// helper to add ivars to an ObjC class
+template <typename T>
+void addObjCIVar (Class cls, const char * name)
 {
-    if ([message count])    // \todo filter dummy message sent in ProxyPlugInMessageChannel(), see there
+    constexpr auto size { sizeof (T) };
+    constexpr auto alignment { static_cast<uint8_t> (std::bit_width (size)) };
+    [[maybe_unused]] const auto success = class_addIvar (cls, name, size, alignment, @encode (T));
+    ARA_INTERNAL_ASSERT (success);
+}
+
+// helpers to get/set a scalar ivar of an ObjC object
+template <typename T>
+inline T getScalarIVar (id self, Ivar ivar)
+{
+    const auto offset { ivar_getOffset (ivar) };
+    const auto bytes = static_cast<const unsigned char *> ((__bridge void *) self);
+    return *reinterpret_cast<const T *> (bytes + offset);
+}
+
+template <typename T>
+inline void setScalarIVar (id self, Ivar ivar, T value)
+{
+    const auto offset { ivar_getOffset (ivar) };
+    auto bytes = static_cast<unsigned char *> ((__bridge void *) self);
+    *reinterpret_cast<T *> (bytes + offset) = value;
+}
+
+
+// optimization of object_getInstanceVariable: cache the ivars of our class
+Ivar messageChannelRefIvar { nullptr };
+Ivar callHostBlockIvar { nullptr };
+
+
+// methods of our class
+extern "C" {
+
+static CallHostBlock callHostBlock_getter (id self, SEL /*_cmd*/)
+{
+    return object_getIvar (self, callHostBlockIvar);
+}
+
+static void callHostBlock_setter (id self, SEL /*_cmd*/, CallHostBlock newBlock)
+{
+    id oldBlock { object_getIvar (self, callHostBlockIvar) };
+    if (oldBlock != newBlock)
+    {
+        if (oldBlock)
+            Block_release ((__bridge void *)oldBlock);
+        if (newBlock)
+            newBlock = (__bridge CallHostBlock) Block_copy ((__bridge void *)newBlock);
+        object_setIvar (self, callHostBlockIvar, newBlock);
+    }
+}
+
+static NSDictionary * _Nonnull callAudioUnit_impl (id self, SEL /*_cmd*/, NSDictionary * message)
+{
+    const auto messageChannelRef { getScalarIVar<ARA::IPC::ARAIPCMessageChannelRef> (self, messageChannelRefIvar) };
+    if ([message count])    // \todo filter dummy message sent in ProxyPlugInMessageChannel, see there
         static_cast<ProxyHostMessageChannel *> (fromIPCRef (messageChannelRef))->routeReceivedDictionary (message);
     return [NSDictionary dictionary];   // \todo it would yield better performance if -callAudioUnit: would allow nil as return value
 }
 
-void ARA_CALL ARAIPCAUProxyHostUninitialize (void)
+}   // extern "C"
+
+
+// creation of the ARAIPCAUMessageChannelImpl Class
+static Class createMessageChannelObjCClass ()
 {
-    if (_proxyHost)
-        delete _proxyHost;
+    // create a unique class name by appending a unique address to the base name
+    std::string className { "ARAIPCAUMessageChannelImpl" + std::to_string (reinterpret_cast<intptr_t> (&messageChannelRefIvar)) };
+    ARA_INTERNAL_ASSERT (!objc_getClass (className.c_str ()));
+
+    // allocate class
+    Class cls { objc_allocateClassPair ([NSObject class], className.c_str (), 0) };
+    ARA_INTERNAL_ASSERT (cls);
+
+    // add iVars
+    addObjCIVar<intptr_t> (cls, "_messageChannelRef");
+    addObjCIVar<CallHostBlock> (cls, "_callHostBlock");
+
+    // add properties
+    objc_property_attribute_t attr[] { { "T", "@?" },               // type block
+                                       { "C", "" },                 // C = copy
+                                       { "V", "_callHostBlock" } }; // backing i-var
+    [[maybe_unused]] auto success { class_addProperty (cls, "callHostBlock", attr, sizeof (attr) / sizeof (attr[0])) };
+
+    // add getters/setters
+    success = class_addMethod (cls, @selector(callHostBlock), (IMP)callHostBlock_getter, "@@:");
+    ARA_INTERNAL_ASSERT (success);
+    class_addMethod (cls, @selector(setCallHostBlock:), (IMP)callHostBlock_setter, "v@:@");
+    ARA_INTERNAL_ASSERT (success);
+
+    // add methods
+    class_addMethod (cls, @selector(callAudioUnit:), (IMP)callAudioUnit_impl, "@@:@");
+    ARA_INTERNAL_ASSERT (success);
+
+    // declare conformance to <AUMessageChannel>
+    const auto messageChannelProtocol { objc_getProtocol ("AUMessageChannel") };
+    ARA_INTERNAL_ASSERT (messageChannelProtocol);
+    success = class_addProtocol (cls, (Protocol * _Nonnull)messageChannelProtocol);
+    ARA_INTERNAL_ASSERT (success);
+
+    // activate class
+    objc_registerClassPair (cls);
+
+    // update cached ivar ptrs after activation
+    messageChannelRefIvar = class_getInstanceVariable (cls, "_messageChannelRef");
+    ARA_INTERNAL_ASSERT (messageChannelRefIvar);
+    callHostBlockIvar = class_getInstanceVariable (cls, "_callHostBlock");
+    ARA_INTERNAL_ASSERT (callHostBlockIvar);
+
+    return cls;
 }
 
-#endif // !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
+// creation and designated initialisation of instances of ARAIPCAUMessageChannelImpl Class
+static NSObject<AUMessageChannel> * createAndInitMessageChannel (Class cls, bool isMainThreadChannel)
+{
+    NSObject<AUMessageChannel> * obj { class_createInstance (cls, 0) };
+    ARA_INTERNAL_ASSERT (obj);
+    ARA_INTERNAL_ASSERT ([obj conformsToProtocol:@protocol(AUMessageChannel)]);
+    obj = [obj init];
+    ARA_INTERNAL_ASSERT (obj);
+
+    object_setIvar (obj, callHostBlockIvar, nil);
+
+    const auto messageChannelRef { initializeMessageChannel (obj, isMainThreadChannel) };
+    setScalarIVar<ARA::IPC::ARAIPCMessageChannelRef> (obj, messageChannelRefIvar, messageChannelRef);
+
+    return obj;
+}
+
+
+NSObject<AUMessageChannel> * __strong _mainMessageChannel { nil };
+NSObject<AUMessageChannel> * __strong _otherMessageChannel { nil };
+
+static void createSharedMessageChannels ()
+{
+    ARA_INTERNAL_ASSERT(!_mainMessageChannel && !_otherMessageChannel);
+
+    const auto cls { createMessageChannelObjCClass () };
+    _mainMessageChannel = createAndInitMessageChannel (cls, true);
+    _otherMessageChannel = createAndInitMessageChannel (cls, false);
+}
+
+extern "C" id<AUMessageChannel> _Nullable ARA_CALL ARAIPCAUProxyHostMessageChannelFor (NSString * _Nonnull channelName)
+{
+    if ([channelName isEqualToString:ARA_AUDIOUNIT_MAIN_THREAD_MESSAGES_UTI])
+    {
+        if (!_mainMessageChannel)
+            createSharedMessageChannels ();
+        return _mainMessageChannel;
+    }
+    else if ([channelName isEqualToString:ARA_AUDIOUNIT_OTHER_THREADS_MESSAGES_UTI])
+    {
+        if (!_otherMessageChannel)
+            createSharedMessageChannels ();
+        return _otherMessageChannel;
+    }
+    return nil;
+}
 
 API_AVAILABLE_END
 
+__attribute__((destructor))
+static void destroySharedMessageChannelsIfNeeded ()
+{
+    if (@available(macOS 13.0, iOS 16.0, *))
+    {
+        if (_proxyHost)
+            delete _proxyHost;
+
+        _mainMessageChannel = nil;
+        _otherMessageChannel = nil;
+    }
+}
+
+#endif  // !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
 
 _Pragma ("GCC diagnostic pop")
 
 
-}   // extern "C"
 }   // namespace IPC
 }   // namespace ARA
 
