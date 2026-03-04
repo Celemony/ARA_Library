@@ -347,17 +347,20 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, std
     }
 
     _pendingMessageID = messageID;
-    _pendingMessageDecoder.store (decoder.release (), std::memory_order_release);
-    getConnection ()->signalMesssageReceived ();
-
     if (processSynchronously)
     {
+        _pendingMessageDecoder.store (decoder.release (), std::memory_order_relaxed);
+
         processPendingMessageIfNeeded ();
     }
     else
     {
+        _pendingMessageDecoder.store (decoder.release (), std::memory_order_release);
+
         // only new transactions must be dispatched, otherwise the target thread is already waiting for the message received signal
-        if (!isResponse)
+        if (isResponse)
+            getConnection ()->signalMesssageReceived ();
+        else
             getConnection ()->dispatchToCreationThread (std::bind (&MainThreadMessageDispatcher::processPendingMessageIfNeeded, this));
     }
 }
