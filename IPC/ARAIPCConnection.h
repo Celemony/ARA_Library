@@ -73,16 +73,19 @@ public:
     //! implemented by subclasses to perform the actual message (or reply) sending
     virtual void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) = 0;
 
-    void setMessageDispatcher (MessageDispatcher* messageDispatcher)
+protected:
+    //! called by subclasses when messages arrive
+    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
     {
-        ARA_INTERNAL_ASSERT (_messageDispatcher == nullptr);
-        _messageDispatcher = messageDispatcher;
+        ARA_INTERNAL_ASSERT (_receivedMessageRouter);
+        _receivedMessageRouter (messageID, std::move (decoder));
     }
 
-    MessageDispatcher* getMessageDispatcher () const { return _messageDispatcher; }
-
 private:
-    MessageDispatcher* _messageDispatcher {};
+    // configuration hook for the MessageDispatcher constructors
+    friend class MainThreadMessageDispatcher;
+    friend class OtherThreadsMessageDispatcher;
+    std::function<void (MessageID, std::unique_ptr<const MessageDecoder> &&)> _receivedMessageRouter {};
 };
 //! @}
 
@@ -103,13 +106,9 @@ public:
     //! Must be done before sending or receiving the first message on any channel.
     void setMainThreadChannel (std::unique_ptr<MessageChannel> && messageChannel);
 
-    MainThreadMessageDispatcher* getMainThreadDispatcher () const { return _mainThreadDispatcher.get (); }
-
     //! set the message channel for all non-main thread communication
     //! Must be done before sending or receiving the first message on any channel.
     void setOtherThreadsChannel (std::unique_ptr<MessageChannel> && messageChannel);
-
-    OtherThreadsMessageDispatcher* getOtherThreadsDispatcher () const { return _otherThreadsDispatcher.get (); }
 
     const MessageHandler& getMessageHandler () const { return _messageHandler; }
 
@@ -138,6 +137,9 @@ public:
     //! call this method to let other main thread tasks execute cooperatively
     //! returns true if a message was received, false otherwise
     bool waitForMessageOnCreationThread ();
+
+    //! spins message processing on the creation thread in case the thread is blocked by some outer loop
+    void processPendingMessageOnCreationThreadIfNeeded ();
 
     //! message dispatcher need to call this when routing a message to the creation thread
     //! in order to wake it up
@@ -171,135 +173,6 @@ private:
     #error "not yet implemented on this platform"
 #endif
 };
-//! @}
-
-
-//! IPC message dispatcher: handles threading restrictions for MessageChannel access
-//! @{
-
-//! abstract base class
-class MessageDispatcher
-{
-public:     // needs to be public for thread-local variables (which cannot be class members)
-#if defined (_WIN32)
-    using ThreadRef = int32_t;
-#elif defined (__APPLE__)
-    using ThreadRef = size_t;
-#else
-    #error "not yet implemented on this platform"
-#endif
-    static constexpr ThreadRef _invalidThread { 0 };
-
-public:
-    explicit MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel);
-    virtual ~MessageDispatcher () = default;
-
-    Connection* getConnection () const { return  _connection; }
-    MessageChannel* getMessageChannel () const { return _messageChannel.get (); }
-
-    //! send an encoded messages to the receiving process
-    //! If an empty reply ("void") is expected, the replyHandler should be nullptr.
-    //! This method can be called from any thread, concurrent calls will be serialized.
-    //! The calling thread will be blocked until the receiver has processed the message and
-    //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
-    virtual void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                              ReplyHandler && replyHandler) = 0;
-
-    //! route an incoming message to the correct target thread
-    virtual void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) = 0;
-
-// protected: this does not work with thread_local...
-    struct PendingReplyHandler
-    {
-        ReplyHandler* const _replyHandler;
-        const PendingReplyHandler* _prevPendingReplyHandler;
-    };
-
-    static bool isReply (MessageID messageID) { return messageID == 0; }
-
-    static ThreadRef getCurrentThread ();
-
-protected:
-    void _sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, bool isNewTransaction);
-    bool _waitForMessage ();
-    void _handleReply (std::unique_ptr<const MessageDecoder> && decoder, ReplyHandler && replyHandler);
-    std::unique_ptr<MessageEncoder> _handleReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder);
-
-private:
-    Connection* const _connection;
-    const std::unique_ptr<MessageChannel> _messageChannel;
-
-protected:
-    static bool _debugAsHost;
-};
-
-//! single-threaded variant for main thread communication only
-class MainThreadMessageDispatcher : public MessageDispatcher
-{
-public:
-    using MessageDispatcher::MessageDispatcher;
-
-    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                      ReplyHandler && replyHandler) override;
-
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) override;
-
-    void processPendingMessageIfNeeded ();
-
-private:
-    // key to indicate whether an outgoing call is made in response to a currently handled incoming call
-    // or a new call, which is necessary to deal with the decoupled main threads concurrency
-    // to optimize for performance, it is only added when the call is a response, being a new call is implicit
-    // (it is also never added to replies because they always are a response anyways)
-    static constexpr MessageArgumentKey kIsResponseKey { -1 };
-
-private:
-    int32_t _processingMessagesCount { 0 };
-
-// \todo this is not allowed for some reason, so we must cast at every use of _noPendingMessageDecoder...
-//  static constexpr auto _noPendingMessageDecoder { reinterpret_cast<const MessageDecoder*> (static_cast<intptr_t> (-1)) };
-    static constexpr auto _noPendingMessageDecoder { static_cast<intptr_t> (-1) };
-    MessageID _pendingMessageID { 0 };  // read/write _pendingMessageDecoder with proper barrier before/after reading/writing this
-    std::atomic<const MessageDecoder*> _pendingMessageDecoder { reinterpret_cast<const MessageDecoder*> (_noPendingMessageDecoder) };
-
-    const PendingReplyHandler* _pendingReplyHandler { nullptr };
-};
-
-//! multi-threaded variant for all non-main thread communication
-class OtherThreadsMessageDispatcher : public MessageDispatcher
-{
-public:
-    using MessageDispatcher::MessageDispatcher;
-
-    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
-                      ReplyHandler && replyHandler) override;
-
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder) override;
-
-private:
-    // keys to store the threading information in the IPC messages
-    static constexpr MessageArgumentKey kSendThreadKey { -1 };
-    static constexpr MessageArgumentKey kReceiveThreadKey { -2 };
-
-    struct RoutedMessage
-    {
-        MessageID _messageID { 0 };
-        std::unique_ptr<const MessageDecoder> _decoder;
-        ThreadRef _targetThread { _invalidThread };
-    };
-    RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
-
-    void _processReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder);
-
-private:
-    // incoming data is stored in _routedMessages by the receive handler for the
-    // sending threads waiting to pick it up (signalled via _routeReceiveCondition)
-    std::condition_variable _routeReceiveCondition;
-    std::vector<RoutedMessage> _routedMessages { 12 };  // we shouldn't use more than a handful of threads concurrently for the IPC
-    std::mutex _sendLock;
-    std::mutex _routeLock;
-};
-
 
 }   // namespace IPC
 }   // namespace ARA
