@@ -98,10 +98,12 @@ public:
 public:
     void routeReceivedDictionary (NSDictionary * _Nonnull message)
     {
+        _currentRoutingThread = [NSThread currentThread];
         ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
         const MessageID messageID { [(NSNumber *) [message objectForKey:_messageIDKey] intValue] };
         auto decoder { std::make_unique<CFMessageDecoder> ((__bridge CFDictionaryRef) message) };
         routeReceivedMessage (messageID, std::move (decoder));
+        _currentRoutingThread = nil;
     }
 
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) override
@@ -120,11 +122,22 @@ public:
 #endif
     }
 
+    bool receivesMessagesOnCurrentThread () override
+    {
+        return _currentRoutingThread == [NSThread currentThread];
+    }
+
+    bool waitForMessageOnCurrentThread () override
+    {
+        return CFRunLoopRunInMode (kCFRunLoopDefaultMode, 0.01, true) != kCFRunLoopRunTimedOut;
+    }
+
 protected:
     virtual NSDictionary * _sendMessage (NSDictionary * message) = 0;
 
 protected:
     NSObject<AUMessageChannel> * __strong _Nonnull _audioUnitChannel;
+    NSThread * __strong _Nullable _currentRoutingThread { nil };
 };
 
 
