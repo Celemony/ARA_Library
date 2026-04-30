@@ -7,7 +7,8 @@ Changes since previous releases:
   based on heavily refactored IPC Example from earlier SDK releases
 - dropped support for ARA 1 and 2.0 Draft APIs
   If previously optionally supporting obsolete ARA 1 persistency, now exclusively use ARA 2 persistency.
-- C++14 is now consistently required on all platforms
+- C++17 is now consistently required on all platforms
+- fixed inconsistent spelling of "timestretch" in various identifiers
 
 
 === ARA SDK 2.3 release (aka 2.3.001) (2025/11/07) ===

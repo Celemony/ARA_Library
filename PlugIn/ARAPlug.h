@@ -623,7 +623,7 @@ public:
     ARASamplePosition getEndInPlaybackSamples (ARASampleRate playbackSampleRate) const noexcept;                      //!< Playback end time in samples, derived using underlying AudioSource sample rate.
 
     bool isTimestretchEnabled () const noexcept { return _timestretchEnabled; }                                       //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationTimestretch`.
-    bool isTimeStretchReflectingTempo () const noexcept { return _timestretchReflectingTempo; }                       //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationTimestretchReflectingTempo`.
+    bool isTimestretchReflectingTempo () const noexcept { return _timestretchReflectingTempo; }                       //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationTimestretchReflectingTempo`.
 
     bool hasContentBasedFadeAtHead () const noexcept { return _contentBasedFadeAtHead; }                              //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationContentBasedFadeAtHead`.
     bool hasContentBasedFadeAtTail () const noexcept { return _contentBasedFadeAtTail; }                              //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationContentBasedFadeAtTail`.

@@ -157,7 +157,7 @@ std::ostream& operator<< (std::ostream& oss, const OptionalProperty<ARAUtf8Strin
     if (detailed)
     {
         oss << ", modification:" << playbackRegion->getStartInAudioModificationTime () << " to " << playbackRegion->getEndInAudioModificationTime ()
-            << ", time-stretching:" << (playbackRegion->isTimestretchEnabled () ? (playbackRegion->isTimeStretchReflectingTempo () ? "musical" : "linear") : "off)")
+            << ", time-stretching:" << (playbackRegion->isTimestretchEnabled () ? (playbackRegion->isTimestretchReflectingTempo () ? "musical" : "linear") : "off)")
             << ", content based fades:" << (playbackRegion->hasContentBasedFadeAtHead () ? (playbackRegion->hasContentBasedFadeAtTail () ? "both" : "head only") : (playbackRegion->hasContentBasedFadeAtTail () ? "tail only" : "none"))
             << ", regionSequence:" << playbackRegion->getRegionSequence ()->getName ()
             << ", color:"  << playbackRegion->getColor ();
