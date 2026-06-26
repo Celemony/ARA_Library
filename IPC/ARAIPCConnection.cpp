@@ -693,16 +693,16 @@ Connection::Connection (MessageEncoderFactory && messageEncoderFactory, MessageH
   _creationThreadRunLoop { CFRunLoopGetCurrent () }
 {
     CFRunLoopSourceContext context { 0, this, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, _performRunLoopSource };
-    _runloopSource = CFRunLoopSourceCreate (kCFAllocatorDefault, 0, &context);
-    CFRunLoopAddSource (_creationThreadRunLoop, _runloopSource, kCFRunLoopCommonModes);
+    _runLoopSource = CFRunLoopSourceCreate (kCFAllocatorDefault, 0, &context);
+    CFRunLoopAddSource (_creationThreadRunLoop, _runLoopSource, kCFRunLoopCommonModes);
 }
 #endif
 
 Connection::~Connection ()
 {
 #if defined (__APPLE__)
-    CFRunLoopRemoveSource (_creationThreadRunLoop, _runloopSource, kCFRunLoopCommonModes);
-    CFRelease (_runloopSource);
+    CFRunLoopRemoveSource (_creationThreadRunLoop, _runLoopSource, kCFRunLoopCommonModes);
+    CFRelease (_runLoopSource);
 #endif
 }
 
@@ -737,7 +737,7 @@ void Connection::dispatchToCreationThread (DispatchableFunction func)
     _mutex.lock ();
     _queue.emplace (std::move (func));
     _mutex.unlock ();
-    CFRunLoopSourceSignal (_runloopSource);
+    CFRunLoopSourceSignal (_runLoopSource);
     CFRunLoopWakeUp (_creationThreadRunLoop);
 #endif
 }

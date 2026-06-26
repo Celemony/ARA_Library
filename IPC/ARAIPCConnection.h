@@ -165,7 +165,7 @@ private:
     HANDLE const _creationThreadHandle;
 #elif defined (__APPLE__)
     CFRunLoopRef const _creationThreadRunLoop;
-    CFRunLoopSourceRef _runloopSource;
+    CFRunLoopSourceRef _runLoopSource;
     std::queue<DispatchableFunction> _queue;    // \todo instead of locking, use a lockless concurrent queue,
     std::recursive_mutex _mutex;                // eg this one: https://github.com/hogliux/farbot
 #else
