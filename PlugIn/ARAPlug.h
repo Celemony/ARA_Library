@@ -232,7 +232,7 @@ public:
 
 //! @name Construction
 //@{
-    //! Called implicitly through DocumentController::doCreateDocument () -
+    //! Called implicitly through DocumentController::doCreateDocument() -
     //! provide a matching c'tor if subclassing Document.
     explicit Document (DocumentController* documentController) noexcept
     : _documentController { documentController } {}
@@ -302,7 +302,7 @@ public:
 
 //! @name Construction
 //@{
-    //! Called implicitly through DocumentController::doCreateMusicalContext () -
+    //! Called implicitly through DocumentController::doCreateMusicalContext() -
     //! provide a matching c'tor if subclassing MusicalContext.
     explicit MusicalContext (Document* document, ARAMusicalContextHostRef hostRef) noexcept;
 //@}
@@ -369,7 +369,7 @@ public:
 
 //! @name Construction
 //@{
-    //! Called implicitly through DocumentController::doCreateRegionSequence () -
+    //! Called implicitly through DocumentController::doCreateRegionSequence() -
     //! provide a matching c'tor if subclassing RegionSequence.
     explicit RegionSequence (Document* document, ARARegionSequenceHostRef hostRef) noexcept;
 //@}
@@ -438,7 +438,7 @@ public:
 
 //! @name Construction
 //@{
-    //! Called implicitly through DocumentController::doCreateAudioSource () -
+    //! Called implicitly through DocumentController::doCreateAudioSource() -
     //! provide a matching c'tor if subclassing AudioSource.
     explicit AudioSource (Document* document, ARAAudioSourceHostRef hostRef) noexcept;
 //@}
@@ -521,7 +521,7 @@ public:
 
 //! @name Construction
 //@{
-    //! Called implicitly through DocumentController::doCreateAudioModification () -
+    //! Called implicitly through DocumentController::doCreateAudioModification() -
     //! provide a matching c'tor if subclassing AudioModification.
     //! \p optionalModificationToClone will be nullptr when creating new modifications with
     //! default state from scratch, or will point to a modification (referencing the same
@@ -595,7 +595,7 @@ public:
 
 //! @name Construction
 //@{
-    //! Called implicitly through DocumentController::doCreatePlaybackRegion () -
+    //! Called implicitly through DocumentController::doCreatePlaybackRegion() -
     //! provide a matching c'tor if subclassing PlaybackRegion.
     explicit PlaybackRegion (AudioModification* audioModification, ARAPlaybackRegionHostRef hostRef) noexcept;
 //@}
@@ -833,7 +833,7 @@ protected:
     //@{
     //! Override to return a custom subclass instance of Document when initializing the DocumentController.
     virtual Document* doCreateDocument () noexcept = 0;
-    //! Override if not using plain new in doCreateDocument () or relying on reference counting for your subclass.
+    //! Override if not using plain new in doCreateDocument() or relying on reference counting for your subclass.
     virtual void doDestroyDocument (Document* document) noexcept = 0;
     //! Override to customize pre-update behavior of updateDocumentProperties().
     virtual void willUpdateDocumentProperties (Document* document, PropertiesPtr<ARADocumentProperties> newProperties) noexcept {}
@@ -867,7 +867,7 @@ protected:
     //@{
     //! Override to return a custom subclass instance of MusicalContext from createMusicalContext().
     virtual MusicalContext* doCreateMusicalContext (Document* document, ARAMusicalContextHostRef hostRef) noexcept = 0;
-    //! Override if not using plain new in doCreateMusicalContext () or relying on reference counting for your subclass.
+    //! Override if not using plain new in doCreateMusicalContext() or relying on reference counting for your subclass.
     virtual void doDestroyMusicalContext (MusicalContext* musicalContext) noexcept = 0;
     //! Override to customize pre-update behavior of updateMusicalContextProperties().
     virtual void willUpdateMusicalContextProperties (MusicalContext* musicalContext, PropertiesPtr<ARAMusicalContextProperties> newProperties) noexcept {}
@@ -891,7 +891,7 @@ protected:
     //@{
     //! Override to return a custom subclass instance of RegionSequence from createRegionSequence().
     virtual RegionSequence* doCreateRegionSequence (Document* document, ARARegionSequenceHostRef hostRef) noexcept = 0;
-    //! Override if not using plain new in doCreateRegionSequence () or relying on reference counting for your subclass.
+    //! Override if not using plain new in doCreateRegionSequence() or relying on reference counting for your subclass.
     virtual void doDestroyRegionSequence (RegionSequence* regionSequence) noexcept = 0;
     //! Override to customize pre-update behavior of updateRegionSequenceProperties().
     virtual void willUpdateRegionSequenceProperties (RegionSequence* regionSequence, PropertiesPtr<ARARegionSequenceProperties> newProperties) noexcept {}
@@ -909,7 +909,7 @@ protected:
     //@{
     //! Override to return a custom subclass instance of AudioSource from createAudioSource().
     virtual AudioSource* doCreateAudioSource (Document* document, ARAAudioSourceHostRef hostRef) noexcept = 0;
-    //! Override if not using plain new in doCreateAudioSource () or relying on reference counting for your subclass.
+    //! Override if not using plain new in doCreateAudioSource() or relying on reference counting for your subclass.
     virtual void doDestroyAudioSource (AudioSource* audioSource) noexcept = 0;
     //! Override to customize pre-update behavior of updateAudioSourceProperties().
     virtual void willUpdateAudioSourceProperties (AudioSource* audioSource, PropertiesPtr<ARAAudioSourceProperties> newProperties) noexcept {}
@@ -939,7 +939,7 @@ protected:
     //! optionalModificationToClone will be nullptr when creating new modifications with default state from scratch,
     //! or will point to a modification from which the internal state should be cloned into the new modification.
     virtual AudioModification* doCreateAudioModification (AudioSource* audioSource, ARAAudioModificationHostRef hostRef, const AudioModification* optionalModificationToClone) noexcept = 0;
-    //! Override if not using plain new in doCreateAudioModification () or relying on reference counting for your subclass.
+    //! Override if not using plain new in doCreateAudioModification() or relying on reference counting for your subclass.
     virtual void doDestroyAudioModification (AudioModification* audioModification) noexcept = 0;
     //! Override to customize pre-update behavior of updateAudioModificationProperties().
     virtual void willUpdateAudioModificationProperties (AudioModification* audioModification, PropertiesPtr<ARAAudioModificationProperties> newProperties) noexcept {}
@@ -963,7 +963,7 @@ protected:
     //@{
     //! Override to return a custom subclass instance of PlaybackRegion.
     virtual PlaybackRegion* doCreatePlaybackRegion (AudioModification* modification, ARAPlaybackRegionHostRef hostRef) noexcept = 0;
-    //! Override if not using plain new in doCreatePlaybackRegion () or relying on reference counting for your subclass.
+    //! Override if not using plain new in doCreatePlaybackRegion() or relying on reference counting for your subclass.
     virtual void doDestroyPlaybackRegion (PlaybackRegion* playbackRegion) noexcept = 0;
     //! Override to customize pre-update behavior of updatePlaybackRegionProperties().
     virtual void willUpdatePlaybackRegionProperties (PlaybackRegion* playbackRegion, PropertiesPtr<ARAPlaybackRegionProperties> newProperties) noexcept {}
@@ -1017,8 +1017,8 @@ protected:
     //! returning a custom subclass instance of ContentReader providing data of the requested \p type.
     virtual ContentReader* doCreatePlaybackRegionContentReader (PlaybackRegion* playbackRegion, ARAContentType type, const ARAContentTimeRange* range) noexcept;
 
-    //! Override if not using plain new in doCreateAudioSourceContentReader (), doCreateAudioModificationContentReader ()
-    //! or doCreatePlaybackRegionContentReader () or relying on reference counting for your subclasses.
+    //! Override if not using plain new in doCreateAudioSourceContentReader(), doCreateAudioModificationContentReader()
+    //! or doCreatePlaybackRegionContentReader() or relying on reference counting for your subclasses.
     virtual void doDestroyContentReader (ContentReader* contentReader) noexcept { delete contentReader; }
     //@}
 
@@ -1296,14 +1296,14 @@ private:
     friend class PlugInEntry;
 
     // Creation Helper
-    // Only to be called by the ARAFactory::createDocumentControllerWithDocument () implementations
+    // Only to be called by the ARAFactory::createDocumentControllerWithDocument() implementations
     // provided via PlugInEntry.
     // Must be called directly after construction of the DocumentController
     // (cannot be called from constructor because it calls virtual functions).
     void initializeDocument (const ARADocumentProperties* properties) noexcept;
 
     // Creation Helper
-    // Only to be called by the ARAFactory::createDocumentControllerWithDocument () implementations
+    // Only to be called by the ARAFactory::createDocumentControllerWithDocument() implementations
     // provided via PlugInEntry.
     const ARADocumentControllerInstance* getInstance () const noexcept { return &_instance; }
 #endif
@@ -1533,7 +1533,7 @@ public:
 //@{
     //! Retrieve the DocumentController instance the renderer is bound to.
     //! Note that during destruction phase, the document controller may have already
-    //! deleted its document and associated graph - its getDocument () will then return nullptr.
+    //! deleted its document and associated graph - its getDocument() will then return nullptr.
     template <typename DocumentController_t = DocumentController>
     DocumentController_t* getDocumentController () const noexcept { return static_cast<DocumentController_t*> (this->_documentController); }
 
@@ -1585,7 +1585,7 @@ public:
 //@{
     //! Retrieve the DocumentController instance the renderer is bound to.
     //! Note that during destruction phase, the document controller may have already
-    //! deleted its document and associated graph - its getDocument () will then return nullptr.
+    //! deleted its document and associated graph - its getDocument() will then return nullptr.
     template <typename DocumentController_t = DocumentController>
     DocumentController_t* getDocumentController () const noexcept { return static_cast<DocumentController_t*> (this->_documentController); }
 
@@ -1655,14 +1655,14 @@ public:
 //@{
     //! Retrieve the DocumentController instance the view is bound to.
     //! Note that during destruction phase, the document controller may have already
-    //! deleted its document and associated graph - its getDocument () will then return nullptr.
+    //! deleted its document and associated graph - its getDocument() will then return nullptr.
     template <typename DocumentController_t = DocumentController>
     DocumentController_t* getDocumentController () const noexcept { return static_cast<DocumentController_t*> (this->_documentController); }
 
     //! Retrieves the last view selection sent from the host.
     //! If some of the selected objects have been deleted by the host, this will return an
     //! empty selection, because the host will eventually send a new, properly updated selection.
-    //! Note that while it clears the selection, the deletion does not trigger doNotifySelection ()
+    //! Note that while it clears the selection, the deletion does not trigger doNotifySelection()
     //! for the same reason that the host will send it afterwards.
     //! This should only be called while there actually is an editor UI open, because otherwise
     //! the host will not maintain the view selection in this plug-in instance.
@@ -1733,13 +1733,13 @@ public:
     //! switching the plug-in from regular processing to ARA mode.
     const ARAPlugInExtensionInstance* bindToARA (ARADocumentControllerRef documentControllerRef, ARAPlugInInstanceRoleFlags knownRoles, ARAPlugInInstanceRoleFlags assignedRoles) noexcept;
 
-    //! Test whether bindToDocumentController () has been called.
+    //! Test whether bindToDocumentController() has been called.
     bool isBoundToARA () const noexcept { return _documentController != nullptr; }
 
     //! Retrieve the DocumentController instance the plug-in instance is bound to.
-    //! Returns nullptr if bindToDocumentController () hasn't been called yet.
+    //! Returns nullptr if bindToDocumentController() hasn't been called yet.
     //! Note that during destruction phase, the document controller may have already
-    //! deleted its document and associated graph - its getDocument () will then return nullptr.
+    //! deleted its document and associated graph - its getDocument() will then return nullptr.
     template <typename DocumentController_t = DocumentController>
     DocumentController_t* getDocumentController () const noexcept { return static_cast<DocumentController_t*> (this->_documentController); }
 
@@ -1832,7 +1832,7 @@ public:
 /*******************************************************************************/
 //! Singleton class to define the entry into ARA.
 //! For each document controller class in your plug-in, create a single static instance of this class
-//! by using the static member template getPlugInEntry () which takes your custom FactoryConfig
+//! by using the static member template getPlugInEntry() which takes your custom FactoryConfig
 //! and DocumentController subclasses as template arguments.
 class PlugInEntry
 {
@@ -1905,7 +1905,7 @@ public:
     //! This static template function should be used to create a single static PlugInEntry per
     //! DocumentController class.
     //! The DocumentControllerClass parameter is optional - if omitted, the FactoryConfigClass
-    //! must overload createDocumentController () and can optionally overload destroyDocumentController (),
+    //! must overload createDocumentController() and can optionally overload destroyDocumentController(),
     //! otherwise the template takes care of this using new and delete.
     //!
     //! \code{.cpp}
