@@ -4,7 +4,7 @@
 //!             STL's std::vector, e.g. when searching derived class pointers
 //!             in base class vectors and vice versa
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2018-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2018-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -34,13 +34,13 @@ namespace ARA {
 //! Up-casting vectors of base class pointers to vectors of derived class pointers.
 //@{
 
-template <typename T, typename U, typename std::enable_if<(sizeof (T) == sizeof (U)) && (std::is_convertible<T, U>::value || std::is_convertible<U, T>::value), bool>::type = true>
+template <typename T, typename U, std::enable_if_t<(sizeof (T) == sizeof (U)) && (std::is_convertible_v<T, U> || std::is_convertible_v<U, T>), bool> = true>
 inline std::vector<T>& vector_cast (std::vector<U>& container) noexcept
 {
     return reinterpret_cast<std::vector<T>&> (container);
 }
 
-template <typename T, typename U, typename std::enable_if<(sizeof (T) == sizeof (U)) && (std::is_convertible<T, U>::value || std::is_convertible<U, T>::value), bool>::type = true>
+template <typename T, typename U, std::enable_if_t<(sizeof (T) == sizeof (U)) && (std::is_convertible_v<T, U> || std::is_convertible_v<U, T>), bool> = true>
 inline std::vector<T> const& vector_cast (std::vector<U> const& container) noexcept
 {
     return reinterpret_cast<std::vector<T> const&> (container);
@@ -53,7 +53,7 @@ inline std::vector<T> const& vector_cast (std::vector<U> const& container) noexc
 //! Returns true if found & erased, otherwise false.
 //@{
 
-template <typename T, typename U, typename std::enable_if<std::is_convertible<T, U>::value || std::is_convertible<U, T>::value, bool>::type = true>
+template <typename T, typename U, std::enable_if_t<std::is_convertible_v<T, U> || std::is_convertible_v<U, T>, bool> = true>
 inline bool find_erase (std::vector<T>& container, const U& element) noexcept
 {
     const auto it { std::find (container.begin (), container.end (), element) };
@@ -70,7 +70,7 @@ inline bool find_erase (std::vector<T>& container, const U& element) noexcept
 //! Determine if an element exists in a vector.
 //@{
 
-template <typename T, typename U, typename std::enable_if<std::is_convertible<T, U>::value || std::is_convertible<U, T>::value, bool>::type = true>
+template <typename T, typename U, std::enable_if_t<std::is_convertible_v<T, U> || std::is_convertible_v<U, T>, bool> = true>
 inline bool contains (std::vector<T> const& container, const U& element) noexcept
 {
     return std::find (container.begin (), container.end (), element) != container.end ();

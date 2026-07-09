@@ -5,7 +5,7 @@
 //!             Typically, this file is not included directly - either ARAHostDispatch.h or
 //!             ARAPlugInDispatch.h will be used instead.
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //!             Developed in cooperation with PreSonus Software Ltd.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
@@ -31,6 +31,19 @@
 #include "ARA_API/ARAInterface.h"
 
 
+#if !defined (__cplusplus) || ((__cplusplus < 201703L) && (!defined (_MSVC_LANG) || (_MSVC_LANG < 201703L)))
+    #error "C++17 or higher is required to compile this code."
+#endif
+
+#if !defined(__cpp_nontype_template_parameter_auto) && !defined (__cpp_template_auto)
+    #error "Template auto support is required to compile this code."
+#endif
+
+#if defined (__clang__) && (__clang_major__ < 10)
+    #error "Clang 10 or newer is required to compile this code."
+#endif
+
+
 /*******************************************************************************/
 /** Optional ARA 1 backwards compatibility.
     Hosts and plug-ins can choose support ARA 1 hosts in addition to ARA 2 hosts.
@@ -51,14 +64,6 @@
     - implicitly derive ARA selection state from companion API actions
 */
 /*******************************************************************************/
-
-#if !defined (ARA_SUPPORT_VERSION_1)
-    #define ARA_SUPPORT_VERSION_1 0
-#endif
-
-#if ARA_SUPPORT_VERSION_1 && ARA_CPU_ARM
-    #error "ARA v1 is not supported on ARM architecture"
-#endif
 
 
 namespace ARA {
@@ -145,20 +150,6 @@ public:
 #endif
 
 /*******************************************************************************/
-// ARA_STRUCT_MEMBER pre-C++17 utility macro
-/** When dealing with ARA variable-sized structures, this eases defining the related C++ template arguments */
-/*******************************************************************************/
-
-#if defined (__cpp_template_auto)
-    // defined here so that code can be written to support both pre-C++17 and C++17 by always using the macro
-    // note that code which can rely on C++17 and up does not need to use the macro,
-    // writing e.g. SizedStruct<&ARAFactory::supportedPlaybackTransformationFlags> instead.
-    #define ARA_STRUCT_MEMBER(StructType, member) &ARA::StructType::member
-#else
-    #define ARA_STRUCT_MEMBER(StructType, member) ARA::StructType, decltype (ARA::StructType::member), &ARA::StructType::member
-#endif
-
-/*******************************************************************************/
 // SizedStruct
 
 //! Templated C++ wrapper for ARA's variable-sized structs, ensuring their proper initialization.
@@ -169,7 +160,7 @@ public:
 //! struct that implements every function up until ARADocumentControllerInterface::storeObjectsToArchive(),
 //! you can declare a SizedStruct like so:
 //! \code{.cpp}
-//! SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeObjectsToArchive)> dci;
+//! SizedStruct<&ARA::ARADocumentControllerInterface::storeObjectsToArchive> dci;
 //! \endcode
 //! In this example, `dci` won't support any function declared after ARADocumentControllerInterface::storeObjectsToArchive(),
 //! meaning it won't support ARA Analysis Algorithm selection.
@@ -180,16 +171,11 @@ public:
     __pragma (warning(disable : 4324))  // disable padding warnings, instances of this struct template may need to be padded.
 #endif
 
-#if defined (__cpp_template_auto)
 template <auto member>
 struct alignas (alignof (void*)) SizedStruct;
 
 template <typename StructType, typename MemberType, MemberType StructType::*member>
 struct alignas (alignof (void*)) SizedStruct<member> : public StructType
-#else
-template <typename StructType, typename MemberType, MemberType StructType::*member>
-struct alignas (alignof (void*)) SizedStruct : public StructType
-#endif
 {
 protected:
     //! \p SizedStruct alias, to allow any derived class to easily reference its templated base class.
@@ -201,7 +187,7 @@ public:
     //! the size of the struct as though \p member was the last implemented field.
     static constexpr inline size_t getImplementedSize ()
     {
-        static_assert (std::is_class<StructType>::value && std::is_standard_layout<StructType>::value, "C compatible standard layout struct required");
+        static_assert (std::is_class_v<StructType> && std::is_standard_layout_v<StructType>, "C compatible standard layout struct required");
         return reinterpret_cast<intptr_t> (&(static_cast<StructType*> (nullptr)->*member)) + sizeof (static_cast<StructType*> (nullptr)->*member);
     }
 
@@ -215,10 +201,7 @@ public:
 
     //! Default constructor.
     //! Special-cases the initializer list constructor only to suppress warnings about missing initializers for default construction.
-#if __cplusplus >= 201402L
-    constexpr
-#endif
-              inline SizedStruct () noexcept
+    inline constexpr SizedStruct () noexcept
     : StructType {}
     {
         this->structSize = SizedStruct::getImplementedSize ();
@@ -242,7 +225,7 @@ public:
 //! bool supportsAnalysisAlgorithmSelection (ARADocumentControllerInterface* dci)
 //! {
 //!      SizedStructPtr<ARADocumentControllerInterface> sizedStructPtr (dci);
-//!      return sizedStructPtr.implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, getProcessingAlgorithmsCount)> ();
+//!      return sizedStructPtr.implements<&ARA::ARADocumentControllerInterface::getProcessingAlgorithmsCount> ();
 //! }
 //! \endcode
 /*******************************************************************************/
@@ -268,27 +251,9 @@ public:
     //! ARA uses the \p StructType::structSize member as a means of versioning -
     //! if it is large enough to contain \p member then this function returns true.
     //! This is a C++ version of ARA_IMPLEMENTS_FIELD.
-#if defined (__cpp_template_auto)
     template <auto member>
     inline bool implements () const noexcept
-    {
-    #if defined (__clang__) && (__clang_major__ < 10)
-        // see clang bug: https://bugs.llvm.org/show_bug.cgi?id=35655
-        // as workaround, we're copying the code from SizedStruct<member>::getImplementedSize () here
-        static_assert (std::is_class<StructType>::value && std::is_standard_layout<StructType>::value, "C compatible standard layout struct required");
-        return this->_ptr->structSize >= reinterpret_cast<intptr_t> (&(static_cast<StructType*> (nullptr)->*member)) + sizeof (static_cast<StructType*> (nullptr)->*member);
-    #else
-        return this->_ptr->structSize >= SizedStruct<member>::getImplementedSize ();
-    #endif
-    }
-#else
-    template <typename DummyStructType, typename MemberType, MemberType StructType::*member>
-    inline bool implements () const noexcept
-    {
-        static_assert (std::is_same<DummyStructType, StructType>::value, "must test member of same struct");
-        return this->_ptr->structSize >= SizedStruct<StructType, MemberType, member>::getImplementedSize ();
-    }
-#endif
+    { return this->_ptr->structSize >= SizedStruct<member>::getImplementedSize (); }
 
 private:
     const StructType* _ptr;
@@ -369,6 +334,8 @@ public:
     static constexpr ContentUpdateScopes tuningIsAffected () noexcept { return nothingIsAffected ()._flags & ~kARAContentUpdateTuningScopeRemainsUnchanged; }
     //! Content readers for key signatures, chords etc. are affected by the change.
     static constexpr ContentUpdateScopes harmoniesAreAffected () noexcept { return nothingIsAffected ()._flags & ~kARAContentUpdateHarmonicScopeRemainsUnchanged; }
+    //! Content readers for lyrics, phonemes etc. are affected by the change.
+    static constexpr ContentUpdateScopes lyricsAreAffected () noexcept { return nothingIsAffected ()._flags & ~kARAContentUpdateLyricsScopeRemainsUnchanged; }
 
     //! Everything is affected by the change.
     static constexpr ContentUpdateScopes everythingIsAffected () noexcept { return kARAContentUpdateEverythingChanged; }
@@ -411,14 +378,16 @@ public:
     constexpr bool affectTuning () const noexcept { return ((_flags & kARAContentUpdateTuningScopeRemainsUnchanged) == 0); }
     //! \copybrief harmoniesAreAffected
     constexpr bool affectHarmonies () const noexcept { return ((_flags & kARAContentUpdateHarmonicScopeRemainsUnchanged) == 0); }
+    //! \copybrief lyricsAreAffected
+    constexpr bool affectLyrics () const noexcept { return ((_flags & kARAContentUpdateLyricsScopeRemainsUnchanged) == 0); }
     //! \copybrief everythingIsAffected
     constexpr bool affectEverything () const noexcept { return ((_flags & _knownFlags) == 0); }
 //@}
 
 private:
-    static constexpr ARAContentUpdateFlags _knownFlags { (kARAContentUpdateSignalScopeRemainsUnchanged |
-                                                          kARAContentUpdateNoteScopeRemainsUnchanged | kARAContentUpdateTimingScopeRemainsUnchanged |
-                                                          kARAContentUpdateTuningScopeRemainsUnchanged | kARAContentUpdateHarmonicScopeRemainsUnchanged) };
+    static constexpr ARAContentUpdateFlags _knownFlags { (kARAContentUpdateSignalScopeRemainsUnchanged | kARAContentUpdateNoteScopeRemainsUnchanged |
+                                                          kARAContentUpdateTimingScopeRemainsUnchanged | kARAContentUpdateTuningScopeRemainsUnchanged |
+                                                          kARAContentUpdateHarmonicScopeRemainsUnchanged | kARAContentUpdateLyricsScopeRemainsUnchanged) };
     ARAContentUpdateFlags _flags;
 };
 

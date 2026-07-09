@@ -2,7 +2,7 @@
 //! \file       ARAPlugInDispatch.cpp
 //!             C-to-C++ adapter for implementing ARA plug-ins
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -224,15 +224,20 @@ namespace DocumentControllerDispatcher
         fromRef (controllerRef)->updatePlaybackRegionProperties (playbackRegionRef, properties);
     }
 
-    static void ARA_CALL destroyPlaybackRegion (ARADocumentControllerRef controllerRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
+    static ARABool ARA_CALL isPlaybackRegionPreservingAudioSourceSignal (ARADocumentControllerRef controllerRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
     {
-        fromRef (controllerRef)->destroyPlaybackRegion (playbackRegionRef);
+        return fromRef (controllerRef)->isPlaybackRegionPreservingAudioSourceSignal (playbackRegionRef) ? kARATrue : kARAFalse;
     }
 
     static void ARA_CALL getPlaybackRegionHeadAndTailTime (ARADocumentControllerRef controllerRef, ARAPlaybackRegionRef playbackRegionRef,
                                                            ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept
     {
         fromRef (controllerRef)->getPlaybackRegionHeadAndTailTime (playbackRegionRef, headTime, tailTime);
+    }
+
+    static void ARA_CALL destroyPlaybackRegion (ARADocumentControllerRef controllerRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
+    {
+        fromRef (controllerRef)->destroyPlaybackRegion (playbackRegionRef);
     }
 
     // Content Reader Management
@@ -342,7 +347,7 @@ namespace DocumentControllerDispatcher
 
     static const ARADocumentControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)> ifc =
+        static const SizedStruct<&ARADocumentControllerInterface::isPlaybackRegionPreservingAudioSourceSignal> ifc =
         {
             DocumentControllerDispatcher::destroyDocumentController,
             DocumentControllerDispatcher::getFactory,
@@ -397,7 +402,8 @@ namespace DocumentControllerDispatcher
             DocumentControllerDispatcher::requestProcessingAlgorithmForAudioSource,
             DocumentControllerDispatcher::isLicensedForCapabilities,
             DocumentControllerDispatcher::storeAudioSourceToAudioFileChunk,
-            DocumentControllerDispatcher::isAudioModificationPreservingAudioSourceSignal
+            DocumentControllerDispatcher::isAudioModificationPreservingAudioSourceSignal,
+            DocumentControllerDispatcher::isPlaybackRegionPreservingAudioSourceSignal
         };
         return &ifc;
     }
@@ -429,7 +435,7 @@ namespace PlaybackRendererDispatcher
 
     static const ARAPlaybackRendererInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAPlaybackRendererInterface, removePlaybackRegion)> ifc =
+        static const SizedStruct<&ARAPlaybackRendererInterface::removePlaybackRegion> ifc =
         {
             PlaybackRendererDispatcher::addPlaybackRegion,
             PlaybackRendererDispatcher::removePlaybackRegion
@@ -466,7 +472,7 @@ namespace EditorRendererDispatcher
 
     static const ARAEditorRendererInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAEditorRendererInterface, removeRegionSequence)> ifc =
+        static const SizedStruct<&ARAEditorRendererInterface::removeRegionSequence> ifc =
         {
             EditorRendererDispatcher::addPlaybackRegion,
             EditorRendererDispatcher::removePlaybackRegion,
@@ -495,7 +501,7 @@ namespace EditorViewDispatcher
 
     static const ARAEditorViewInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAEditorViewInterface, notifyHideRegionSequences)> ifc =
+        static const SizedStruct<&ARAEditorViewInterface::notifyHideRegionSequences> ifc =
         {
             EditorViewDispatcher::notifySelection,
             EditorViewDispatcher::notifyHideRegionSequences
@@ -505,79 +511,15 @@ namespace EditorViewDispatcher
 }
 
 /*******************************************************************************/
-// ARA1PlugInExtensionDispatcher
-/*******************************************************************************/
-
-#if ARA_SUPPORT_VERSION_1
-
-ARA_MAP_REF (PlugInExtensionInstance, ARAPlugInExtensionRef)
-
-namespace ARA1PlugInExtensionDispatcher
-{
-    static void ARA_CALL setPlaybackRegion (ARAPlugInExtensionRef plugInExtensionRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
-    {
-        fromRef (plugInExtensionRef)->setPlaybackRegion (playbackRegionRef);
-    }
-
-    static void ARA_CALL removePlaybackRegion (ARAPlugInExtensionRef plugInExtensionRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
-    {
-        fromRef (plugInExtensionRef)->removePlaybackRegion (playbackRegionRef);
-    }
-
-    static const ARAPlugInExtensionInterface* getInterface () noexcept
-    {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAPlugInExtensionInterface, removePlaybackRegion)> ifc =
-        {
-            ARA1PlugInExtensionDispatcher::setPlaybackRegion,
-            ARA1PlugInExtensionDispatcher::removePlaybackRegion
-        };
-        return &ifc;
-    }
-}
-
-#endif
-
-/*******************************************************************************/
 // PlugInExtensionInstance
 /*******************************************************************************/
 
 PlugInExtensionInstance::PlugInExtensionInstance (PlaybackRendererInterface* playbackRenderer, EditorRendererInterface* editorRenderer, EditorViewInterface* editorView) noexcept
-#if ARA_SUPPORT_VERSION_1
-: BaseType { toRef (this), ARA1PlugInExtensionDispatcher::getInterface (),
-#else
 : BaseType { nullptr, nullptr,
-#endif
              toRef (playbackRenderer), (playbackRenderer) ? PlaybackRendererDispatcher::getInterface () : nullptr,
              toRef (editorRenderer), (editorRenderer) ? EditorRendererDispatcher::getInterface () : nullptr,
              toRef (editorView), (editorView) ? EditorViewDispatcher::getInterface () : nullptr }
 {}
-
-#if ARA_SUPPORT_VERSION_1
-void PlugInExtensionInstance::setPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept
-{
-    if (_hasPlaybackRegion)
-        removePlaybackRegion (_playbackRegionRef);
-
-    if (getPlaybackRenderer ())
-        getPlaybackRenderer ()->addPlaybackRegion (playbackRegionRef);
-    if (getEditorRenderer ())
-        getEditorRenderer ()->addPlaybackRegion (playbackRegionRef);
-
-    _playbackRegionRef = playbackRegionRef;
-    _hasPlaybackRegion = true;
-}
-
-void PlugInExtensionInstance::removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept
-{
-    if (getPlaybackRenderer ())
-        getPlaybackRenderer ()->removePlaybackRegion (playbackRegionRef);
-    if (getEditorRenderer ())
-        getEditorRenderer ()->removePlaybackRegion (playbackRegionRef);
-
-    _playbackRegionRef = nullptr;
-    _hasPlaybackRegion = false;
-}
-#endif
 
 /*******************************************************************************/
 // AudioAccessController
@@ -633,7 +575,7 @@ void HostArchivingController::notifyDocumentUnarchivingProgress (float value) no
 ARAPersistentID HostArchivingController::getDocumentArchiveID (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
 {
     // getDocumentArchiveID() was added in the ARA 2.0 final release, so check its presence here to support older hosts
-    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARAArchivingControllerInterface, getDocumentArchiveID)> ())
+    if (getInterface ().implements<&ARAArchivingControllerInterface::getDocumentArchiveID> ())
         return getInterface ()->getDocumentArchiveID (getRef (), archiveReaderHostRef);
     return nullptr;
 }
@@ -709,19 +651,38 @@ void HostModelUpdateController::notifyAudioModificationContentChanged (ARAAudioM
     getInterface ()->notifyAudioModificationContentChanged (getRef (), audioModificationHostRef, range, scopeFlags);
 }
 
+bool HostModelUpdateController::supportsNotifyPlaybackRegionContentChanged () noexcept
+{
+    return getInterface ().implements<&ARAModelUpdateControllerInterface::notifyPlaybackRegionContentChanged> ();
+}
+
 void HostModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef,
                                                                 const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept
 {
-    // notifyPlaybackRegionContentChanged was optional in the ARA 2.0 draft, so check its presence here to be safe
-    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARAModelUpdateControllerInterface, notifyPlaybackRegionContentChanged)> ())
+    if (supportsNotifyPlaybackRegionContentChanged ())
         getInterface ()->notifyPlaybackRegionContentChanged (getRef (), playbackRegionHostRef, range, scopeFlags);
+}
+
+bool HostModelUpdateController::supportsNotifyDocumentDataChanged () noexcept
+{
+    return getInterface ().implements<&ARAModelUpdateControllerInterface::notifyDocumentDataChanged> ();
 }
 
 void HostModelUpdateController::notifyDocumentDataChanged () noexcept
 {
-    // notifyDocumentDataChanged was added in ARA 2.3 draft, so check its presence here
-    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARAModelUpdateControllerInterface, notifyDocumentDataChanged)> ())
+    if (supportsNotifyDocumentDataChanged ())
         getInterface ()->notifyDocumentDataChanged (getRef ());
+}
+
+bool HostModelUpdateController::supportsNotifyRegionSequenceDataChanged () noexcept
+{
+    return getInterface ().implements<&ARAModelUpdateControllerInterface::notifyRegionSequenceDataChanged> ();
+}
+
+void HostModelUpdateController::notifyRegionSequenceDataChanged (ARARegionSequenceHostRef regionSequenceHostRef) noexcept
+{
+    if (supportsNotifyRegionSequenceDataChanged ())
+        getInterface ()->notifyRegionSequenceDataChanged (getRef (), regionSequenceHostRef);
 }
 
 /*******************************************************************************/

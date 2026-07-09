@@ -3,7 +3,7 @@
 //!             C-to-C++ adapter for implementing ARA hosts
 //!             Originally written and contributed to the ARA SDK by PreSonus Software Ltd.
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //!             Developed in cooperation with PreSonus Software Ltd.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ ARA_DISABLE_DOCUMENTATION_DEPRECATED_WARNINGS_BEGIN
 #if !defined (ARA_MAP_HOST_REF)
     #define ARA_MAP_HOST_REF(HostClassType, FirstHostRefType, ...) \
         static inline ARA::ToRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__> toHostRef (const HostClassType* ptr) noexcept { return ARA::ToRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__> { ptr }; } \
-        template <typename DesiredHostClassType = HostClassType, typename HostRefType, typename std::enable_if<std::is_constructible<ARA::FromRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__>, HostRefType>::value, bool>::type = true> \
+        template <typename DesiredHostClassType = HostClassType, typename HostRefType, std::enable_if_t<std::is_constructible_v<ARA::FromRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__>, HostRefType>, bool> = true> \
         static inline DesiredHostClassType* fromHostRef (HostRefType ref) noexcept { HostClassType* object { ARA::FromRefConversionHelper<HostClassType, FirstHostRefType, ##__VA_ARGS__> (ref) }; return static_cast<DesiredHostClassType*> (object); }
 #endif
 
@@ -79,13 +79,8 @@ ARA_DISABLE_DOCUMENTATION_DEPRECATED_WARNINGS_BEGIN
 /** C++ wrapper for ARA variable-sized properties structs, ensures their proper initialization. */
 /*******************************************************************************/
 
-#if defined (__cpp_template_auto)
     template <auto member>
     using Properties = SizedStruct<member>;
-#else
-    template <typename StructType, typename MemberType, MemberType StructType::*member>
-    using Properties = SizedStruct<StructType, MemberType, member>;
-#endif
 
 //! @addtogroup ARA_Library_Host_Dispatch_Host_Interfaces Host Interfaces
 //! @{
@@ -185,6 +180,8 @@ public:
     virtual void notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept = 0;
     //! \copydoc ARAModelUpdateControllerInterface::notifyDocumentDataChanged
     virtual void notifyDocumentDataChanged () noexcept = 0;
+    //! \copydoc ARAModelUpdateControllerInterface::notifyRegionSequenceDataChanged
+    ARA_DRAFT virtual void notifyRegionSequenceDataChanged (ARA::ARARegionSequenceHostRef regionSequenceHostRef) noexcept = 0;
 };
 ARA_MAP_HOST_REF (ModelUpdateControllerInterface, ARAModelUpdateControllerHostRef)
 
@@ -216,13 +213,10 @@ ARA_MAP_HOST_REF (PlaybackControllerInterface, ARAPlaybackControllerHostRef)
 /** Wrapper class for the ARADocumentControllerHostInstance. */
 /*******************************************************************************/
 
-class DocumentControllerHostInstance : public SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerHostInstance, playbackControllerInterface)>
+class DocumentControllerHostInstance : public SizedStruct<&ARADocumentControllerHostInstance::playbackControllerInterface>
 {
 public:
-#if __cplusplus >= 201402L
-    constexpr
-#endif
-              DocumentControllerHostInstance () noexcept : BaseType {} {}
+    constexpr DocumentControllerHostInstance () noexcept : BaseType {} {}
     DocumentControllerHostInstance (AudioAccessControllerInterface* audioAccessController,
                                     ArchivingControllerInterface* archivingController,
                                     ContentAccessControllerInterface* contentAccessController = nullptr,
@@ -292,17 +286,6 @@ public:
 
 //! @name Archiving
 //@{
-    // deprecated ARA 1 monolithic persistency calls, must be used unless requiring plug-ins to support kARAAPIGeneration_2_0_Final
-    //! \copydoc ARADocumentControllerInterface::beginRestoringDocumentFromArchive
-    ARA_DEPRECATED(2_0_Final) bool beginRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept;
-    //! \copydoc ARADocumentControllerInterface::endRestoringDocumentFromArchive
-    ARA_DEPRECATED(2_0_Final) bool endRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept;
-    //! \copydoc ARADocumentControllerInterface::storeDocumentToArchive
-    ARA_DEPRECATED(2_0_Final) bool storeDocumentToArchive (ARAArchiveWriterHostRef archiveWriterHostRef) noexcept;
-    //! If supporting both types of persistency, this call can be used to pick the appropriate type for the given plug-in.
-    ARA_DEPRECATED(2_0_Final) bool supportsPartialPersistency () noexcept;
-    // new ARA 2 partial persistency calls, may only be used for plug-ins that support the new ARA 2 persistency,
-    // which is part of kARAAPIGeneration_2_0_Final (but not yet present in kARAAPIGeneration_2_0_Draft !)
     //! \copydoc ARADocumentControllerInterface::restoreObjectsFromArchive
     bool restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept;
     //! \copydoc ARADocumentControllerInterface::storeObjectsToArchive
@@ -366,7 +349,7 @@ public:
     ARAAudioModificationRef cloneAudioModification (ARAAudioModificationRef audioModificationRef, ARAAudioModificationHostRef hostRef, const ARAAudioModificationProperties* properties) noexcept;
     //! \copydoc ARADocumentControllerInterface::updateAudioModificationProperties
     void updateAudioModificationProperties (ARAAudioModificationRef audioModificationRef, const ARAAudioModificationProperties* properties) noexcept;
-    //! Test whether isAudioModificationPreservingAudioSourceSignal () is supported by the plug-in.
+    //! Test whether isAudioModificationPreservingAudioSourceSignal() is supported by the plug-in.
     bool supportsIsAudioModificationPreservingAudioSourceSignal () noexcept;
     //! \copydoc ARADocumentControllerInterface::isAudioModificationPreservingAudioSourceSignal
     bool isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept;
@@ -377,12 +360,16 @@ public:
 //@}
 
 //! @name Playback Region Management
-//! (getPlaybackRegionHeadAndTailTime () resolves to no-op for pre-ARA-2.0 plug-ins and always returns 0.0 as times)
+//! (getPlaybackRegionHeadAndTailTime() resolves to no-op for pre-ARA-2.0 plug-ins and always returns 0.0 as times)
 //@{
     //! \copydoc ARADocumentControllerInterface::createPlaybackRegion
     ARAPlaybackRegionRef createPlaybackRegion (ARAAudioModificationRef audioModificationRef, ARAPlaybackRegionHostRef hostRef, const ARAPlaybackRegionProperties* properties) noexcept;
     //! \copydoc ARADocumentControllerInterface::updatePlaybackRegionProperties
     void updatePlaybackRegionProperties (ARAPlaybackRegionRef playbackRegionRef, const ARAPlaybackRegionProperties* properties) noexcept;
+    //! Test whether isPlaybackRegionPreservingAudioSourceSignal() is supported by the plug-in.
+    ARA_DRAFT bool supportsIsPlaybackRegionPreservingAudioSourceSignal () noexcept;
+    //! \copydoc ARADocumentControllerInterface::isPlaybackRegionPreservingAudioSourceSignal
+    ARA_DRAFT bool isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept;
     //! \copydoc ARADocumentControllerInterface::getPlaybackRegionHeadAndTailTime
     void getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept;
     //! \copydoc ARADocumentControllerInterface::destroyPlaybackRegion
@@ -485,14 +472,9 @@ using ContentReader = ARA::ContentReader<contentType, DocumentController, ARACon
 class PlaybackRenderer : public InterfaceInstance<ARAPlaybackRendererRef, ARAPlaybackRendererInterface>
 {
 public:
-#if ARA_SUPPORT_VERSION_1
-    explicit PlaybackRenderer (const ARAPlugInExtensionInstance* instance);
-    ~PlaybackRenderer ();
-#else
     explicit PlaybackRenderer (const ARAPlugInExtensionInstance* instance) noexcept
     : BaseType { instance->playbackRendererRef, instance->playbackRendererInterface }
     {}
-#endif
 
 //! @name Assigning the playback region(s) for playback rendering
 //! For details, see \ref Assigning_ARAPlaybackRendererInterface_Regions "ARAPlaybackRendererInterface".
@@ -510,13 +492,9 @@ public:
 class EditorRenderer : public InterfaceInstance<ARAEditorRendererRef, ARAEditorRendererInterface>
 {
 public:
-#if ARA_SUPPORT_VERSION_1
-    explicit EditorRenderer (const ARAPlugInExtensionInstance* instance) noexcept;
-#else
     explicit EditorRenderer (const ARAPlugInExtensionInstance* instance) noexcept
     : BaseType { instance->editorRendererRef, instance->editorRendererInterface }
     {}
-#endif
 
 //! @name Assigning the playback region(s) for preview while editing
 //! For details, see \ref Assigning_ARAEditorRendererInterface_Regions "ARAEditorRendererInterface".
@@ -536,13 +514,9 @@ public:
 class EditorView : public InterfaceInstance<ARAEditorViewRef, ARAEditorViewInterface>
 {
 public:
-#if ARA_SUPPORT_VERSION_1
-    explicit EditorView (const ARAPlugInExtensionInstance* instance) noexcept;
-#else
     explicit EditorView (const ARAPlugInExtensionInstance* instance) noexcept
     : BaseType { instance->editorViewRef, instance->editorViewInterface }
     {}
-#endif
 
 //! @name Host UI notifications
 //@{
@@ -565,11 +539,7 @@ public:
 ARA_DEPRECATED(2_0_Final) class PlugInExtensionInstance
 {
 public:
-#if ARA_SUPPORT_VERSION_1
-    explicit PlugInExtensionInstance (const ARAPlugInExtensionInstance* instance)
-#else
     explicit PlugInExtensionInstance (const ARAPlugInExtensionInstance* instance) noexcept
-#endif
     : _playbackRenderer { instance },
       _editorRenderer { instance },
       _editorView { instance }

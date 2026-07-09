@@ -2,7 +2,7 @@
 //! \file       ARAPlugInDispatch.h
 //!             C-to-C++ adapter for implementing ARA plug-ins
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -56,7 +56,7 @@ namespace PlugIn {
 #if !defined (ARA_MAP_REF)
     #define ARA_MAP_REF(ClassType, FirstRefType, ...) \
         static inline ARA::ToRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__> toRef (const ClassType* ptr) noexcept { return ARA::ToRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__> { ptr }; } \
-        template <typename DesiredClassType = ClassType, typename RefType, typename std::enable_if<std::is_constructible<ARA::FromRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__>, RefType>::value, bool>::type = true> \
+        template <typename DesiredClassType = ClassType, typename RefType, std::enable_if_t<std::is_constructible_v<ARA::FromRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__>, RefType>, bool> = true> \
         static inline DesiredClassType* fromRef (RefType ref) noexcept { ClassType* object { ARA::FromRefConversionHelper<ClassType, FirstRefType, ##__VA_ARGS__> (ref) }; return static_cast<DesiredClassType*> (object); }
 #endif
 
@@ -186,10 +186,12 @@ public:
     virtual ARAPlaybackRegionRef createPlaybackRegion (ARAAudioModificationRef audioModificationRef, ARAPlaybackRegionHostRef hostRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::updatePlaybackRegionProperties
     virtual void updatePlaybackRegionProperties (ARAPlaybackRegionRef playbackRegionRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept = 0;
-    //! \copydoc ARADocumentControllerInterface::destroyPlaybackRegion
-    virtual void destroyPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept = 0;
+    //! \copydoc ARADocumentControllerInterface::isPlaybackRegionPreservingAudioSourceSignal
+    ARA_DRAFT virtual bool isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::getPlaybackRegionHeadAndTailTime
     virtual void getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept = 0;
+    //! \copydoc ARADocumentControllerInterface::destroyPlaybackRegion
+    virtual void destroyPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept = 0;
 //@}
 
 //! @name Content Reader Management
@@ -250,7 +252,7 @@ ARA_MAP_REF (DocumentControllerInterface, ARADocumentControllerRef)
 /** Wrapper class for the ARADocumentControllerInstance. */
 /*******************************************************************************/
 
-class DocumentControllerInstance : public SizedStruct<ARA_STRUCT_MEMBER (ARADocumentControllerInstance, documentControllerInterface)>
+class DocumentControllerInstance : public SizedStruct<&ARADocumentControllerInstance::documentControllerInterface>
 {
 public:
     explicit DocumentControllerInstance (DocumentControllerInterface* documentController) noexcept;
@@ -324,7 +326,7 @@ ARA_MAP_REF (EditorViewInterface, ARAEditorViewRef)
 /** Wrapper class for ARAPlugInExtensionInstance. */
 /*******************************************************************************/
 
-class PlugInExtensionInstance : public SizedStruct<ARA_STRUCT_MEMBER (ARAPlugInExtensionInstance, editorViewInterface)>
+class PlugInExtensionInstance : public SizedStruct<&ARAPlugInExtensionInstance::editorViewInterface>
 {
 public:
     explicit PlugInExtensionInstance (PlaybackRendererInterface* playbackRenderer, EditorRendererInterface* editorRenderer, EditorViewInterface* editorView) noexcept;
@@ -337,15 +339,6 @@ public:
 
     EditorViewInterface* getEditorView () const noexcept
     { return fromRef (editorViewRef); }
-
-#if ARA_SUPPORT_VERSION_1
-    void setPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept;
-    void removePlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept;
-
-private:
-    ARAPlaybackRegionRef _playbackRegionRef { nullptr };    // only valid if _hasPlaybackRegion is true
-    bool _hasPlaybackRegion { false };
-#endif
 };
 
 //! @}
@@ -461,11 +454,19 @@ public:
     //! \copydoc ARAModelUpdateControllerInterface::notifyAudioModificationContentChanged
     void notifyAudioModificationContentChanged (ARAAudioModificationHostRef audioModificationHostRef,
                                                 const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept;
+    //! Test whether notifyPlaybackRegionContentChanged() is supported by the host.
+    bool supportsNotifyPlaybackRegionContentChanged () noexcept;
     //! \copydoc ARAModelUpdateControllerInterface::notifyPlaybackRegionContentChanged
     void notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef,
                                              const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept;
+    //! Test whether notifyDocumentDataChanged() is supported by the host.
+    bool supportsNotifyDocumentDataChanged () noexcept;
     //! \copydoc ARAModelUpdateControllerInterface::notifyDocumentDataChanged
     void notifyDocumentDataChanged () noexcept;
+    //! Test whether notifyRegionSequenceDataChanged() is supported by the host.
+    ARA_DRAFT bool supportsNotifyRegionSequenceDataChanged () noexcept;
+    //! \copydoc ARAModelUpdateControllerInterface::notifyRegionSequenceDataChanged
+    ARA_DRAFT void notifyRegionSequenceDataChanged (ARARegionSequenceHostRef regionSequenceHostRef) noexcept;
 };
 
 /*******************************************************************************/

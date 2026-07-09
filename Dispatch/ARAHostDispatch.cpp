@@ -3,7 +3,7 @@
 //!             C-to-C++ adapter for implementing ARA hosts
 //!             Originally written and contributed to the ARA SDK by PreSonus Software Ltd.
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //!             Developed in cooperation with PreSonus Software Ltd.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ namespace AudioAccessControllerDispatcher
 
     static const ARAAudioAccessControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAAudioAccessControllerInterface, destroyAudioReader)> ifc =
+        static const SizedStruct<&ARAAudioAccessControllerInterface::destroyAudioReader> ifc =
         {
             AudioAccessControllerDispatcher::createAudioReaderForSource,
             AudioAccessControllerDispatcher::readAudioSamples,
@@ -98,7 +98,7 @@ namespace ArchivingControllerDispatcher
 
     static const ARAArchivingControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAArchivingControllerInterface, getDocumentArchiveID)> ifc =
+        static const SizedStruct<&ARAArchivingControllerInterface::getDocumentArchiveID> ifc =
         {
             ArchivingControllerDispatcher::getArchiveSize,
             ArchivingControllerDispatcher::readBytesFromArchive,
@@ -167,7 +167,7 @@ namespace ContentAccessControllerDispatcher
 
     static const ARAContentAccessControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAContentAccessControllerInterface, destroyContentReader)> ifc =
+        static const SizedStruct<&ARAContentAccessControllerInterface::destroyContentReader> ifc =
         {
             ContentAccessControllerDispatcher::isMusicalContextContentAvailable,
             ContentAccessControllerDispatcher::getMusicalContextContentGrade,
@@ -218,15 +218,21 @@ namespace ModelUpdateControllerDispatcher
         fromHostRef (controllerHostRef)->notifyDocumentDataChanged ();
     }
 
+    static void ARA_CALL notifyRegionSequenceDataChanged (ARAModelUpdateControllerHostRef controllerHostRef, ARARegionSequenceHostRef regionSequenceHostRef) noexcept
+    {
+        fromHostRef (controllerHostRef)->notifyRegionSequenceDataChanged (regionSequenceHostRef);
+    }
+
     static const ARAModelUpdateControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAModelUpdateControllerInterface, notifyDocumentDataChanged)> ifc =
+        static const SizedStruct<&ARAModelUpdateControllerInterface::notifyRegionSequenceDataChanged> ifc =
         {
             ModelUpdateControllerDispatcher::notifyAudioSourceAnalysisProgress,
             ModelUpdateControllerDispatcher::notifyAudioSourceContentChanged,
             ModelUpdateControllerDispatcher::notifyAudioModificationContentChanged,
             ModelUpdateControllerDispatcher::notifyPlaybackRegionContentChanged,
-            ModelUpdateControllerDispatcher::notifyDocumentDataChanged
+            ModelUpdateControllerDispatcher::notifyDocumentDataChanged,
+            ModelUpdateControllerDispatcher::notifyRegionSequenceDataChanged
         };
         return &ifc;
     }
@@ -265,7 +271,7 @@ namespace PlaybackControllerDispatcher
 
     static const ARAPlaybackControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAPlaybackControllerInterface, requestEnableCycle)> ifc =
+        static const SizedStruct<&ARAPlaybackControllerInterface::requestEnableCycle> ifc =
         {
             PlaybackControllerDispatcher::requestStartPlayback,
             PlaybackControllerDispatcher::requestStopPlayback,
@@ -360,72 +366,23 @@ void DocumentController::updateDocumentProperties (const ARADocumentProperties* 
     getInterface ()->updateDocumentProperties (getRef (), properties);
 }
 
-bool DocumentController::beginRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
-{
-    // begin-/endRestoringDocumentFromArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
-    if (supportsPartialPersistency ())
-    {
-        getInterface ()->beginEditing (getRef ());
-        return true;
-    }
-    else
-    {
-        return (getInterface ()->beginRestoringDocumentFromArchive (getRef (), archiveReaderHostRef) != kARAFalse);
-    }
-}
-
-bool DocumentController::endRestoringDocumentFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef) noexcept
-{
-    // begin-/endRestoringDocumentFromArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
-    if (supportsPartialPersistency ())
-    {
-        const auto result { getInterface ()->restoreObjectsFromArchive (getRef (), archiveReaderHostRef, nullptr) };
-        getInterface ()->endEditing (getRef ());
-        return (result != kARAFalse);
-    }
-    else
-    {
-        return (getInterface ()->endRestoringDocumentFromArchive (getRef (), archiveReaderHostRef) != kARAFalse);
-    }
-}
-
-bool DocumentController::storeDocumentToArchive (ARAArchiveWriterHostRef archiveWriterHostRef) noexcept
-{
-    // storeDocumentToArchive () is deprecated, prefer to use the new partial persistency calls if supported by the plug-in
-    if (supportsPartialPersistency ())
-        return (getInterface ()->storeObjectsToArchive (getRef (), archiveWriterHostRef, nullptr) != kARAFalse);
-    else
-        return (getInterface ()->storeDocumentToArchive (getRef (), archiveWriterHostRef) != kARAFalse);
-}
-
-bool DocumentController::supportsPartialPersistency () noexcept
-{
-    return getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeObjectsToArchive)> ();
-}
-
 bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef archiveReaderHostRef, const ARARestoreObjectsFilter* filter) noexcept
 {
-    if (!supportsPartialPersistency ())
-        return false;
-
     return (getInterface ()->restoreObjectsFromArchive (getRef (), archiveReaderHostRef, filter) != kARAFalse);
 }
 
 bool DocumentController::storeObjectsToArchive (ARAArchiveWriterHostRef archiveWriterHostRef, const ARAStoreObjectsFilter* filter) noexcept
 {
-    if (!supportsPartialPersistency ())
-        return false;
-
     return (getInterface ()->storeObjectsToArchive (getRef (), archiveWriterHostRef, filter) != kARAFalse);
 }
 
 bool DocumentController::supportsStoringAudioFileChunks () noexcept
 {
-    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk)> ())
+    if (!getInterface ().implements<&ARADocumentControllerInterface::storeAudioSourceToAudioFileChunk> ())
         return false;
 
     const SizedStructPtr<ARAFactory> factory { getInterface ()->getFactory (getRef ()) };
-    if (!factory.implements<ARA_STRUCT_MEMBER (ARAFactory, supportsStoringAudioFileChunks)> ())
+    if (!factory.implements<&ARAFactory::supportsStoringAudioFileChunks> ())
         return false;
     return (factory->supportsStoringAudioFileChunks != kARAFalse);
 }
@@ -463,31 +420,16 @@ void DocumentController::destroyMusicalContext (ARAMusicalContextRef musicalCont
 
 ARARegionSequenceRef DocumentController::createRegionSequence (ARARegionSequenceHostRef hostRef, const ARARegionSequenceProperties* properties) noexcept
 {
-#if ARA_SUPPORT_VERSION_1
-    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, destroyRegionSequence)> ())
-        return nullptr;
-#endif
-
     return getInterface ()->createRegionSequence (getRef (), hostRef, properties);
 }
 
 void DocumentController::updateRegionSequenceProperties (ARARegionSequenceRef regionSequenceRef, const ARARegionSequenceProperties* properties) noexcept
 {
-#if ARA_SUPPORT_VERSION_1
-    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, destroyRegionSequence)> ())
-        return;
-#endif
-
     return getInterface ()->updateRegionSequenceProperties (getRef (), regionSequenceRef, properties);
 }
 
 void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSequenceRef) noexcept
 {
-#if ARA_SUPPORT_VERSION_1
-    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, destroyRegionSequence)> ())
-        return;
-#endif
-
     return getInterface ()->destroyRegionSequence (getRef (), regionSequenceRef);
 }
 
@@ -538,7 +480,7 @@ void DocumentController::updateAudioModificationProperties (ARAAudioModification
 
 bool DocumentController::supportsIsAudioModificationPreservingAudioSourceSignal () noexcept
 {
-    return getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)> ();
+    return getInterface ().implements<&ARADocumentControllerInterface::isAudioModificationPreservingAudioSourceSignal> ();
 }
 
 bool DocumentController::isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept
@@ -568,17 +510,20 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
     getInterface ()->updatePlaybackRegionProperties (getRef (), playbackRegionRef, properties);
 }
 
+bool DocumentController::supportsIsPlaybackRegionPreservingAudioSourceSignal () noexcept
+{
+    return getInterface ().implements<&ARADocumentControllerInterface::isPlaybackRegionPreservingAudioSourceSignal> ();
+}
+
+bool DocumentController::isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept
+{
+    if (!supportsIsPlaybackRegionPreservingAudioSourceSignal ())
+        return false;
+    return (getInterface ()->isPlaybackRegionPreservingAudioSourceSignal (getRef (), playbackRegionRef) != kARAFalse);
+}
+
 void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept
 {
-#if ARA_SUPPORT_VERSION_1
-    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, getPlaybackRegionHeadAndTailTime)> ())
-    {
-        *headTime = 0.0;
-        *tailTime = 0.0;
-        return;
-    }
-#endif
-
     return getInterface ()->getPlaybackRegionHeadAndTailTime (getRef (), playbackRegionRef, headTime, tailTime);
 }
 
@@ -664,7 +609,7 @@ bool DocumentController::supportsProcessingAlgorithms () noexcept
 
 ARAInt32 DocumentController::getProcessingAlgorithmsCount () noexcept
 {
-    if (getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, requestProcessingAlgorithmForAudioSource)> ())
+    if (getInterface ().implements<&ARADocumentControllerInterface::requestProcessingAlgorithmForAudioSource> ())
         return getInterface ()->getProcessingAlgorithmsCount (getRef ());
     else
         return 0;
@@ -687,7 +632,7 @@ void DocumentController::requestProcessingAlgorithmForAudioSource (ARAAudioSourc
 
 bool DocumentController::isLicensedForCapabilities (bool runModalActivationDialogIfNeeded, ARASize contentTypesCount, const ARAContentType contentTypes[], ARAPlaybackTransformationFlags transformationFlags) noexcept
 {
-    if (!getInterface ().implements<ARA_STRUCT_MEMBER (ARADocumentControllerInterface, isLicensedForCapabilities)> ())
+    if (!getInterface ().implements<&ARADocumentControllerInterface::isLicensedForCapabilities> ())
         return true;
 
     return (getInterface ()->isLicensedForCapabilities (getRef (), (runModalActivationDialogIfNeeded) ? kARATrue : kARAFalse, contentTypesCount, contentTypes, transformationFlags) != kARAFalse);
@@ -696,65 +641,6 @@ bool DocumentController::isLicensedForCapabilities (bool runModalActivationDialo
 /*******************************************************************************/
 // PlaybackRenderer
 /*******************************************************************************/
-
-#if ARA_SUPPORT_VERSION_1
-
-bool supportsARA2 (const ARAPlugInExtensionInstance* instance)
-{
-    return SizedStructPtr<ARAPlugInExtensionInstance> (instance).implements<ARA_STRUCT_MEMBER (ARAPlugInExtensionInstance, editorViewInterface)> ();
-}
-
-class ARA1PlugInExtension : public InterfaceInstance<ARAPlugInExtensionRef, ARAPlugInExtensionInterface>
-{
-public:
-    explicit ARA1PlugInExtension (const ARAPlugInExtensionInstance* instance) noexcept
-    : BaseType { instance->plugInExtensionRef, instance->plugInExtensionInterface }
-    {}
-};
-// this is not really a host ref but rather a dummy plug-in ref created by the host,
-// but since this macro only deals with proper casting this difference does not matter.
-ARA_MAP_HOST_REF (ARA1PlugInExtension, ARAPlaybackRendererRef)
-
-// playback renderer for ARA 1 is forwarding to plug-in extension
-namespace ARA1PlaybackRendererAdapterDispatcher
-{
-    static void ARA_CALL addPlaybackRegion (ARAPlaybackRendererRef playbackRendererRef, ARAPlaybackRegionRef playbackRegionRef)
-    {
-        auto plugInExtension { fromHostRef (playbackRendererRef) };
-        fromHostRef (playbackRendererRef)->getInterface ()->setPlaybackRegion (plugInExtension->getRef (), playbackRegionRef);
-    }
-
-    static void ARA_CALL removePlaybackRegion (ARAPlaybackRendererRef playbackRendererRef, ARAPlaybackRegionRef playbackRegionRef)
-    {
-        auto plugInExtension { fromHostRef (playbackRendererRef) };
-        plugInExtension->getInterface ()->removePlaybackRegion (plugInExtension->getRef (), playbackRegionRef);
-    }
-
-    static const ARAPlaybackRendererInterface* getInterface () noexcept
-    {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAPlaybackRendererInterface, removePlaybackRegion)> ifc =
-        {
-            ARA1PlaybackRendererAdapterDispatcher::addPlaybackRegion,
-            ARA1PlaybackRendererAdapterDispatcher::removePlaybackRegion
-        };
-        return &ifc;
-    }
-}
-
-PlaybackRenderer::PlaybackRenderer (const ARAPlugInExtensionInstance* instance)
-: BaseType { supportsARA2 (instance) ? instance->playbackRendererRef : toHostRef (new ARA1PlugInExtension (instance)),
-             supportsARA2 (instance) ? instance->playbackRendererInterface : ARA1PlaybackRendererAdapterDispatcher::getInterface () }
-{}
-
-PlaybackRenderer::~PlaybackRenderer ()
-{
-    // ARA 2 plug-ins will provide their own distinct interface pointers, so this test
-    // basically equals a dynamic_cast<ARA1PlugInExtension> (PlaybackRenderer.getRef ())
-    if (getInterface () == ARA1PlaybackRendererAdapterDispatcher::getInterface ())
-        delete reinterpret_cast<ARA1PlugInExtension*> (getRef ());
-}
-
-#endif    // ARA_SUPPORT_VERSION_1
 
 void PlaybackRenderer::addPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept
 {
@@ -769,43 +655,6 @@ void PlaybackRenderer::removePlaybackRegion (ARAPlaybackRegionRef playbackRegion
 //************************************************************************************************
 // EditorRenderer
 //************************************************************************************************
-
-#if ARA_SUPPORT_VERSION_1
-
-// editor renderer for ARA 1 is empty stub
-namespace ARA1EditorRendererAdapterDispatcher
-{
-    static void ARA_CALL addPlaybackRegion (ARAEditorRendererRef /*editorRendererRef*/, ARAPlaybackRegionRef /*playbackRegionRef*/)
-    {}
-
-    static void ARA_CALL removePlaybackRegion (ARAEditorRendererRef /*editorRendererRef*/, ARAPlaybackRegionRef /*playbackRegionRef*/)
-    {}
-
-    static void ARA_CALL addRegionSequence (ARAEditorRendererRef /*editorRendererRef*/, ARARegionSequenceRef /*regionSequenceRef*/)
-    {}
-
-    static void ARA_CALL removeRegionSequence (ARAEditorRendererRef /*editorRendererRef*/, ARARegionSequenceRef /*regionSequenceRef*/)
-    {}
-
-    static const ARAEditorRendererInterface* getInterface () noexcept
-    {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAEditorRendererInterface, removeRegionSequence)> ifc =
-        {
-            ARA1EditorRendererAdapterDispatcher::addPlaybackRegion,
-            ARA1EditorRendererAdapterDispatcher::removePlaybackRegion,
-            ARA1EditorRendererAdapterDispatcher::addRegionSequence,
-            ARA1EditorRendererAdapterDispatcher::removeRegionSequence
-        };
-        return &ifc;
-    }
-}
-
-EditorRenderer::EditorRenderer (const ARAPlugInExtensionInstance* instance) noexcept
-: BaseType { supportsARA2 (instance) ? instance->editorRendererRef : nullptr,
-             supportsARA2 (instance) ? instance->editorRendererInterface : ARA1EditorRendererAdapterDispatcher::getInterface () }
-{}
-
-#endif    // ARA_SUPPORT_VERSION_1
 
 void EditorRenderer::addPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept
 {
@@ -830,35 +679,6 @@ void EditorRenderer::removeRegionSequence (ARARegionSequenceRef regionSequenceRe
 //************************************************************************************************
 // EditorView
 //************************************************************************************************
-
-#if ARA_SUPPORT_VERSION_1
-
-// editor view for ARA 1 is empty stub
-namespace ARA1EditorViewAdapterDispatcher
-{
-    static void ARA_CALL notifySelection (ARAEditorViewRef /*editorViewRef*/, const ARAViewSelection* /*selection*/)
-    {}
-
-    static void ARA_CALL notifyHideRegionSequences (ARAEditorViewRef /*editorViewRef*/, ARASize /*regionSequenceRefsCount*/, const ARARegionSequenceRef /*regionSequenceRefs*/[])
-    {}
-
-    static const ARAEditorViewInterface* getInterface () noexcept
-    {
-        static const SizedStruct<ARA_STRUCT_MEMBER (ARAEditorViewInterface, notifyHideRegionSequences)> ifc =
-        {
-            ARA1EditorViewAdapterDispatcher::notifySelection,
-            ARA1EditorViewAdapterDispatcher::notifyHideRegionSequences
-        };
-        return &ifc;
-    }
-}
-
-EditorView::EditorView (const ARAPlugInExtensionInstance* instance) noexcept
-: BaseType { supportsARA2 (instance) ? instance->editorViewRef : nullptr,
-             supportsARA2 (instance) ? instance->editorViewInterface : ARA1EditorViewAdapterDispatcher::getInterface () }
-{}
-
-#endif    // ARA_SUPPORT_VERSION_1
 
 void EditorView::notifySelection (const ARAViewSelection* selection) noexcept
 {

@@ -2,7 +2,7 @@
 //! \file       ARAContentValidator.h
 //!             utility classes vor validating content readers
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2018-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2018-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -132,6 +132,25 @@ struct ContentReaderValidatorImplementation<kARAContentTypeSheetChords>
     static inline void validateEvent (const ARAContentChord* /*event*/) {}
 
     static inline void validateEventSequence (const ARAContentChord* event, const ARAContentChord* prevEvent)
+    {
+        ARA_VALIDATE_API_CONDITION (prevEvent->position < event->position);
+    }
+};
+
+template <>
+struct ContentReaderValidatorImplementation<kARAContentTypeLyricEntries>
+{
+    static inline void validateEventCount (ARAInt32 eventCount) { ARA_VALIDATE_API_CONDITION (eventCount >= 0); }
+
+    static inline void validateEvent (const ARAContentLyricsEntry* event)
+    {
+        ARA_VALIDATE_API_CONDITION ((event->continuesPreviousWord == kARAFalse) || (event->lyrics != nullptr));
+        ARA_VALIDATE_API_CONDITION ((event->phonemeCount == 0) || (event->phonemes != nullptr));
+        ARA_VALIDATE_API_CONDITION ((event->phonemeCount != 0) || (event->phonemes == nullptr));
+        ARA_VALIDATE_API_CONDITION ((event->phonemeCount != 0) || (event->phonemeOffsets == nullptr));        
+    }
+
+    static inline void validateEventSequence (const ARAContentLyricsEntry* event, const ARAContentLyricsEntry* prevEvent)
     {
         ARA_VALIDATE_API_CONDITION (prevEvent->position < event->position);
     }

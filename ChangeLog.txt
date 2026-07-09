@@ -1,6 +1,18 @@
-Proposed Features which have been postponed to a later subrelease:
-- generic ARA IPC library, providing a proxy host and a proxy plug-in,
-  based on the IPC Example from earlier SDK releases
+This is a development build of the ARA Library 3.0.
+=== PRELIMINARY - DO NOT USE FOR SHIPPING PRODUCTS! ===
+
+
+Changes since previous releases:
+- initial draft of ARA generator plug-ins that operate merely based on content descriptions (no sample input)
+- initial draft of lyrics-related content types, tailored to support singing voice synthesis
+- initial draft of region sequence persistency
+- added isPlaybackRegionPreservingAudioSourceSignal(), superseding isAudioModificationPreservingAudioSourceSignal()
+- initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,
+  based on heavily refactored IPC Example from earlier SDK releases
+- dropped support for ARA 1 and 2.0 Draft APIs
+  If previously optionally supporting obsolete ARA 1 persistency, now exclusively use ARA 2 persistency.
+- C++17 is now consistently required on all platforms
+- fixed inconsistent spelling of "timestretch" in various identifiers
 
 
 === ARA SDK 2.3 release (aka 2.3.001) (2025/11/07) ===

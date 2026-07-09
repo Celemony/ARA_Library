@@ -2,7 +2,7 @@
 //! \file       ARAContentReader.h
 //!             content reading utility classes
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2018-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2018-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -51,6 +51,7 @@ struct ContentTypeMapper;
     ARA_SPECIALIZE_CONTENT_TYPE_MAPPER (kARAContentTypeStaticTuning, ARAContentTuning)
     ARA_SPECIALIZE_CONTENT_TYPE_MAPPER (kARAContentTypeKeySignatures, ARAContentKeySignature)
     ARA_SPECIALIZE_CONTENT_TYPE_MAPPER (kARAContentTypeSheetChords, ARAContentChord)
+    ARA_SPECIALIZE_CONTENT_TYPE_MAPPER (kARAContentTypeLyricEntries, ARAContentLyricsEntry)
 
 #undef ARA_SPECIALIZE_CONTENT_TYPE_MAPPER
 

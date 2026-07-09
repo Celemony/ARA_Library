@@ -2,7 +2,7 @@
 //! \file       ARADebug.h
 //!             debug helpers for the ARA SDK Library
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -97,22 +97,20 @@ extern "C"
 // prevent unused variable warnings
 /*******************************************************************************/
 
-#if defined(__cplusplus) && (__cplusplus >= 201703L)
-    #define ARA_MAYBE_UNUSED_VAR(var) var [[maybe_unused]]
-#elif defined(__GNUC__)
-    #define ARA_MAYBE_UNUSED_VAR(var) var __attribute__((unused))
-#elif defined(_MSC_VER)
-    #define ARA_MAYBE_UNUSED_VAR(var) var; (false ? (void)var : (void)false)
-#else
-    #define ARA_MAYBE_UNUSED_VAR(var) var; (void)var
-#endif
+#if !defined(__cplusplus)
+    #if defined(__GNUC__)
+        #define ARA_MAYBE_UNUSED_VAR(var) var __attribute__((unused))
+    #elif defined(_MSC_VER)
+        #define ARA_MAYBE_UNUSED_VAR(var) var; (false ? (void)var : (void)false)
+    #else
+        #define ARA_MAYBE_UNUSED_VAR(var) var; (void)var
+    #endif
 
-#if defined(__cplusplus) && (__cplusplus >= 201703L)
-    #define ARA_MAYBE_UNUSED_ARG(var) var [[maybe_unused]]
-#elif defined(__GNUC__)
-    #define ARA_MAYBE_UNUSED_ARG(var) var __attribute__((unused))
-#else
-    #define ARA_MAYBE_UNUSED_ARG(var) var
+    #if defined(__GNUC__)
+        #define ARA_MAYBE_UNUSED_ARG(var) var __attribute__((unused))
+    #else
+        #define ARA_MAYBE_UNUSED_ARG(var) var
+    #endif
 #endif
 
 

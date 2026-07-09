@@ -2,7 +2,7 @@
 //! \file       ARADebug.c
 //!             debug helpers for the ARA SDK Library
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -256,6 +256,7 @@ void ARASetExternalAssertReference(ARAAssertFunction * address)
     _Pragma("GCC diagnostic push")
     _Pragma("GCC diagnostic ignored \"-Wmissing-noreturn\"")
 #endif
+void ARAAssertionFailure(ARAAssertCategory category, const void * problematicArgument, const char * file, int line, const char * diagnosis);
 void ARAAssertionFailure(ARAAssertCategory category, const void * problematicArgument, const char * file, int line, const char * diagnosis)
 {
 #if ARA_ENABLE_INTERNAL_ASSERTS

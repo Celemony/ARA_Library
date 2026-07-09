@@ -2,7 +2,7 @@
 //! \file       ARAPlug.h
 //!             implementation of base classes for ARA plug-ins
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -182,9 +182,9 @@ public:
     inline bool operator!= (const OptionalProperty& other) const noexcept { return !(*this == other._data); }
 
 private:
-    template<typename Q = T*, typename std::enable_if<!std::is_same<Q, ARAUtf8String>::value, bool>::type = true>
+    template<typename Q = T*, std::enable_if_t<!std::is_same_v<Q, ARAUtf8String>, bool> = true>
     static constexpr inline size_t getAllocSize (const T* /*value*/) noexcept { return sizeof (T); }
-    template<typename Q = T*, typename std::enable_if<std::is_same<Q, ARAUtf8String>::value, bool>::type = true>
+    template<typename Q = T*, std::enable_if_t<std::is_same_v<Q, ARAUtf8String>, bool> = true>
     static inline size_t getAllocSize (const ARAUtf8String value) noexcept { return std::strlen (value) + 1; }
 
 private:
@@ -380,6 +380,7 @@ public:
     const OptionalProperty<ARAUtf8String>& getName () const noexcept { return _name; } //!< See ARARegionSequenceProperties::name.
     ARAInt32 getOrderIndex () const noexcept { return _orderIndex; }                   //!< See ARARegionSequenceProperties::orderIndex.
     const OptionalProperty<ARAColor*>& getColor () const noexcept { return _color; }   //!< See ARARegionSequenceProperties::color.
+    ARA_DRAFT const OptionalProperty<ARAPersistentID>& getPersistentID () const noexcept { return _persistentID; } //!< See ARARegionSequenceProperties::persistentID.
 //@}
 
 //! @name Region Sequence Relationships
@@ -422,6 +423,7 @@ private:
     OptionalProperty<ARAUtf8String> _name;
     ARAInt32 _orderIndex { 0 };
     OptionalProperty<ARAColor*> _color;
+    OptionalProperty<ARAPersistentID> _persistentID;
     std::vector<PlaybackRegion*> _playbackRegions;
 
     ARA_HOST_MANAGED_OBJECT (RegionSequence)
@@ -623,7 +625,7 @@ public:
     ARASamplePosition getEndInPlaybackSamples (ARASampleRate playbackSampleRate) const noexcept;                      //!< Playback end time in samples, derived using underlying AudioSource sample rate.
 
     bool isTimestretchEnabled () const noexcept { return _timestretchEnabled; }                                       //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationTimestretch`.
-    bool isTimeStretchReflectingTempo () const noexcept { return _timestretchReflectingTempo; }                       //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationTimestretchReflectingTempo`.
+    bool isTimestretchReflectingTempo () const noexcept { return _timestretchReflectingTempo; }                       //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationTimestretchReflectingTempo`.
 
     bool hasContentBasedFadeAtHead () const noexcept { return _contentBasedFadeAtHead; }                              //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationContentBasedFadeAtHead`.
     bool hasContentBasedFadeAtTail () const noexcept { return _contentBasedFadeAtTail; }                              //!< `ARAPlaybackRegionProperties::transformationFlags & ::kARAPlaybackTransformationContentBasedFadeAtTail`.
@@ -656,10 +658,6 @@ public:
     template <typename AudioModification_t = AudioModification>
     AudioModification_t* getAudioModification () const noexcept { return static_cast<AudioModification_t*> (this->_audioModification); }
 
-#if ARA_SUPPORT_VERSION_1
-    template <typename MusicalContext_t = MusicalContext>
-    MusicalContext_t* getMusicalContext () const noexcept { return static_cast<MusicalContext_t*> ((this->_regionSequence) ? this->_regionSequence->getMusicalContext () : this->_musicalContext); }
-#endif
     //! Retrieve the current underlying RegionSequence instance.
     template <typename RegionSequence_t = RegionSequence>
     RegionSequence_t* getRegionSequence () const noexcept { return static_cast<RegionSequence_t*> (this->_regionSequence); }
@@ -679,9 +677,6 @@ private:
     ARATimePosition _startInPlaybackTime { 0.0 };
     ARATimeDuration _durationInPlaybackTime { 0.0 };
     RegionSequence* _regionSequence { nullptr };
-#if ARA_SUPPORT_VERSION_1
-    MusicalContext* _musicalContext { nullptr };
-#endif
     bool _timestretchEnabled { false };
     bool _timestretchReflectingTempo { false };
     bool _contentBasedFadeAtHead { false };
@@ -739,7 +734,7 @@ private:
     };
 
 public:
-    RestoreObjectsFilter (const ARARestoreObjectsFilter* filter, Document* document) noexcept;
+    RestoreObjectsFilter (const SizedStructPtr<ARARestoreObjectsFilter> filter, Document* document) noexcept;
 
 //! @name Filter Queries
 //! Use these functions to filter and map the objects restored during DocumentController::doRestoreObjectsFromArchive().
@@ -753,12 +748,17 @@ public:
     AudioModification* getAudioModificationToRestoreStateWithID (ARAPersistentID archivedAudioModificationID) const noexcept;
     template <typename AudioModification_t = AudioModification>
     AudioModification_t* getAudioModificationToRestoreStateWithID (ARAPersistentID archivedAudioModificationID) const noexcept { return static_cast<AudioModification_t*> (getAudioModificationToRestoreStateWithID (archivedAudioModificationID)); }
+
+    ARA_DRAFT RegionSequence* getRegionSequenceToRestoreStateWithID (ARAPersistentID archivedRegionSequenceID) const noexcept;
+    template <typename RegionSequence_t = RegionSequence>
+    ARA_DRAFT RegionSequence_t* getRegionSequenceToRestoreStateWithID (ARAPersistentID archivedRegionSequenceID) const noexcept { return static_cast<RegionSequence_t*> (getRegionSequenceToRestoreStateWithID (archivedRegionSequenceID)); }
 //@}
 
 private:
     const ARARestoreObjectsFilter* _filter;
     std::map<ARAPersistentID, AudioSource*, SortPersistentID> _audioSourcesByID;
     std::map<ARAPersistentID, AudioModification*, SortPersistentID> _audioModificationsByID;
+    std::map<ARAPersistentID, RegionSequence*, SortPersistentID> _regionSequencesByID;
 };
 
 
@@ -767,7 +767,9 @@ private:
 class StoreObjectsFilter
 {
 public:
-    explicit StoreObjectsFilter (const ARAStoreObjectsFilter* filter) noexcept;
+    //! use this c'tor when host-provided filter is not a nullptr
+    explicit StoreObjectsFilter (const SizedStructPtr<ARAStoreObjectsFilter> filter) noexcept;
+    //! use this c'tor when host-provided filter is a nullptr
     explicit StoreObjectsFilter (const Document* document) noexcept;
 
 //! @name Filter Queries
@@ -779,12 +781,16 @@ public:
     std::vector<const AudioSource_t*> const& getAudioSourcesToStore () const noexcept { return vector_cast<const AudioSource_t*> (_audioSourcesToStore); }
     template <typename AudioModification_t = AudioModification>
     std::vector<const AudioModification_t*> const& getAudioModificationsToStore () const noexcept { return vector_cast<const AudioModification_t*> (_audioModificationsToStore); }
+
+    template <typename RegionSequence_t = RegionSequence>
+    ARA_DRAFT std::vector<const RegionSequence_t*> const& getRegionSequencesToStore () const noexcept { return vector_cast<const RegionSequence_t*> (_regionSequencesToStore); }
 //@}
 
 private:
     const ARAStoreObjectsFilter* _filter;
     std::vector<const AudioSource*> _audioSourcesToStore;
     std::vector<const AudioModification*> _audioModificationsToStore;
+    std::vector<const RegionSequence*> _regionSequencesToStore;
 };
 
 //! @} ARA_Library_ARAPlug_Utility_Classes
@@ -976,6 +982,8 @@ protected:
     virtual void willUpdatePlaybackRegionProperties (PlaybackRegion* playbackRegion, PropertiesPtr<ARAPlaybackRegionProperties> newProperties) noexcept {}
     //! Override to customize post-update behavior of updatePlaybackRegionProperties().
     virtual void didUpdatePlaybackRegionProperties (PlaybackRegion* playbackRegion) noexcept {}
+    //! Override to implement isPlaybackRegionPreservingAudioSourceSignal().
+    ARA_DRAFT virtual bool doIsPlaybackRegionPreservingAudioSourceSignal (PlaybackRegion* playbackRegion) noexcept { return false; }
     //! Override to define a content based fade for \p playbackRegion by assigning positive values to \p headTime and/or \p tailTime - see getPlaybackRegionHeadAndTailTime().
     virtual void doGetPlaybackRegionHeadAndTailTime (const PlaybackRegion* playbackRegion, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept { *headTime = 0.0; *tailTime = 0.0; }
     //! Override to customize behavior before \p playbackRegion is destroyed during destroyPlaybackRegion().
@@ -1171,6 +1179,7 @@ public:
     // Playback Region Management
     ARAPlaybackRegionRef createPlaybackRegion (ARAAudioModificationRef audioModificationRef, ARAPlaybackRegionHostRef hostRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept override;
     void updatePlaybackRegionProperties (ARAPlaybackRegionRef playbackRegionRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept override;
+    ARA_DRAFT bool isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept override;
     void getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept override;
     void destroyPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept override;
 
@@ -1267,15 +1276,20 @@ public:
 
 //! @name Sending content updates to the host
 //! The implementation will internally enqueue the updates and later send them to the host
-//! from notifyModelUpdates ().
+//! from notifyModelUpdates().
 //! Note that while the ARA API allows for specifying affected time ranges for content updates,
 //! this feature is not yet supported in our current plug-in implementation (since most hosts
 //! do not evaluate this either).
+//! Since older ARA 2.x hosts will not yet support notifyRegionSequenceDataChanged(), the implementation
+//! will eventually fall back to calling notifyDocumentDataChanged() instead if needed. This allows
+//! plug-ins to consistently utilize the new update APIs (but they will still need to branch out for
+//! old hosts/archives in their implementation of doStoreObjectsToArchive()/doRestoreObjectsFromArchive()).
 //@{
     void notifyAudioSourceContentChanged (AudioSource* audioSource, ContentUpdateScopes scopeFlags) noexcept;
     void notifyAudioModificationContentChanged (AudioModification* audioModification, ContentUpdateScopes scopeFlags) noexcept;
     void notifyPlaybackRegionContentChanged (PlaybackRegion* playbackRegion, ContentUpdateScopes scopeFlags) noexcept;
     void notifyDocumentDataChanged () noexcept;
+    ARA_DRAFT void notifyRegionSequenceDataChanged (RegionSequence* regionSequence) noexcept;
 //@}
 
     // Helper for analysis requests.
@@ -1350,6 +1364,7 @@ private:
     std::map<AudioSource*, ContentUpdateScopes> _audioSourceContentUpdates;
     std::map<AudioModification*, ContentUpdateScopes> _audioModificationContentUpdates;
     std::map<PlaybackRegion*, ContentUpdateScopes> _playbackRegionContentUpdates;
+    std::set<RegionSequence*> _regionSequenceDataUpdates;
     bool _documentDataChanged { false };
     std::atomic_flag _analysisProgressIsSynced {}; // { true } would be better but C++ standard only allows for default-init to false
 
@@ -1381,9 +1396,9 @@ private:
 //! Internal helper template class for HostContentReader.
 template <ARAContentType contentType>
 #if ARA_VALIDATE_API_CALLS
-using HostContentReaderBase = ARA::ContentReader<contentType, HostContentAccessController, ARAContentReaderHostRef, ARA::ContentValidator<contentType, HostContentAccessController, ARAContentReaderHostRef>>;
+using HostContentReaderBase = ARA::ContentReader<contentType, HostContentAccessController, ARAContentReaderHostRef, ContentValidator<contentType, HostContentAccessController, ARAContentReaderHostRef>>;
 #else
-using HostContentReaderBase = ARA::ContentReader<contentType, HostContentAccessController, ARAContentReaderHostRef, ARA::NoContentValidator<contentType, HostContentAccessController, ARAContentReaderHostRef>>;
+using HostContentReaderBase = ARA::ContentReader<contentType, HostContentAccessController, ARAContentReaderHostRef, NoContentValidator<contentType, HostContentAccessController, ARAContentReaderHostRef>>;
 #endif
 
 /*******************************************************************************/
@@ -1793,16 +1808,15 @@ public:
     virtual ~FactoryConfig () = default;
 
     //! \copydoc ARAFactory::lowestSupportedApiGeneration
-    virtual ARAAPIGeneration getLowestSupportedApiGeneration () const noexcept
-#if ARA_SUPPORT_VERSION_1
-                                                                                { return kARAAPIGeneration_1_0_Final; }
-#elif ARA_CPU_ARM
-                                                                                { return kARAAPIGeneration_2_0_Final; }
+    virtual ARAAPIGeneration getLowestSupportedApiGeneration () const noexcept { return (supportsSampleBasedAudioSources ()) ?
+#if ARA_CPU_ARM
+                                                                                            kARAAPIGeneration_2_0_Final :
 #else
-                                                                                { return kARAAPIGeneration_2_0_Draft; }
+                                                                                            kARAAPIGeneration_2_0_Draft :
 #endif
+                                                                                                                          kARAAPIGeneration_3_0_Draft; }
     //! \copydoc ARAFactory::highestSupportedApiGeneration
-    virtual ARAAPIGeneration getHighestSupportedApiGeneration () const noexcept { return kARAAPIGeneration_2_X_Draft; }
+    virtual ARAAPIGeneration getHighestSupportedApiGeneration () const noexcept { return kARAAPIGeneration_3_0_Draft; }
 
     virtual DocumentController* createDocumentController (const PlugInEntry* entry, const ARADocumentControllerHostInstance* instance) const noexcept = 0;
     virtual void destroyDocumentController (DocumentController* documentController) const noexcept { delete documentController; }
@@ -1835,6 +1849,15 @@ public:
 
     //! \copydoc ARAFactory::supportsStoringAudioFileChunks
     virtual bool supportsStoringAudioFileChunks () const noexcept { return false; }
+
+    //! \copydoc ARAFactory::supportsSampleBasedAudioSources
+    virtual bool supportsSampleBasedAudioSources () const noexcept { return true; }
+
+    //! \copydoc ARAFactory::supportsContentOnlyAudioSources
+    virtual bool supportsContentOnlyAudioSources () const noexcept { return false; }
+
+    //! \copydoc ARAFactory::requiresPresetAudioSources
+    virtual bool requiresPresetAudioSources () const noexcept { return false; }
 };
 
 
@@ -1952,7 +1975,7 @@ private:
 
 private:
     const FactoryConfig* const _factoryConfig;
-    const SizedStruct<ARA_STRUCT_MEMBER (ARAFactory, supportsStoringAudioFileChunks)> _factory;
+    const SizedStruct<&ARAFactory::requiresPresetAudioSources> _factory;
     ARAAPIGeneration _usedApiGeneration { 0 };
 
     ARA_DISABLE_COPY_AND_MOVE (PlugInEntry)

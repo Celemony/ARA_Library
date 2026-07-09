@@ -2,7 +2,7 @@
 //! \file       ARAPlug.cpp
 //!             implementation of base classes for ARA plug-ins
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2012-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2012-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -113,7 +113,7 @@ struct SortByOrderIndex
 /*******************************************************************************/
 
 // stream operator for color (r,g,b)
-std::ostream& operator<< (std::ostream& oss, const ARAColor& color)
+[[maybe_unused]] static std::ostream& operator<< (std::ostream& oss, const ARAColor& color)
 {
     oss << "(" << color.r << "," << color.g << "," << color.b << ")";
     return oss;
@@ -150,14 +150,14 @@ std::ostream& operator<< (std::ostream& oss, const OptionalProperty<ARAUtf8Strin
 
 // logging the contents of our model graph objects
 
-void logToStream (const PlaybackRegion* playbackRegion, std::ostringstream& oss, bool detailed, bool /*recursive*/, std::string indentation)
+[[maybe_unused]] static void logToStream (const PlaybackRegion* playbackRegion, std::ostringstream& oss, bool detailed, bool /*recursive*/, std::string indentation)
 {
     oss << indentation <<  playbackRegion << "(" << playbackRegion->getHostRef () << "):" << playbackRegion->getName ()
         << ", playback time:" << playbackRegion->getStartInPlaybackTime () << " to " << playbackRegion->getEndInPlaybackTime ();
     if (detailed)
     {
         oss << ", modification:" << playbackRegion->getStartInAudioModificationTime () << " to " << playbackRegion->getEndInAudioModificationTime ()
-            << ", time-stretching:" << (playbackRegion->isTimestretchEnabled () ? (playbackRegion->isTimeStretchReflectingTempo () ? "musical" : "linear") : "off)")
+            << ", time-stretching:" << (playbackRegion->isTimestretchEnabled () ? (playbackRegion->isTimestretchReflectingTempo () ? "musical" : "linear") : "off)")
             << ", content based fades:" << (playbackRegion->hasContentBasedFadeAtHead () ? (playbackRegion->hasContentBasedFadeAtTail () ? "both" : "head only") : (playbackRegion->hasContentBasedFadeAtTail () ? "tail only" : "none"))
             << ", regionSequence:" << playbackRegion->getRegionSequence ()->getName ()
             << ", color:"  << playbackRegion->getColor ();
@@ -165,7 +165,7 @@ void logToStream (const PlaybackRegion* playbackRegion, std::ostringstream& oss,
     oss << "\n";
 }
 
-void logToStream (const AudioModification* audioModification, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
+[[maybe_unused]] static void logToStream (const AudioModification* audioModification, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
 {
     oss << indentation <<  audioModification << "(" << audioModification->getHostRef () << "):" << audioModification->getName () << ", ID: \"" << audioModification->getPersistentID () << "\"";
 
@@ -179,7 +179,7 @@ void logToStream (const AudioModification* audioModification, std::ostringstream
     }
 }
 
-void logToStream (const AudioSource* audioSource, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
+[[maybe_unused]] static void logToStream (const AudioSource* audioSource, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
 {
     oss << indentation <<  audioSource << "(" << audioSource->getHostRef () << "):" << audioSource->getName () << ", ID: \"" << audioSource->getPersistentID () << "\"\n";
     if (detailed)
@@ -193,7 +193,7 @@ void logToStream (const AudioSource* audioSource, std::ostringstream& oss, bool 
     }
 }
 
-void logToStream (const RegionSequence* regionSequence, std::ostringstream& oss, bool detailed, bool /*recursive*/, std::string indentation)
+[[maybe_unused]] static void logToStream (const RegionSequence* regionSequence, std::ostringstream& oss, bool detailed, bool /*recursive*/, std::string indentation)
 {
     oss << indentation <<  regionSequence << "(" << regionSequence->getHostRef () << "):" << regionSequence->getName ();
     if (detailed)
@@ -223,7 +223,7 @@ void logToStream (const RegionSequence* regionSequence, std::ostringstream& oss,
     }
 }
 
-void logToStream (const MusicalContext* musicalContext, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
+[[maybe_unused]] static void logToStream (const MusicalContext* musicalContext, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
 {
     oss << indentation <<  musicalContext << "(" << musicalContext->getHostRef () << "):" << musicalContext->getName ();
     if (detailed)
@@ -239,7 +239,7 @@ void logToStream (const MusicalContext* musicalContext, std::ostringstream& oss,
     }
 }
 
-void logToStream (const Document* document, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
+[[maybe_unused]] static void logToStream (const Document* document, std::ostringstream& oss, bool detailed, bool recursive, std::string indentation)
 {
     oss << indentation << document << ":" << document->getName () << "\n";
 
@@ -299,11 +299,8 @@ bool AnalysisProgressTracker::decodeIsProgressing (float encodedProgress) noexce
 
 bool AnalysisProgressTracker::updateProgress (ARAAnalysisProgressState state, float progress) noexcept
 {
-#if __cplusplus >= 201703L
     static_assert (decltype (_encodedProgress)::is_always_lock_free);
-#else
-    ARA_INTERNAL_ASSERT (_encodedProgress.is_lock_free ());
-#endif
+
     ARA_INTERNAL_ASSERT (0.0f <= progress);
     ARA_INTERNAL_ASSERT (progress <= 1.0f);
 
@@ -433,17 +430,17 @@ const OptionalProperty<ARAUtf8String>& MusicalContext::getEffectiveName () const
 
 void MusicalContext::updateProperties (PropertiesPtr<ARAMusicalContextProperties> properties) noexcept
 {
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAMusicalContextProperties, name)> ())
+    if (properties.implements<&ARAMusicalContextProperties::name> ())
         _name = properties->name;
     else
         _name = nullptr;
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAMusicalContextProperties, orderIndex)> ())
+    if (properties.implements<&ARAMusicalContextProperties::orderIndex> ())
         _orderIndex = properties->orderIndex;
     else
         _orderIndex = 0;        // for position, we have no markup for "unknown" position - we'll just remain unsorted
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAMusicalContextProperties, color)> ())
+    if (properties.implements<&ARAMusicalContextProperties::color> ())
         _color = properties->color;
     else
         _color = nullptr;
@@ -474,7 +471,7 @@ void RegionSequence::updateProperties (PropertiesPtr<ARARegionSequenceProperties
     _name = properties->name;
     _orderIndex = properties->orderIndex;
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARARegionSequenceProperties, color)> ())
+    if (properties.implements<&ARARegionSequenceProperties::color> ())
         _color = properties->color;
     else
         _color = nullptr;
@@ -482,6 +479,18 @@ void RegionSequence::updateProperties (PropertiesPtr<ARARegionSequenceProperties
     auto musicalContext { fromRef (properties->musicalContextRef) };
     ARA_VALIDATE_API_ARGUMENT (properties->musicalContextRef, getDocumentController ()->isValidMusicalContext (musicalContext));
     setMusicalContext (musicalContext);
+
+    if (properties.implements<&ARARegionSequenceProperties::persistentID> ())
+    {
+        ARA_VALIDATE_API_ARGUMENT (properties->persistentID, properties->persistentID != nullptr);
+        ARA_VALIDATE_API_ARGUMENT (properties->persistentID, std::strlen (properties->persistentID) > 0);
+        _persistentID = properties->persistentID;
+    }
+    else
+    {
+        ARA_VALIDATE_API_ARGUMENT (properties, getDocumentController ()->getUsedApiGeneration () < kARAAPIGeneration_3_0_Draft);
+        _persistentID = nullptr;
+    }
 }
 
 void RegionSequence::setMusicalContext (MusicalContext* musicalContext) noexcept
@@ -518,11 +527,15 @@ void AudioSource::updateProperties (PropertiesPtr<ARAAudioSourceProperties> prop
     ARA_VALIDATE_API_ARGUMENT (properties->persistentID, std::strlen (properties->persistentID) > 0);
     _persistentID = properties->persistentID;
 
+    [[maybe_unused]] const auto supportsContentOnlyAudioSources { getDocumentController ()->getFactory ()->supportsContentOnlyAudioSources != kARAFalse };
+    ARA_VALIDATE_API_ARGUMENT (properties, properties->sampleCount >= ((supportsContentOnlyAudioSources) ? 0 : 1));
     _sampleCount = properties->sampleCount;
+    ARA_VALIDATE_API_ARGUMENT (properties, properties->sampleRate > 0.0);
     _sampleRate = properties->sampleRate;
     _merits64BitSamples = (properties->merits64BitSamples != kARAFalse);
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAAudioSourceProperties, channelArrangement)> ())
+    ARA_VALIDATE_API_ARGUMENT (properties, properties->channelCount >= ((supportsContentOnlyAudioSources) ? 0 : 1));
+    if (properties.implements<&ARAAudioSourceProperties::channelArrangement> ())
         _channelFormat.update (properties->channelCount, properties->channelArrangementDataType, properties->channelArrangement);
     else
         _channelFormat.update (properties->channelCount, kARAChannelArrangementUndefined, nullptr);
@@ -615,39 +628,20 @@ void PlaybackRegion::updateProperties (PropertiesPtr<ARAPlaybackRegionProperties
     _contentBasedFadeAtHead = ((properties->transformationFlags & kARAPlaybackTransformationContentBasedFadeAtHead) != 0);
     _contentBasedFadeAtTail = ((properties->transformationFlags & kARAPlaybackTransformationContentBasedFadeAtTail) != 0);
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, name)> ())
+    if (properties.implements<&ARAPlaybackRegionProperties::name> ())
         _name = properties->name;
     else
         _name = nullptr;
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, color)> ())
+    if (properties.implements<&ARAPlaybackRegionProperties::color> ())
         _color = properties->color;
     else
         _color = nullptr;
 
-#if ARA_SUPPORT_VERSION_1
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, regionSequenceRef)> ())
-    {
-        ARA_VALIDATE_API_STATE (_musicalContext == nullptr);
-        auto regionSequence { fromRef (properties->regionSequenceRef) };
-        ARA_VALIDATE_API_ARGUMENT (properties->regionSequenceRef, getDocumentController ()->isValidRegionSequence (regionSequence));
-        setRegionSequence (regionSequence);
-    }
-    else
-    {
-        ARA_VALIDATE_API_STATE (DocumentController::getUsedApiGeneration () < kARAAPIGeneration_2_0_Draft);
-        ARA_VALIDATE_API_STATE (getRegionSequence () == nullptr);
-
-        auto musicalContext { fromRef (properties->musicalContextRef) };
-        ARA_VALIDATE_API_ARGUMENT (properties->musicalContextRef, getDocumentController ()->isValidMusicalContext (musicalContext));
-        _musicalContext = musicalContext;
-    }
-#else
-    ARA_VALIDATE_API_ARGUMENT (properties, properties.implements<ARA_STRUCT_MEMBER (ARAPlaybackRegionProperties, regionSequenceRef)> ());
+    ARA_VALIDATE_API_ARGUMENT (properties, properties.implements<&ARAPlaybackRegionProperties::regionSequenceRef> ());
     auto regionSequence { fromRef (properties->regionSequenceRef) };
     ARA_VALIDATE_API_ARGUMENT (properties->regionSequenceRef, getDocumentController ()->isValidRegionSequence (regionSequence));
     setRegionSequence (regionSequence);
-#endif
 }
 
 bool PlaybackRegion::intersectsWithAudioModificationTimeRange (ARAContentTimeRange range) const noexcept
@@ -706,20 +700,29 @@ void PlaybackRegion::setRegionSequence (RegionSequence* regionSequence) noexcept
 
 /*******************************************************************************/
 
-RestoreObjectsFilter::RestoreObjectsFilter (const ARARestoreObjectsFilter* filter, Document* document) noexcept
+RestoreObjectsFilter::RestoreObjectsFilter (const SizedStructPtr<ARARestoreObjectsFilter> filter, Document* document) noexcept
 : _filter { filter }
 {
     for (const auto& audioSource : document->getAudioSources ())
     {
-        auto audioSourceID { audioSource->getPersistentID ().c_str () };
+        const auto audioSourceID { audioSource->getPersistentID ().c_str () };
         ARA_VALIDATE_API_STATE (_audioSourcesByID.count (audioSourceID) == 0);                  // make sure all current audio source persistentIDs are unique
         _audioSourcesByID[audioSourceID] = audioSource;
 
         for (const auto& audioModification : audioSource->getAudioModifications ())
         {
-            auto audioModificationID { audioModification->getPersistentID ().c_str () };
+            const auto audioModificationID { audioModification->getPersistentID ().c_str () };
             ARA_VALIDATE_API_STATE (_audioModificationsByID.count (audioModificationID) == 0);  // make sure all current audio modification persistentIDs are unique
             _audioModificationsByID[audioModificationID] = audioModification;
+        }
+    }
+
+    for (const auto& regionSequence : document->getRegionSequences ())
+    {
+        if (const auto& regionSequenceID { regionSequence->getPersistentID () })
+        {
+            ARA_VALIDATE_API_STATE (_regionSequencesByID.count (regionSequenceID) == 0);        // make sure all current region sequence persistentIDs are unique
+            _regionSequencesByID[regionSequenceID] = regionSequence;
         }
     }
 
@@ -750,6 +753,22 @@ RestoreObjectsFilter::RestoreObjectsFilter (const ARARestoreObjectsFilter* filte
                 audioModificationsByMappedIDs[audioModificationArchiveID] = it->second;
         }
         _audioModificationsByID = std::move (audioModificationsByMappedIDs);
+
+        if (filter.implements<&ARARestoreObjectsFilter::regionSequenceIDsCount> ())
+        {
+            decltype (_regionSequencesByID) regionSequencesByMappedIDs;
+            for (ARASize i { 0 }; i < filter->regionSequenceIDsCount; ++i)
+            {
+                auto regionSequenceArchiveID { filter->regionSequenceArchiveIDs[i] };
+                ARA_VALIDATE_API_STATE (regionSequencesByMappedIDs.count (regionSequenceArchiveID) == 0); // make sure audio Modification persistentIDs in filter are unique
+                auto regionSequenceCurrentID { (filter->regionSequenceCurrentIDs != nullptr) ? filter->regionSequenceCurrentIDs[i] : regionSequenceArchiveID };
+
+                const auto it { _regionSequencesByID.find (regionSequenceCurrentID) };
+                if (it != _regionSequencesByID.end ())
+                    regionSequencesByMappedIDs[regionSequenceArchiveID] = it->second;
+            }
+            _regionSequencesByID = std::move (regionSequencesByMappedIDs);
+        }
     }
 }
 
@@ -772,9 +791,15 @@ AudioModification* RestoreObjectsFilter::getAudioModificationToRestoreStateWithI
     return (it != _audioModificationsByID.end ()) ? it->second : nullptr;
 }
 
+RegionSequence* RestoreObjectsFilter::getRegionSequenceToRestoreStateWithID (ARAPersistentID regionSequenceID) const noexcept
+{
+    const auto it { _regionSequencesByID.find (regionSequenceID) };
+    return (it != _regionSequencesByID.end ()) ? it->second : nullptr;
+}
+
 /*******************************************************************************/
 
-StoreObjectsFilter::StoreObjectsFilter (const ARAStoreObjectsFilter* filter) noexcept
+StoreObjectsFilter::StoreObjectsFilter (const SizedStructPtr<ARAStoreObjectsFilter> filter) noexcept
 : _filter { filter }
 {
     ARA_INTERNAL_ASSERT (filter != nullptr);
@@ -782,6 +807,12 @@ StoreObjectsFilter::StoreObjectsFilter (const ARAStoreObjectsFilter* filter) noe
         _audioSourcesToStore.push_back (fromRef (_filter->audioSourceRefs[i]));
     for (ARASize i { 0 }; i < _filter->audioModificationRefsCount; ++i)
         _audioModificationsToStore.push_back (fromRef (_filter->audioModificationRefs[i]));
+
+    if (filter.implements<&ARAStoreObjectsFilter::regionSequenceRefs> ())
+    {
+        for (ARASize i { 0 }; i < _filter->regionSequenceRefsCount; ++i)
+            _regionSequencesToStore.push_back (fromRef (_filter->regionSequenceRefs[i]));
+    }
 }
 
 StoreObjectsFilter::StoreObjectsFilter (const Document* document) noexcept
@@ -791,6 +822,12 @@ StoreObjectsFilter::StoreObjectsFilter (const Document* document) noexcept
     _audioModificationsToStore.reserve (_audioSourcesToStore.size ());
     for (const auto& audioSource : _audioSourcesToStore)
         _audioModificationsToStore.insert (_audioModificationsToStore.end (), audioSource->getAudioModifications ().begin (), audioSource->getAudioModifications ().end ());
+
+    for (const auto& regionSequence : document->getRegionSequences ())
+    {
+        if (regionSequence->getPersistentID ())
+            _regionSequencesToStore.emplace_back (regionSequence);
+    }
 }
 
 bool StoreObjectsFilter::shouldStoreDocumentData () const noexcept
@@ -1115,10 +1152,24 @@ void DocumentController::notifyModelUpdates () noexcept
         hostModelUpdateController->notifyPlaybackRegionContentChanged (playbackRegionUpdate.first->getHostRef (), nullptr, playbackRegionUpdate.second);
     _playbackRegionContentUpdates.clear ();
 
+    if (_regionSequenceDataUpdates.size () > 0)
+    {
+        if (hostModelUpdateController->supportsNotifyRegionSequenceDataChanged ())
+        {
+            for (const auto& regionSequence : _regionSequenceDataUpdates)
+                hostModelUpdateController->notifyRegionSequenceDataChanged (regionSequence->getHostRef ());
+        }
+        else
+        {
+            _documentDataChanged = true;    // aka notifyDocumentDataChanged()
+        }
+        _regionSequenceDataUpdates.clear ();
+    }
+
     if (_documentDataChanged)
         hostModelUpdateController->notifyDocumentDataChanged ();
     _documentDataChanged = false;
-        
+
     didNotifyModelUpdates ();
 }
 
@@ -1146,7 +1197,7 @@ bool DocumentController::restoreObjectsFromArchive (ARAArchiveReaderHostRef arch
     }
 #endif
 
-    const RestoreObjectsFilter restoreObjectsFilter (filter, getDocument ());
+    const RestoreObjectsFilter restoreObjectsFilter { filter, getDocument () };
 
     return doRestoreObjectsFromArchive (&archiveReader, &restoreObjectsFilter);
 }
@@ -1211,10 +1262,11 @@ bool DocumentControllerDelegate::doStoreAudioSourceToAudioFileChunk (HostArchive
     *openAutomatically = false;
 
     ARAAudioSourceRef audioSourceRef { toRef (audioSource) };
-    const ARA::SizedStruct<ARA_STRUCT_MEMBER (ARAStoreObjectsFilter, audioModificationRefs)> filter { ARA::kARATrue,
-                                                                                                      1U, &audioSourceRef,
-                                                                                                      0U, nullptr
-                                                                                                    };
+    const SizedStruct<&ARAStoreObjectsFilter::regionSequenceRefs> filter { kARATrue,
+                                                                           1U, &audioSourceRef,
+                                                                           0U, nullptr,
+                                                                           0U, nullptr
+                                                                         };
     const StoreObjectsFilter storeObjectsFilter { &filter };
     return doStoreObjectsToArchive (archiveWriter, &storeObjectsFilter);
 }
@@ -1282,7 +1334,7 @@ void DocumentController::updateMusicalContextProperties (ARAMusicalContextRef mu
     ARA_VALIDATE_API_ARGUMENT (musicalContextRef, isValidMusicalContext (musicalContext));
     ARA_VALIDATE_API_STRUCT_PTR (properties, ARAMusicalContextProperties);
 
-    if (properties.implements<ARA_STRUCT_MEMBER (ARAMusicalContextProperties, orderIndex)> ())
+    if (properties.implements<&ARAMusicalContextProperties::orderIndex> ())
     {
         if (properties->orderIndex != musicalContext->getOrderIndex ())
         {
@@ -1443,6 +1495,9 @@ void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSeque
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy region sequence", regionSequence);
     willDestroyRegionSequence (regionSequence);
+
+    _regionSequenceDataUpdates.erase (regionSequence);
+
     doDestroyRegionSequence (regionSequence);
 }
 
@@ -1707,11 +1762,7 @@ ARAPlaybackRegionRef DocumentController::createPlaybackRegion (ARAAudioModificat
 
     didAddPlaybackRegionToAudioModification (audioModification, playbackRegion);
 
-    auto regionSequence { playbackRegion->getRegionSequence () };
-#if ARA_SUPPORT_VERSION_1
-    if (regionSequence)
-#endif
-        didAddPlaybackRegionToRegionSequence (regionSequence, playbackRegion);
+    didAddPlaybackRegionToRegionSequence (playbackRegion->getRegionSequence (), playbackRegion);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create playback region", playbackRegion);
     return toRef (playbackRegion);
@@ -1741,15 +1792,21 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
     playbackRegion->updateProperties (properties);
     didUpdatePlaybackRegionProperties (playbackRegion);
 
-#if ARA_SUPPORT_VERSION_1
-    if (newSequence)
-#endif
-    {
-        if (currentSequence != newSequence)
-            didAddPlaybackRegionToRegionSequence (newSequence, playbackRegion);
-    }
+    if (currentSequence != newSequence)
+        didAddPlaybackRegionToRegionSequence (newSequence, playbackRegion);
 
     ARA_LOG_PROPERTY_CHANGES ("did update properties of playback region", playbackRegion);
+}
+
+bool DocumentController::isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept
+{
+    ARA_LOG_HOST_ENTRY (playbackRegionRef);
+    ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
+
+    auto playbackRegion { fromRef (playbackRegionRef) };
+    ARA_VALIDATE_API_ARGUMENT (playbackRegionRef, isValidPlaybackRegion (playbackRegion));
+    return doIsPlaybackRegionPreservingAudioSourceSignal (playbackRegion);
 }
 
 void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept
@@ -1786,10 +1843,7 @@ void DocumentController::destroyPlaybackRegion (ARAPlaybackRegionRef playbackReg
         ARA_VALIDATE_API_STATE (!contains (playbackRenderer->getPlaybackRegions (), playbackRegion));
 #endif
 
-#if ARA_SUPPORT_VERSION_1
-    if (playbackRegion->getRegionSequence ())
-#endif
-        willRemovePlaybackRegionFromRegionSequence (playbackRegion->getRegionSequence (), playbackRegion);
+    willRemovePlaybackRegionFromRegionSequence (playbackRegion->getRegionSequence (), playbackRegion);
 
     willRemovePlaybackRegionFromAudioModification (playbackRegion->getAudioModification (), playbackRegion);
 
@@ -2314,6 +2368,12 @@ void DocumentController::notifyPlaybackRegionContentChanged (PlaybackRegion* pla
         _playbackRegionContentUpdates[playbackRegion] += scopeFlags;
 }
 
+void DocumentController::notifyRegionSequenceDataChanged (RegionSequence* regionSequence) noexcept
+{
+    if (getHostModelUpdateController ())
+        _regionSequenceDataUpdates.insert (regionSequence);
+}
+
 void DocumentController::notifyDocumentDataChanged () noexcept
 {
     _documentDataChanged = true;
@@ -2401,7 +2461,7 @@ void HostArchiveWriter::notifyDocumentArchivingProgress (float value) noexcept
 
 /*******************************************************************************/
 
-std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize playbackRegionsCount, const ARAPlaybackRegionRef playbackRegionRefs[])
+static std::vector<PlaybackRegion*> _convertPlaybackRegionsArray ([[maybe_unused]] const DocumentController* documentController, ARASize playbackRegionsCount, const ARAPlaybackRegionRef playbackRegionRefs[])
 {
     std::vector<PlaybackRegion*> playbackRegions;
     if (playbackRegionsCount > 0)
@@ -2419,7 +2479,7 @@ std::vector<PlaybackRegion*> _convertPlaybackRegionsArray (const DocumentControl
     return playbackRegions;
 }
 
-std::vector<RegionSequence*> _convertRegionSequencesArray (const DocumentController* ARA_MAYBE_UNUSED_ARG (documentController), ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[])
+static std::vector<RegionSequence*> _convertRegionSequencesArray ([[maybe_unused]] const DocumentController* documentController, ARASize regionSequenceRefsCount, const ARARegionSequenceRef regionSequenceRefs[])
 {
     std::vector<RegionSequence*> regionSequences;
     if (regionSequenceRefsCount > 0)
@@ -2480,7 +2540,7 @@ std::vector<RegionSequence*> ViewSelection::getEffectiveRegionSequences () const
     return result;
 }
 
-ARAContentTimeRange getUnionTimeRangeOfPlaybackRegions (std::vector<PlaybackRegion*> const& playbackRegions) noexcept
+static ARAContentTimeRange getUnionTimeRangeOfPlaybackRegions (std::vector<PlaybackRegion*> const& playbackRegions) noexcept
 {
     ARA_INTERNAL_ASSERT (!playbackRegions.empty ());
 
@@ -2791,13 +2851,16 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
                factoryConfig->getDocumentArchiveID (), factoryConfig->getCompatibleDocumentArchiveIDsCount (), factoryConfig->getCompatibleDocumentArchiveIDs (),
                factoryConfig->getAnalyzeableContentTypesCount (), factoryConfig->getAnalyzeableContentTypes (),
                factoryConfig->getSupportedPlaybackTransformationFlags (),
-               (factoryConfig->supportsStoringAudioFileChunks ()) ? kARATrue : kARAFalse
+               (factoryConfig->supportsStoringAudioFileChunks ()) ? kARATrue : kARAFalse,
+               (factoryConfig->supportsSampleBasedAudioSources ()) ? kARATrue : kARAFalse,
+               (factoryConfig->supportsContentOnlyAudioSources ()) ? kARATrue : kARAFalse,
+               (factoryConfig->requiresPresetAudioSources ()) ? kARATrue : kARAFalse
              }
 {
 #if ARA_CPU_ARM
     ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_2_0_Final);
 #else
-    ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_1_0_Draft);
+    ARA_INTERNAL_ASSERT (_factory.lowestSupportedApiGeneration >= kARAAPIGeneration_2_0_Draft);
 #endif
     ARA_INTERNAL_ASSERT (_factory.highestSupportedApiGeneration >= _factory.lowestSupportedApiGeneration);
 
@@ -2879,7 +2942,7 @@ const ARADocumentControllerInstance* PlugInEntry::createDocumentControllerWithDo
     ARA_VALIDATE_API_INTERFACE (hostInstance->audioAccessControllerInterface, ARAAudioAccessControllerInterface);
     ARA_VALIDATE_API_INTERFACE (hostInstance->archivingControllerInterface, ARAArchivingControllerInterface);
     if (_usedApiGeneration >= kARAAPIGeneration_2_0_Final)
-        ARA_VALIDATE_API_ARGUMENT (hostInstance->archivingControllerInterface, SizedStructPtr<ARAArchivingControllerInterface> (hostInstance->archivingControllerInterface).implements<ARA_STRUCT_MEMBER (ARAArchivingControllerInterface, getDocumentArchiveID)> ());
+        ARA_VALIDATE_API_ARGUMENT (hostInstance->archivingControllerInterface, SizedStructPtr<ARAArchivingControllerInterface> (hostInstance->archivingControllerInterface).implements<&ARAArchivingControllerInterface::getDocumentArchiveID> ());
     if (hostInstance->contentAccessControllerInterface)
         ARA_VALIDATE_API_INTERFACE (hostInstance->contentAccessControllerInterface, ARAContentAccessControllerInterface);
     if (hostInstance->modelUpdateControllerInterface)

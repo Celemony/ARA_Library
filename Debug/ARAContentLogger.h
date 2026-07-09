@@ -2,7 +2,7 @@
 //! \file       ARAContentLogger.h
 //!             class to conveniently log (and validate) ARA content
 //! \project    ARA SDK Library
-//! \copyright  Copyright (c) 2018-2025, Celemony Software GmbH, All Rights Reserved.
+//! \copyright  Copyright (c) 2018-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
 //!             you may not use this file except in compliance with the License.
 //!             You may obtain a copy of the License at
@@ -40,13 +40,8 @@ namespace ARA {
 
 struct ContentLogger
 {
-#if __cplusplus >= 201703L
     template <typename ControllerType, typename ModelObjectRefType>
     using ContentReaderRef = decltype ((static_cast<ControllerType*> (nullptr)->*ContentReaderFunctionMapper<ControllerType, ModelObjectRefType>::createContentReader) (nullptr, kARAContentTypeNotes, nullptr));
-#else
-    template <typename ControllerType, typename ModelObjectRefType>
-    using ContentReaderRef = typename std::result_of<decltype (ContentReaderFunctionMapper<ControllerType, ModelObjectRefType>::createContentReader) (ControllerType, ModelObjectRefType, ARAContentType, const ARAContentTimeRange*)>::type;
-#endif
 
     template <ARAContentType contentType, typename ControllerType, typename ModelObjectRefType>
 #if ARA_VALIDATE_API_CALLS
@@ -60,12 +55,13 @@ struct ContentLogger
 
     // array of all content types defined in the api
 
-    static inline constexpr std::array<ARAContentType, 6> getAllContentTypes () noexcept
+    static inline constexpr std::array<ARAContentType, 7> getAllContentTypes () noexcept
     {
         return { { kARAContentTypeNotes,
                    kARAContentTypeTempoEntries, kARAContentTypeBarSignatures,
                    kARAContentTypeStaticTuning,
-                   kARAContentTypeKeySignatures, kARAContentTypeSheetChords
+                   kARAContentTypeKeySignatures, kARAContentTypeSheetChords,
+                   kARAContentTypeLyricEntries
                } };
     }
 
@@ -93,6 +89,7 @@ struct ContentLogger
             case kARAContentTypeStaticTuning:  return ContentTypeMapper<kARAContentTypeStaticTuning>::enumName;
             case kARAContentTypeKeySignatures: return ContentTypeMapper<kARAContentTypeKeySignatures>::enumName;
             case kARAContentTypeSheetChords:   return ContentTypeMapper<kARAContentTypeSheetChords>::enumName;
+            case kARAContentTypeLyricEntries:  return ContentTypeMapper<kARAContentTypeLyricEntries>::enumName;
             default: ARA_INTERNAL_ASSERT (false); return "kARAContentType???";
         }
     }
@@ -107,6 +104,7 @@ struct ContentLogger
             case kARAContentTypeStaticTuning:  return ContentTypeMapper<kARAContentTypeStaticTuning>::typeName;
             case kARAContentTypeKeySignatures: return ContentTypeMapper<kARAContentTypeKeySignatures>::typeName;
             case kARAContentTypeSheetChords:   return ContentTypeMapper<kARAContentTypeSheetChords>::typeName;
+            case kARAContentTypeLyricEntries:  return ContentTypeMapper<kARAContentTypeLyricEntries>::typeName;
             default: ARA_INTERNAL_ASSERT (false); return "ARAContent???";
         }
     }
@@ -193,14 +191,22 @@ struct ContentLogger
             (logGivenName && logParsedName) ? " aka " : "", (logGivenName && logParsedName) ? parsedChordName.c_str () : "", chordData.position);
     }
 
+    static inline void logEvent (ARAInt32 idx, const ARAContentLyricsEntry& lyricsEntry)
+    {
+        ARA_LOG ("%s[%i] %s%s, %i %s phonemes%s, position = %.3f", getTypeNameForContentType (kARAContentTypeLyricEntries), idx,
+            (lyricsEntry.continuesPreviousWord) ? "-" : "", lyricsEntry.lyrics,
+            lyricsEntry.phonemeCount, getNameForContentGrade (lyricsEntry.phonemesGrade),
+            (lyricsEntry.phonemeOffsets) ? " w/ offsets": "", lyricsEntry.position);
+    }
+
     // internal helper for log ()
 
-    template <ARAContentType contentType, typename ContentReader, typename std::enable_if<contentType != kARAContentTypeTempoEntries, bool>::type = true>
+    template <ARAContentType contentType, typename ContentReader, std::enable_if_t<contentType != kARAContentTypeTempoEntries, bool> = true>
     static inline void logEventIteration (ContentReader& reader, ARAInt32 i)
     {
         logEvent (i, reader[i]);
     }
-    template <ARAContentType contentType, typename ContentReader, typename std::enable_if<contentType == kARAContentTypeTempoEntries, bool>::type = true>
+    template <ARAContentType contentType, typename ContentReader, std::enable_if_t<contentType == kARAContentTypeTempoEntries, bool> = true>
     static inline void logEventIteration (ContentReader& reader, ARAInt32 i)
     {
         const auto event { reader[i] };
@@ -252,6 +258,7 @@ struct ContentLogger
             case kARAContentTypeStaticTuning:  return log<kARAContentTypeStaticTuning> (controller, modelObjectRef, range, logIfNotAvailable);
             case kARAContentTypeKeySignatures: return log<kARAContentTypeKeySignatures> (controller, modelObjectRef, range, logIfNotAvailable);
             case kARAContentTypeSheetChords:   return log<kARAContentTypeSheetChords> (controller, modelObjectRef, range, logIfNotAvailable);
+            case kARAContentTypeLyricEntries:  return log<kARAContentTypeLyricEntries> (controller, modelObjectRef, range, logIfNotAvailable);
             default: ARA_INTERNAL_ASSERT (false); return false;
         }
     }
@@ -320,6 +327,11 @@ struct ContentLogger
             ARA_LOG ("harmonic scope updated, related content is:");
             log<kARAContentTypeKeySignatures> (controller, modelObjectRef, range, false);
             log<kARAContentTypeSheetChords> (controller, modelObjectRef, range, false);
+        }
+        if (scopeFlags.affectLyrics ())
+        {
+            ARA_LOG ("lyrics scope updated, related content is:");
+            log<kARAContentTypeLyricEntries> (controller, modelObjectRef, range, false);
         }
     }
 };
