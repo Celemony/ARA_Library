@@ -51,6 +51,7 @@ struct ContentTypeMapper;
     ARA_SPECIALIZE_CONTENT_TYPE_MAPPER (kARAContentTypeStaticTuning, ARAContentTuning)
     ARA_SPECIALIZE_CONTENT_TYPE_MAPPER (kARAContentTypeKeySignatures, ARAContentKeySignature)
     ARA_SPECIALIZE_CONTENT_TYPE_MAPPER (kARAContentTypeSheetChords, ARAContentChord)
+    ARA_SPECIALIZE_CONTENT_TYPE_MAPPER (kARAContentTypeLyricEntries, ARAContentLyricsEntry)
 
 #undef ARA_SPECIALIZE_CONTENT_TYPE_MAPPER
 

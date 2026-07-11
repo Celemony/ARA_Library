@@ -742,6 +742,25 @@ ARA_IPC_BEGIN_DECODE (ARAContentChord)
     ARA_IPC_DECODE_MEMBER (position)
 ARA_IPC_END_DECODE
 
+ARA_IPC_BEGIN_ENCODE (ARAContentLyricsEntry)
+    ARA_IPC_ENCODE_MEMBER (lyrics)
+    ARA_IPC_ENCODE_MEMBER (continuesPreviousWord)
+    ARA_IPC_ENCODE_MEMBER (language)
+    ARA_IPC_ENCODE_VARIABLE_ARRAY (phonemes, phonemeCount)
+    ARA_IPC_ENCODE_VARIABLE_ARRAY (phonemeOffsets, phonemeCount)
+    ARA_IPC_ENCODE_MEMBER (phonemesGrade)
+    ARA_IPC_ENCODE_MEMBER (position)
+ARA_IPC_END_ENCODE
+ARA_IPC_BEGIN_DECODE (ARAContentLyricsEntry)
+    ARA_IPC_DECODE_MEMBER (lyrics)
+    ARA_IPC_DECODE_MEMBER (continuesPreviousWord)
+    ARA_IPC_DECODE_MEMBER (language)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (phonemes, phonemeCount, true)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (phonemeOffsets, phonemeCount, false)
+    ARA_IPC_DECODE_MEMBER (phonemesGrade)
+    ARA_IPC_DECODE_MEMBER (position)
+ARA_IPC_END_DECODE
+
 ARA_IPC_BEGIN_ENCODE (ARARestoreObjectsFilter)
     ARA_IPC_ENCODE_MEMBER (documentData)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceArchiveIDs, audioSourceIDsCount)
@@ -1255,6 +1274,7 @@ inline void encodeContentEvent (MessageEncoder* encoder, const ARAContentType ty
         case kARAContentTypeStaticTuning:   encodeReply (encoder, *static_cast<const ARAContentTuning*> (eventData)); break;
         case kARAContentTypeKeySignatures:  encodeReply (encoder, *static_cast<const ARAContentKeySignature*> (eventData)); break;
         case kARAContentTypeSheetChords:    encodeReply (encoder, *static_cast<const ARAContentChord*> (eventData)); break;
+        case kARAContentTypeLyricEntries:   encodeReply (encoder, *static_cast<const ARAContentLyricsEntry*> (eventData)); break;
         default:                            ARA_INTERNAL_ASSERT (false && "content type not implemented yet"); break;
     }
 }
@@ -1297,6 +1317,7 @@ private:
             case kARAContentTypeStaticTuning: return &ContentEventDecoder::_decodeContentEvent<ContentTypeMapper<kARAContentTypeStaticTuning>::DataType>;
             case kARAContentTypeKeySignatures: return &ContentEventDecoder::_decodeContentEvent<ContentTypeMapper<kARAContentTypeKeySignatures>::DataType>;
             case kARAContentTypeSheetChords: return &ContentEventDecoder::_decodeContentEvent<ContentTypeMapper<kARAContentTypeSheetChords>::DataType>;
+            case kARAContentTypeLyricEntries: return &ContentEventDecoder::_decodeContentEvent<ContentTypeMapper<kARAContentTypeLyricEntries>::DataType>;
             default: ARA_INTERNAL_ASSERT (false); return nullptr;
         }
     }
@@ -1331,6 +1352,7 @@ private:
         ARAContentTuning _tuning;
         ARAContentKeySignature _keySignature;
         ARAContentChord _chord;
+        ARAContentLyricsEntry _lyricsEntry;
     } _eventStorage {};
 
     ARAUtf8String* _contentString {};

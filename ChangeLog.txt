@@ -3,6 +3,7 @@ This is a development build of the ARA Library 3.0.
 
 
 Changes since previous releases:
+- initial draft of lyrics-related content types, tailored to support singing voice synthesis
 - initial draft of region sequence persistency
 - added isPlaybackRegionPreservingAudioSourceSignal(), superseding isAudioModificationPreservingAudioSourceSignal()
 - initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,

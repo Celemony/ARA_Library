@@ -137,6 +137,25 @@ struct ContentReaderValidatorImplementation<kARAContentTypeSheetChords>
     }
 };
 
+template <>
+struct ContentReaderValidatorImplementation<kARAContentTypeLyricEntries>
+{
+    static inline void validateEventCount (ARAInt32 eventCount) { ARA_VALIDATE_API_CONDITION (eventCount >= 0); }
+
+    static inline void validateEvent (const ARAContentLyricsEntry* event)
+    {
+        ARA_VALIDATE_API_CONDITION ((event->continuesPreviousWord == kARAFalse) || (event->lyrics != nullptr));
+        ARA_VALIDATE_API_CONDITION ((event->phonemeCount == 0) || (event->phonemes != nullptr));
+        ARA_VALIDATE_API_CONDITION ((event->phonemeCount != 0) || (event->phonemes == nullptr));
+        ARA_VALIDATE_API_CONDITION ((event->phonemeCount != 0) || (event->phonemeOffsets == nullptr));        
+    }
+
+    static inline void validateEventSequence (const ARAContentLyricsEntry* event, const ARAContentLyricsEntry* prevEvent)
+    {
+        ARA_VALIDATE_API_CONDITION (prevEvent->position < event->position);
+    }
+};
+
 
 /*******************************************************************************/
 // ContentReaderValidator
