@@ -434,6 +434,9 @@ template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<Stru
 #define ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR(member)                                     \
         if (ARA_IPC_HAS_ADDENDUM_MEMBER (member))                                               \
             ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR (member)
+#define ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY(member, count)                                   \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (member))                                               \
+            ARA_IPC_ENCODE_VARIABLE_ARRAY (member, count)
 #define ARA_IPC_END_ENCODE                                                                      \
     }                                                                                           \
 };
@@ -546,12 +549,14 @@ ARA_IPC_BEGIN_ENCODE (ARARegionSequenceProperties)
     ARA_IPC_ENCODE_MEMBER (orderIndex)
     ARA_IPC_ENCODE_MEMBER (musicalContextRef)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
+    ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER (persistentID)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARARegionSequenceProperties)
     ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
     ARA_IPC_DECODE_MEMBER (orderIndex)
     ARA_IPC_DECODE_MEMBER (musicalContextRef)
     ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
+    ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER (persistentID)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE (ARAAudioSourceProperties)
@@ -743,6 +748,8 @@ ARA_IPC_BEGIN_ENCODE (ARARestoreObjectsFilter)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceCurrentIDs, audioSourceIDsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioModificationArchiveIDs, audioModificationIDsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioModificationCurrentIDs, audioModificationIDsCount)
+    ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceArchiveIDs, regionSequenceIDsCount)
+    ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceCurrentIDs, regionSequenceIDsCount)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARARestoreObjectsFilter)
     ARA_IPC_DECODE_MEMBER (documentData)
@@ -750,17 +757,21 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARARestoreObjectsFilter)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioSourceCurrentIDs, audioSourceIDsCount, false)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationArchiveIDs, audioModificationIDsCount, true)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationCurrentIDs, audioModificationIDsCount, false)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceArchiveIDs, regionSequenceIDsCount, true)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceCurrentIDs, regionSequenceIDsCount, false)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE (ARAStoreObjectsFilter)
     ARA_IPC_ENCODE_MEMBER (documentData)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceRefs, audioSourceRefsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioModificationRefs, audioModificationRefsCount)
+    ARA_IPC_ENCODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAStoreObjectsFilter)
     ARA_IPC_DECODE_MEMBER (documentData)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioSourceRefs, audioSourceRefsCount, true)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationRefs, audioModificationRefsCount, true)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount, true)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE (ARAProcessingAlgorithmProperties)

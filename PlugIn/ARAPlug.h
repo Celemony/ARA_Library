@@ -380,6 +380,7 @@ public:
     const OptionalProperty<ARAUtf8String>& getName () const noexcept { return _name; } //!< See ARARegionSequenceProperties::name.
     ARAInt32 getOrderIndex () const noexcept { return _orderIndex; }                   //!< See ARARegionSequenceProperties::orderIndex.
     const OptionalProperty<ARAColor*>& getColor () const noexcept { return _color; }   //!< See ARARegionSequenceProperties::color.
+    ARA_DRAFT const OptionalProperty<ARAPersistentID>& getPersistentID () const noexcept { return _persistentID; } //!< See ARARegionSequenceProperties::persistentID.
 //@}
 
 //! @name Region Sequence Relationships
@@ -422,6 +423,7 @@ private:
     OptionalProperty<ARAUtf8String> _name;
     ARAInt32 _orderIndex { 0 };
     OptionalProperty<ARAColor*> _color;
+    OptionalProperty<ARAPersistentID> _persistentID;
     std::vector<PlaybackRegion*> _playbackRegions;
 
     ARA_HOST_MANAGED_OBJECT (RegionSequence)
@@ -732,7 +734,7 @@ private:
     };
 
 public:
-    RestoreObjectsFilter (const ARARestoreObjectsFilter* filter, Document* document) noexcept;
+    RestoreObjectsFilter (const SizedStructPtr<ARARestoreObjectsFilter> filter, Document* document) noexcept;
 
 //! @name Filter Queries
 //! Use these functions to filter and map the objects restored during DocumentController::doRestoreObjectsFromArchive().
@@ -746,12 +748,17 @@ public:
     AudioModification* getAudioModificationToRestoreStateWithID (ARAPersistentID archivedAudioModificationID) const noexcept;
     template <typename AudioModification_t = AudioModification>
     AudioModification_t* getAudioModificationToRestoreStateWithID (ARAPersistentID archivedAudioModificationID) const noexcept { return static_cast<AudioModification_t*> (getAudioModificationToRestoreStateWithID (archivedAudioModificationID)); }
+
+    ARA_DRAFT RegionSequence* getRegionSequenceToRestoreStateWithID (ARAPersistentID archivedRegionSequenceID) const noexcept;
+    template <typename RegionSequence_t = RegionSequence>
+    ARA_DRAFT RegionSequence_t* getRegionSequenceToRestoreStateWithID (ARAPersistentID archivedRegionSequenceID) const noexcept { return static_cast<RegionSequence_t*> (getRegionSequenceToRestoreStateWithID (archivedRegionSequenceID)); }
 //@}
 
 private:
     const ARARestoreObjectsFilter* _filter;
     std::map<ARAPersistentID, AudioSource*, SortPersistentID> _audioSourcesByID;
     std::map<ARAPersistentID, AudioModification*, SortPersistentID> _audioModificationsByID;
+    std::map<ARAPersistentID, RegionSequence*, SortPersistentID> _regionSequencesByID;
 };
 
 
@@ -760,7 +767,9 @@ private:
 class StoreObjectsFilter
 {
 public:
-    explicit StoreObjectsFilter (const ARAStoreObjectsFilter* filter) noexcept;
+    //! use this c'tor when host-provided filter is not a nullptr
+    explicit StoreObjectsFilter (const SizedStructPtr<ARAStoreObjectsFilter> filter) noexcept;
+    //! use this c'tor when host-provided filter is a nullptr
     explicit StoreObjectsFilter (const Document* document) noexcept;
 
 //! @name Filter Queries
@@ -772,12 +781,16 @@ public:
     std::vector<const AudioSource_t*> const& getAudioSourcesToStore () const noexcept { return vector_cast<const AudioSource_t*> (_audioSourcesToStore); }
     template <typename AudioModification_t = AudioModification>
     std::vector<const AudioModification_t*> const& getAudioModificationsToStore () const noexcept { return vector_cast<const AudioModification_t*> (_audioModificationsToStore); }
+
+    template <typename RegionSequence_t = RegionSequence>
+    ARA_DRAFT std::vector<const RegionSequence_t*> const& getRegionSequencesToStore () const noexcept { return vector_cast<const RegionSequence_t*> (_regionSequencesToStore); }
 //@}
 
 private:
     const ARAStoreObjectsFilter* _filter;
     std::vector<const AudioSource*> _audioSourcesToStore;
     std::vector<const AudioModification*> _audioModificationsToStore;
+    std::vector<const RegionSequence*> _regionSequencesToStore;
 };
 
 //! @} ARA_Library_ARAPlug_Utility_Classes
