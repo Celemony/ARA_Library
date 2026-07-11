@@ -826,6 +826,9 @@ ARA_IPC_BEGIN_ENCODE (ARAFactory)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (analyzeableContentTypes, analyzeableContentTypesCount)
     ARA_IPC_ENCODE_MEMBER (supportedPlaybackTransformationFlags)
     ARA_IPC_ENCODE_ADDENDUM_MEMBER (supportsStoringAudioFileChunks)
+    ARA_IPC_ENCODE_ADDENDUM_MEMBER (supportsSampleBasedAudioSources)
+    ARA_IPC_ENCODE_ADDENDUM_MEMBER (supportsContentOnlyAudioSources)
+    ARA_IPC_ENCODE_ADDENDUM_MEMBER (requiresPresetAudioSources)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAFactory)
     ARA_IPC_DECODE_MEMBER (lowestSupportedApiGeneration)
@@ -843,6 +846,9 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAFactory)
     ARA_IPC_DECODE_VARIABLE_ARRAY (analyzeableContentTypes, analyzeableContentTypesCount, true)
     ARA_IPC_DECODE_MEMBER (supportedPlaybackTransformationFlags)
     ARA_IPC_DECODE_ADDENDUM_MEMBER (supportsStoringAudioFileChunks)
+    ARA_IPC_DECODE_ADDENDUM_MEMBER (supportsSampleBasedAudioSources)
+    ARA_IPC_DECODE_ADDENDUM_MEMBER (supportsContentOnlyAudioSources)
+    ARA_IPC_DECODE_ADDENDUM_MEMBER (requiresPresetAudioSources)
 ARA_IPC_END_DECODE
 
 

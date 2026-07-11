@@ -527,10 +527,16 @@ void AudioSource::updateProperties (PropertiesPtr<ARAAudioSourceProperties> prop
     ARA_VALIDATE_API_ARGUMENT (properties->persistentID, std::strlen (properties->persistentID) > 0);
     _persistentID = properties->persistentID;
 
+    [[maybe_unused]] const auto supportsContentOnlyAudioSources { getDocumentController ()->getFactory ()->supportsContentOnlyAudioSources != kARAFalse };
+    ARA_VALIDATE_API_ARGUMENT (properties, properties->sampleCount >= ((supportsContentOnlyAudioSources) ? 0 : 1));
     _sampleCount = properties->sampleCount;
+    ARA_VALIDATE_API_ARGUMENT (properties, (properties->sampleRate > 0.0) || (properties->sampleCount == 0));
     _sampleRate = properties->sampleRate;
     _merits64BitSamples = (properties->merits64BitSamples != kARAFalse);
 
+    ARA_VALIDATE_API_ARGUMENT (properties, properties->channelCount >= ((supportsContentOnlyAudioSources) ? 0 : 1));
+    if (properties->channelCount == 0)
+        ARA_VALIDATE_API_ARGUMENT (properties, properties->sampleCount == 0);
     if (properties.implements<&ARAAudioSourceProperties::channelArrangement> ())
         _channelFormat.update (properties->channelCount, properties->channelArrangementDataType, properties->channelArrangement);
     else
@@ -2847,7 +2853,10 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
                factoryConfig->getDocumentArchiveID (), factoryConfig->getCompatibleDocumentArchiveIDsCount (), factoryConfig->getCompatibleDocumentArchiveIDs (),
                factoryConfig->getAnalyzeableContentTypesCount (), factoryConfig->getAnalyzeableContentTypes (),
                factoryConfig->getSupportedPlaybackTransformationFlags (),
-               (factoryConfig->supportsStoringAudioFileChunks ()) ? kARATrue : kARAFalse
+               (factoryConfig->supportsStoringAudioFileChunks ()) ? kARATrue : kARAFalse,
+               (factoryConfig->supportsSampleBasedAudioSources ()) ? kARATrue : kARAFalse,
+               (factoryConfig->supportsContentOnlyAudioSources ()) ? kARATrue : kARAFalse,
+               (factoryConfig->requiresPresetAudioSources ()) ? kARATrue : kARAFalse
              }
 {
 #if ARA_CPU_ARM
@@ -2879,6 +2888,8 @@ PlugInEntry::PlugInEntry (const FactoryConfig* factoryConfig,
     // if content based fades are supported, they shall be supported on both ends
     if ((_factory.supportedPlaybackTransformationFlags & kARAPlaybackTransformationContentBasedFades) != 0)
         ARA_INTERNAL_ASSERT ((_factory.supportedPlaybackTransformationFlags & kARAPlaybackTransformationContentBasedFades) == kARAPlaybackTransformationContentBasedFades);
+
+    ARA_INTERNAL_ASSERT (_factory.supportsSampleBasedAudioSources || _factory.supportsContentOnlyAudioSources);
 }
 
 PlugInEntry::~PlugInEntry ()
