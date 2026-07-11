@@ -510,6 +510,18 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
     getInterface ()->updatePlaybackRegionProperties (getRef (), playbackRegionRef, properties);
 }
 
+bool DocumentController::supportsIsPlaybackRegionPreservingAudioSourceSignal () noexcept
+{
+    return getInterface ().implements<&ARADocumentControllerInterface::isPlaybackRegionPreservingAudioSourceSignal> ();
+}
+
+bool DocumentController::isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept
+{
+    if (!supportsIsPlaybackRegionPreservingAudioSourceSignal ())
+        return false;
+    return (getInterface ()->isPlaybackRegionPreservingAudioSourceSignal (getRef (), playbackRegionRef) != kARAFalse);
+}
+
 void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept
 {
     return getInterface ()->getPlaybackRegionHeadAndTailTime (getRef (), playbackRegionRef, headTime, tailTime);

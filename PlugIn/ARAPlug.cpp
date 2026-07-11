@@ -1794,6 +1794,17 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
     ARA_LOG_PROPERTY_CHANGES ("did update properties of playback region", playbackRegion);
 }
 
+bool DocumentController::isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept
+{
+    ARA_LOG_HOST_ENTRY (playbackRegionRef);
+    ARA_VALIDATE_API_ARGUMENT (this, isValidDocumentController (this));
+    ARA_VALIDATE_API_THREAD (wasCreatedOnCurrentThread ());
+
+    auto playbackRegion { fromRef (playbackRegionRef) };
+    ARA_VALIDATE_API_ARGUMENT (playbackRegionRef, isValidPlaybackRegion (playbackRegion));
+    return doIsPlaybackRegionPreservingAudioSourceSignal (playbackRegion);
+}
+
 void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept
 {
     ARA_LOG_HOST_ENTRY (playbackRegionRef);

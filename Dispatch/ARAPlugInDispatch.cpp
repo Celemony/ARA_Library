@@ -224,15 +224,20 @@ namespace DocumentControllerDispatcher
         fromRef (controllerRef)->updatePlaybackRegionProperties (playbackRegionRef, properties);
     }
 
-    static void ARA_CALL destroyPlaybackRegion (ARADocumentControllerRef controllerRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
+    static ARABool ARA_CALL isPlaybackRegionPreservingAudioSourceSignal (ARADocumentControllerRef controllerRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
     {
-        fromRef (controllerRef)->destroyPlaybackRegion (playbackRegionRef);
+        return fromRef (controllerRef)->isPlaybackRegionPreservingAudioSourceSignal (playbackRegionRef) ? kARATrue : kARAFalse;
     }
 
     static void ARA_CALL getPlaybackRegionHeadAndTailTime (ARADocumentControllerRef controllerRef, ARAPlaybackRegionRef playbackRegionRef,
                                                            ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept
     {
         fromRef (controllerRef)->getPlaybackRegionHeadAndTailTime (playbackRegionRef, headTime, tailTime);
+    }
+
+    static void ARA_CALL destroyPlaybackRegion (ARADocumentControllerRef controllerRef, ARAPlaybackRegionRef playbackRegionRef) noexcept
+    {
+        fromRef (controllerRef)->destroyPlaybackRegion (playbackRegionRef);
     }
 
     // Content Reader Management
@@ -342,7 +347,7 @@ namespace DocumentControllerDispatcher
 
     static const ARADocumentControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<&ARADocumentControllerInterface::isAudioModificationPreservingAudioSourceSignal> ifc =
+        static const SizedStruct<&ARADocumentControllerInterface::isPlaybackRegionPreservingAudioSourceSignal> ifc =
         {
             DocumentControllerDispatcher::destroyDocumentController,
             DocumentControllerDispatcher::getFactory,
@@ -397,7 +402,8 @@ namespace DocumentControllerDispatcher
             DocumentControllerDispatcher::requestProcessingAlgorithmForAudioSource,
             DocumentControllerDispatcher::isLicensedForCapabilities,
             DocumentControllerDispatcher::storeAudioSourceToAudioFileChunk,
-            DocumentControllerDispatcher::isAudioModificationPreservingAudioSourceSignal
+            DocumentControllerDispatcher::isAudioModificationPreservingAudioSourceSignal,
+            DocumentControllerDispatcher::isPlaybackRegionPreservingAudioSourceSignal
         };
         return &ifc;
     }

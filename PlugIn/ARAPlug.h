@@ -982,6 +982,8 @@ protected:
     virtual void willUpdatePlaybackRegionProperties (PlaybackRegion* playbackRegion, PropertiesPtr<ARAPlaybackRegionProperties> newProperties) noexcept {}
     //! Override to customize post-update behavior of updatePlaybackRegionProperties().
     virtual void didUpdatePlaybackRegionProperties (PlaybackRegion* playbackRegion) noexcept {}
+    //! Override to implement isPlaybackRegionPreservingAudioSourceSignal().
+    ARA_DRAFT virtual bool doIsPlaybackRegionPreservingAudioSourceSignal (PlaybackRegion* playbackRegion) noexcept { return false; }
     //! Override to define a content based fade for \p playbackRegion by assigning positive values to \p headTime and/or \p tailTime - see getPlaybackRegionHeadAndTailTime().
     virtual void doGetPlaybackRegionHeadAndTailTime (const PlaybackRegion* playbackRegion, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept { *headTime = 0.0; *tailTime = 0.0; }
     //! Override to customize behavior before \p playbackRegion is destroyed during destroyPlaybackRegion().
@@ -1177,6 +1179,7 @@ public:
     // Playback Region Management
     ARAPlaybackRegionRef createPlaybackRegion (ARAAudioModificationRef audioModificationRef, ARAPlaybackRegionHostRef hostRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept override;
     void updatePlaybackRegionProperties (ARAPlaybackRegionRef playbackRegionRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept override;
+    ARA_DRAFT bool isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept override;
     void getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept override;
     void destroyPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept override;
 

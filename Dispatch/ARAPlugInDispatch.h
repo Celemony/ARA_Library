@@ -186,10 +186,12 @@ public:
     virtual ARAPlaybackRegionRef createPlaybackRegion (ARAAudioModificationRef audioModificationRef, ARAPlaybackRegionHostRef hostRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::updatePlaybackRegionProperties
     virtual void updatePlaybackRegionProperties (ARAPlaybackRegionRef playbackRegionRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept = 0;
-    //! \copydoc ARADocumentControllerInterface::destroyPlaybackRegion
-    virtual void destroyPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept = 0;
+    //! \copydoc ARADocumentControllerInterface::isPlaybackRegionPreservingAudioSourceSignal
+    ARA_DRAFT virtual bool isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept = 0;
     //! \copydoc ARADocumentControllerInterface::getPlaybackRegionHeadAndTailTime
     virtual void getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept = 0;
+    //! \copydoc ARADocumentControllerInterface::destroyPlaybackRegion
+    virtual void destroyPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept = 0;
 //@}
 
 //! @name Content Reader Management

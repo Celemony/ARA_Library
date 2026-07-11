@@ -349,7 +349,7 @@ public:
     ARAAudioModificationRef cloneAudioModification (ARAAudioModificationRef audioModificationRef, ARAAudioModificationHostRef hostRef, const ARAAudioModificationProperties* properties) noexcept;
     //! \copydoc ARADocumentControllerInterface::updateAudioModificationProperties
     void updateAudioModificationProperties (ARAAudioModificationRef audioModificationRef, const ARAAudioModificationProperties* properties) noexcept;
-    //! Test whether isAudioModificationPreservingAudioSourceSignal () is supported by the plug-in.
+    //! Test whether isAudioModificationPreservingAudioSourceSignal() is supported by the plug-in.
     bool supportsIsAudioModificationPreservingAudioSourceSignal () noexcept;
     //! \copydoc ARADocumentControllerInterface::isAudioModificationPreservingAudioSourceSignal
     bool isAudioModificationPreservingAudioSourceSignal (ARAAudioModificationRef audioModificationRef) noexcept;
@@ -360,12 +360,16 @@ public:
 //@}
 
 //! @name Playback Region Management
-//! (getPlaybackRegionHeadAndTailTime () resolves to no-op for pre-ARA-2.0 plug-ins and always returns 0.0 as times)
+//! (getPlaybackRegionHeadAndTailTime() resolves to no-op for pre-ARA-2.0 plug-ins and always returns 0.0 as times)
 //@{
     //! \copydoc ARADocumentControllerInterface::createPlaybackRegion
     ARAPlaybackRegionRef createPlaybackRegion (ARAAudioModificationRef audioModificationRef, ARAPlaybackRegionHostRef hostRef, const ARAPlaybackRegionProperties* properties) noexcept;
     //! \copydoc ARADocumentControllerInterface::updatePlaybackRegionProperties
     void updatePlaybackRegionProperties (ARAPlaybackRegionRef playbackRegionRef, const ARAPlaybackRegionProperties* properties) noexcept;
+    //! Test whether isPlaybackRegionPreservingAudioSourceSignal() is supported by the plug-in.
+    ARA_DRAFT bool supportsIsPlaybackRegionPreservingAudioSourceSignal () noexcept;
+    //! \copydoc ARADocumentControllerInterface::isPlaybackRegionPreservingAudioSourceSignal
+    ARA_DRAFT bool isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept;
     //! \copydoc ARADocumentControllerInterface::getPlaybackRegionHeadAndTailTime
     void getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept;
     //! \copydoc ARADocumentControllerInterface::destroyPlaybackRegion

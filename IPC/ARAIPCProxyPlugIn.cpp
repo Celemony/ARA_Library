@@ -234,6 +234,7 @@ public:
     // Playback Region Management
     ARAPlaybackRegionRef createPlaybackRegion (ARAAudioModificationRef audioModificationRef, ARAPlaybackRegionHostRef hostRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept override;
     void updatePlaybackRegionProperties (ARAPlaybackRegionRef playbackRegionRef, PropertiesPtr<ARAPlaybackRegionProperties> properties) noexcept override;
+    bool isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept override;
     void getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept override;
     void destroyPlaybackRegion (ARAPlaybackRegionRef playbackRegionRef) noexcept override;
 
@@ -782,6 +783,17 @@ void DocumentController::updatePlaybackRegionProperties (ARAPlaybackRegionRef pl
     ARA_INTERNAL_ASSERT (properties->structSize >= ARA::kARAPlaybackRegionPropertiesMinSize);
 
     remoteCall (ARA_IPC_METHOD_ID (ARADocumentControllerInterface, updatePlaybackRegionProperties), _remoteRef, playbackRegionRef, *properties);
+}
+
+bool DocumentController::isPlaybackRegionPreservingAudioSourceSignal (ARAPlaybackRegionRef playbackRegionRef) noexcept
+{
+    ARA_LOG_HOST_ENTRY (playbackRegionRef);
+    ARA_INTERNAL_ASSERT (isValidInstance (this));
+    ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
+
+    ARABool result;
+    remoteCall (result, ARA_IPC_METHOD_ID (ARADocumentControllerInterface, isPlaybackRegionPreservingAudioSourceSignal), _remoteRef, playbackRegionRef);
+    return (result != kARAFalse);
 }
 
 void DocumentController::getPlaybackRegionHeadAndTailTime (ARAPlaybackRegionRef playbackRegionRef, ARATimeDuration* headTime, ARATimeDuration* tailTime) noexcept

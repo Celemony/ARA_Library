@@ -1115,6 +1115,7 @@ inline const char* decodeHostMessageID (const MessageID messageID, const bool om
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isLicensedForCapabilities)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, storeAudioSourceToAudioFileChunk)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isAudioModificationPreservingAudioSourceSignal)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARADocumentControllerInterface, isPlaybackRegionPreservingAudioSourceSignal)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackRendererInterface, addPlaybackRegion)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackRendererInterface, removePlaybackRegion)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAEditorRendererInterface, addPlaybackRegion)

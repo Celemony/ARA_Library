@@ -1137,6 +1137,14 @@ void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageD
 
         fromRef (controllerRef)->updatePlaybackRegionProperties (playbackRegionRef, &properties);
     }
+    else if (messageID == ARA_IPC_METHOD_ID (ARADocumentControllerInterface, isPlaybackRegionPreservingAudioSourceSignal))
+    {
+        ARADocumentControllerRef controllerRef;
+        ARAPlaybackRegionRef playbackRegionRef;
+        decodeArguments (decoder, controllerRef, playbackRegionRef);
+
+        encodeReply (replyEncoder, (fromRef (controllerRef)->isPlaybackRegionPreservingAudioSourceSignal (playbackRegionRef)) ? kARATrue : kARAFalse);
+    }
     else if (messageID == ARA_IPC_METHOD_ID (ARADocumentControllerInterface, getPlaybackRegionHeadAndTailTime))
     {
         ARADocumentControllerRef controllerRef;
