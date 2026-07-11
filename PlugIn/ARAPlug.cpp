@@ -1148,10 +1148,24 @@ void DocumentController::notifyModelUpdates () noexcept
         hostModelUpdateController->notifyPlaybackRegionContentChanged (playbackRegionUpdate.first->getHostRef (), nullptr, playbackRegionUpdate.second);
     _playbackRegionContentUpdates.clear ();
 
+    if (_regionSequenceDataUpdates.size () > 0)
+    {
+        if (hostModelUpdateController->supportsNotifyRegionSequenceDataChanged ())
+        {
+            for (const auto& regionSequence : _regionSequenceDataUpdates)
+                hostModelUpdateController->notifyRegionSequenceDataChanged (regionSequence->getHostRef ());
+        }
+        else
+        {
+            _documentDataChanged = true;    // aka notifyDocumentDataChanged()
+        }
+        _regionSequenceDataUpdates.clear ();
+    }
+
     if (_documentDataChanged)
         hostModelUpdateController->notifyDocumentDataChanged ();
     _documentDataChanged = false;
-        
+
     didNotifyModelUpdates ();
 }
 
@@ -1477,6 +1491,9 @@ void DocumentController::destroyRegionSequence (ARARegionSequenceRef regionSeque
 
     ARA_LOG_MODELOBJECT_LIFETIME ("will destroy region sequence", regionSequence);
     willDestroyRegionSequence (regionSequence);
+
+    _regionSequenceDataUpdates.erase (regionSequence);
+
     doDestroyRegionSequence (regionSequence);
 }
 
@@ -2334,6 +2351,12 @@ void DocumentController::notifyPlaybackRegionContentChanged (PlaybackRegion* pla
 {
     if (getHostModelUpdateController ())
         _playbackRegionContentUpdates[playbackRegion] += scopeFlags;
+}
+
+void DocumentController::notifyRegionSequenceDataChanged (RegionSequence* regionSequence) noexcept
+{
+    if (getHostModelUpdateController ())
+        _regionSequenceDataUpdates.insert (regionSequence);
 }
 
 void DocumentController::notifyDocumentDataChanged () noexcept

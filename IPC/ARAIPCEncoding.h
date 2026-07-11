@@ -1158,6 +1158,7 @@ inline const char* decodePlugInMessageID (const MessageID messageID, const bool 
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyAudioModificationContentChanged)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyPlaybackRegionContentChanged)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyDocumentDataChanged)
+        ARA_IPC_INTERFACE_MESSAGE_CASE (ARAModelUpdateControllerInterface, notifyRegionSequenceDataChanged)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackControllerInterface, requestStartPlayback)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackControllerInterface, requestStopPlayback)
         ARA_IPC_INTERFACE_MESSAGE_CASE (ARAPlaybackControllerInterface, requestSetPlaybackPosition)

@@ -1780,6 +1780,17 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
 
         documentController->getHostModelUpdateController ()->notifyDocumentDataChanged ();
     }
+    else if (messageID == ARA_IPC_METHOD_ID (ARAModelUpdateControllerInterface, notifyRegionSequenceDataChanged))
+    {
+        ARAModelUpdateControllerHostRef controllerHostRef;
+        ARARegionSequenceHostRef regionSequenceHostRef;
+        decodeArguments (decoder, controllerHostRef, regionSequenceHostRef);
+
+        auto documentController { fromHostRef (controllerHostRef) };
+        ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
+
+        documentController->getHostModelUpdateController ()->notifyRegionSequenceDataChanged (regionSequenceHostRef);
+    }
 
     // ARAPlaybackControllerInterface
     else if (messageID == ARA_IPC_METHOD_ID (ARAPlaybackControllerInterface, requestStartPlayback))

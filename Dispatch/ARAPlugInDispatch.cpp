@@ -645,19 +645,38 @@ void HostModelUpdateController::notifyAudioModificationContentChanged (ARAAudioM
     getInterface ()->notifyAudioModificationContentChanged (getRef (), audioModificationHostRef, range, scopeFlags);
 }
 
+bool HostModelUpdateController::supportsNotifyPlaybackRegionContentChanged () noexcept
+{
+    return getInterface ().implements<&ARAModelUpdateControllerInterface::notifyPlaybackRegionContentChanged> ();
+}
+
 void HostModelUpdateController::notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef,
                                                                 const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept
 {
-    // notifyPlaybackRegionContentChanged was optional in the ARA 2.0 draft, so check its presence here to be safe
-    if (getInterface ().implements<&ARAModelUpdateControllerInterface::notifyPlaybackRegionContentChanged> ())
+    if (supportsNotifyPlaybackRegionContentChanged ())
         getInterface ()->notifyPlaybackRegionContentChanged (getRef (), playbackRegionHostRef, range, scopeFlags);
+}
+
+bool HostModelUpdateController::supportsNotifyDocumentDataChanged () noexcept
+{
+    return getInterface ().implements<&ARAModelUpdateControllerInterface::notifyDocumentDataChanged> ();
 }
 
 void HostModelUpdateController::notifyDocumentDataChanged () noexcept
 {
-    // notifyDocumentDataChanged was added in ARA 2.3 draft, so check its presence here
-    if (getInterface ().implements<&ARAModelUpdateControllerInterface::notifyDocumentDataChanged> ())
+    if (supportsNotifyDocumentDataChanged ())
         getInterface ()->notifyDocumentDataChanged (getRef ());
+}
+
+bool HostModelUpdateController::supportsNotifyRegionSequenceDataChanged () noexcept
+{
+    return getInterface ().implements<&ARAModelUpdateControllerInterface::notifyRegionSequenceDataChanged> ();
+}
+
+void HostModelUpdateController::notifyRegionSequenceDataChanged (ARARegionSequenceHostRef regionSequenceHostRef) noexcept
+{
+    if (supportsNotifyRegionSequenceDataChanged ())
+        getInterface ()->notifyRegionSequenceDataChanged (getRef (), regionSequenceHostRef);
 }
 
 /*******************************************************************************/

@@ -180,6 +180,8 @@ public:
     virtual void notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef, const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept = 0;
     //! \copydoc ARAModelUpdateControllerInterface::notifyDocumentDataChanged
     virtual void notifyDocumentDataChanged () noexcept = 0;
+    //! \copydoc ARAModelUpdateControllerInterface::notifyRegionSequenceDataChanged
+    ARA_DRAFT virtual void notifyRegionSequenceDataChanged (ARA::ARARegionSequenceHostRef regionSequenceHostRef) noexcept = 0;
 };
 ARA_MAP_HOST_REF (ModelUpdateControllerInterface, ARAModelUpdateControllerHostRef)
 

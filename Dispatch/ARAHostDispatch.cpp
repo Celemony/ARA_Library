@@ -218,15 +218,21 @@ namespace ModelUpdateControllerDispatcher
         fromHostRef (controllerHostRef)->notifyDocumentDataChanged ();
     }
 
+    static void ARA_CALL notifyRegionSequenceDataChanged (ARAModelUpdateControllerHostRef controllerHostRef, ARARegionSequenceHostRef regionSequenceHostRef) noexcept
+    {
+        fromHostRef (controllerHostRef)->notifyRegionSequenceDataChanged (regionSequenceHostRef);
+    }
+
     static const ARAModelUpdateControllerInterface* getInterface () noexcept
     {
-        static const SizedStruct<&ARAModelUpdateControllerInterface::notifyDocumentDataChanged> ifc =
+        static const SizedStruct<&ARAModelUpdateControllerInterface::notifyRegionSequenceDataChanged> ifc =
         {
             ModelUpdateControllerDispatcher::notifyAudioSourceAnalysisProgress,
             ModelUpdateControllerDispatcher::notifyAudioSourceContentChanged,
             ModelUpdateControllerDispatcher::notifyAudioModificationContentChanged,
             ModelUpdateControllerDispatcher::notifyPlaybackRegionContentChanged,
-            ModelUpdateControllerDispatcher::notifyDocumentDataChanged
+            ModelUpdateControllerDispatcher::notifyDocumentDataChanged,
+            ModelUpdateControllerDispatcher::notifyRegionSequenceDataChanged
         };
         return &ifc;
     }

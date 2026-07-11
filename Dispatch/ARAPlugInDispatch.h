@@ -452,11 +452,19 @@ public:
     //! \copydoc ARAModelUpdateControllerInterface::notifyAudioModificationContentChanged
     void notifyAudioModificationContentChanged (ARAAudioModificationHostRef audioModificationHostRef,
                                                 const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept;
+    //! Test whether notifyPlaybackRegionContentChanged() is supported by the host.
+    bool supportsNotifyPlaybackRegionContentChanged () noexcept;
     //! \copydoc ARAModelUpdateControllerInterface::notifyPlaybackRegionContentChanged
     void notifyPlaybackRegionContentChanged (ARAPlaybackRegionHostRef playbackRegionHostRef,
                                              const ARAContentTimeRange* range, ContentUpdateScopes scopeFlags) noexcept;
+    //! Test whether notifyDocumentDataChanged() is supported by the host.
+    bool supportsNotifyDocumentDataChanged () noexcept;
     //! \copydoc ARAModelUpdateControllerInterface::notifyDocumentDataChanged
     void notifyDocumentDataChanged () noexcept;
+    //! Test whether notifyRegionSequenceDataChanged() is supported by the host.
+    ARA_DRAFT bool supportsNotifyRegionSequenceDataChanged () noexcept;
+    //! \copydoc ARAModelUpdateControllerInterface::notifyRegionSequenceDataChanged
+    ARA_DRAFT void notifyRegionSequenceDataChanged (ARARegionSequenceHostRef regionSequenceHostRef) noexcept;
 };
 
 /*******************************************************************************/
