@@ -161,75 +161,74 @@ ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAIPCPlugInInstanceRef)
 
 
 // primitives for appending an argument to a message
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const int32_t argValue)
+inline void _appendToMessage (MessageEncoder* encoder, const int32_t argValue)
 {
-    encoder->appendInt32 (argKey, argValue);
+    encoder->appendInt32 (argValue);
 }
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const int64_t argValue)
+inline void _appendToMessage (MessageEncoder* encoder, const int64_t argValue)
 {
-    encoder->appendInt64 (argKey, argValue);
+    encoder->appendInt64 (argValue);
 }
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const size_t argValue)
+inline void _appendToMessage (MessageEncoder* encoder, const size_t argValue)
 {
-    encoder->appendSize (argKey, argValue);
+    encoder->appendSize (argValue);
 }
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const float argValue)
+inline void _appendToMessage (MessageEncoder* encoder, const float argValue)
 {
-    encoder->appendFloat (argKey, argValue);
+    encoder->appendFloat (argValue);
 }
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const double argValue)
+inline void _appendToMessage (MessageEncoder* encoder, const double argValue)
 {
-    encoder->appendDouble (argKey, argValue);
+    encoder->appendDouble (argValue);
 }
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const char* const argValue)
+inline void _appendToMessage (MessageEncoder* encoder, const char* const argValue)
 {
-    encoder->appendString (argKey, argValue);
+    encoder->appendString (argValue);
 }
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const BytesEncoder& argValue)
+inline void _appendToMessage (MessageEncoder* encoder, const BytesEncoder& argValue)
 {
     const uint8_t* bytes;
     size_t size;
     bool copy;
     argValue (bytes, size, copy);
-    encoder->appendBytes (argKey, bytes, size, copy);
+    encoder->appendBytes (bytes, size, copy);
 }
 
 // primitives for reading an (optional) argument from a message
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, int32_t& argValue)
+inline bool _readFromMessage (const MessageDecoder* decoder, int32_t& argValue)
 {
-    return decoder->readInt32 (argKey, &argValue);
+    return decoder->readInt32 (argValue);
 }
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, int64_t& argValue)
+inline bool _readFromMessage (const MessageDecoder* decoder, int64_t& argValue)
 {
-    return decoder->readInt64 (argKey, &argValue);
+    return decoder->readInt64 (argValue);
 }
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, size_t& argValue)
+inline bool _readFromMessage (const MessageDecoder* decoder, size_t& argValue)
 {
-    return decoder->readSize (argKey, &argValue);
+    return decoder->readSize (argValue);
 }
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, float& argValue)
+inline bool _readFromMessage (const MessageDecoder* decoder, float& argValue)
 {
-    return decoder->readFloat (argKey, &argValue);
+    return decoder->readFloat (argValue);
 }
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, double& argValue)
+inline bool _readFromMessage (const MessageDecoder* decoder, double& argValue)
 {
-    return decoder->readDouble (argKey, &argValue);
+    return decoder->readDouble (argValue);
 }
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, const char*& argValue)
+inline bool _readFromMessage (const MessageDecoder* decoder, const char*& argValue)
 {
-    return decoder->readString (argKey, &argValue);
+    return decoder->readString (argValue);
 }
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, BytesDecoder& argValue)
+inline bool _readFromMessage (const MessageDecoder* decoder, BytesDecoder& argValue)
 {
     size_t receivedSize;
-    const auto found { decoder->readBytesSize (argKey, &receivedSize) };
+    if (!decoder->readBytesSize (receivedSize))
+        return false;
     auto availableSize { receivedSize };
     const auto bytes { argValue (availableSize) };
-    if (!found)
-        return false;
     if (availableSize < receivedSize)
         return false;
-    decoder->readBytes (argKey, bytes);
+    decoder->readBytes (bytes);
     return true;
 }
 
@@ -243,38 +242,20 @@ inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgume
 // templated overloads of the IPCMessageEn-/Decoder primitives for ARA (host) ref types,
 // which are stored as size_t
 template<typename T, std::enable_if_t<_IsRefType<T>, bool> = true>
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const T argValue)
+inline void _appendToMessage (MessageEncoder* encoder, const T argValue)
 {
-    encoder->appendSize (argKey, reinterpret_cast<size_t> (argValue));
+    encoder->appendSize (reinterpret_cast<size_t> (argValue));
 }
 template<typename T, std::enable_if_t<_IsRefType<T>, bool> = true>
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, T& argValue)
+inline bool _readFromMessage (const MessageDecoder* decoder, T& argValue)
 {
     // \todo is there a safe/proper way across all compilers for this cast to avoid the copy?
 //  return decoder.readSize (argKey, *reinterpret_cast<size_t*> (&argValue));
     size_t tmp;
-    const auto success { decoder->readSize (argKey, &tmp) };
+    const auto success { decoder->readSize (tmp) };
     argValue = reinterpret_cast<T> (tmp);
     return success;
 }
-
-/*  instead of using ARA_IPC_ENCODE_EMBEDDED_BYTES below, we could instead allow
-    sending arrays of ARABytes via this overload (seems simpler but less efficient):
-// to read and write arrays of ARAByte (not raw bytes but e.g. ARAKeySignatureIntervalUsage),
-// we use int32_t to keep the IPCMessageEn-/Decoder API small
-inline void _appendToMessage (MessageEncoder* encoder, const MessageArgumentKey argKey, const ARAByte argValue)
-{
-    encoder->appendInt32 (argKey, static_cast<int32_t> (argValue));
-}
-inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgumentKey argKey, ARAByte& argValue)
-{
-    int32_t tmp;
-    const auto result { decoder->readInt32 (argKey, tmp) };
-    ARA_INTERNAL_ASSERT ((0 <= tmp) && (tmp <= static_cast<int32_t> (std::numeric_limits<ARAByte>::max ())));
-    argValue = static_cast<ARAByte> (tmp);
-    return result;
-}
-*/
 
 
 //------------------------------------------------------------------------------
@@ -295,26 +276,26 @@ inline bool _readFromMessage (const MessageDecoder* decoder, const MessageArgume
 // declarations of wrapper functions to implicitly deduce _ValueEn-/Decoder<> -
 // they are defined further down below, after all specializations are defined
 template <typename ValueT>
-inline void _encodeAndAppend (MessageEncoder* encoder, const MessageArgumentKey argKey, const ValueT& argValue);
+inline void _encodeAndAppend (MessageEncoder* encoder, const ValueT& argValue);
 template <typename ValueT>
-inline bool _readAndDecode (ValueT& result, const MessageDecoder* decoder, const MessageArgumentKey argKey);
+inline bool _readAndDecode (ValueT& result, const MessageDecoder* decoder);
 
 
 // primary templates for basic types (numbers, strings, (host)refs and raw bytes)
 template<typename ValueT>
 struct _ValueEncoder
 {
-    static inline void encodeAndAppend (MessageEncoder* encoder, const MessageArgumentKey argKey, const ValueT& argValue)
+    static inline void encodeAndAppend (MessageEncoder* encoder, const ValueT& argValue)
     {
-        _appendToMessage (encoder, argKey, argValue);
+        _appendToMessage (encoder, argValue);
     }
 };
 template<typename ValueT>
 struct _ValueDecoder
 {
-    static inline bool readAndDecode (ValueT& result, const MessageDecoder* decoder, const MessageArgumentKey argKey)
+    static inline bool readAndDecode (ValueT& result, const MessageDecoder* decoder)
     {
-        return _readFromMessage (decoder, argKey, result);
+        return _readFromMessage (decoder, result);
     }
 };
 
@@ -324,23 +305,17 @@ struct _ValueDecoder
 template<typename ValueT>
 struct _CompoundValueEncoderBase
 {
-    static inline void encodeAndAppend (MessageEncoder* encoder, const MessageArgumentKey argKey, const ValueT& argValue)
+    static inline void encodeAndAppend (MessageEncoder* encoder, const ValueT& argValue)
     {
-        auto subEncoder { encoder->appendSubMessage (argKey) };
-        ARA_INTERNAL_ASSERT (subEncoder != nullptr);
-        _ValueEncoder<ValueT>::encode (subEncoder.get (), argValue);
+        _ValueEncoder<ValueT>::encode (encoder, argValue);
     }
 };
 template<typename ValueT>
 struct _CompoundValueDecoderBase
 {
-    static inline bool readAndDecode (ValueT& result, const MessageDecoder* decoder, const MessageArgumentKey argKey)
+    static inline bool readAndDecode (ValueT& result, const MessageDecoder* decoder)
     {
-        auto subDecoder { decoder->readSubMessage (argKey) };
-        if (subDecoder == nullptr)
-            return false;
-        const auto success { _ValueDecoder<ValueT>::decode (result, subDecoder.get ()) };
-        return success;
+        return _ValueDecoder<ValueT>::decode (result, decoder);
     }
 };
 
@@ -351,11 +326,10 @@ struct _ValueEncoder<ArrayArgument<ElementT>> : public _CompoundValueEncoderBase
 {
     static inline void encode (MessageEncoder* encoder, const ArrayArgument<ElementT>& value)
     {
-        ARA_INTERNAL_ASSERT (value.count <= static_cast<size_t> (std::numeric_limits<MessageArgumentKey>::max ()));
-        const auto count { static_cast<MessageArgumentKey> (value.count) };
-        _encodeAndAppend (encoder, 0, count);
-        for (auto i { 0 }; i < count; ++i)
-            _encodeAndAppend (encoder, i + 1, value.elements[static_cast<size_t> (i)]);
+        ARA_INTERNAL_ASSERT ((value.count == 0) || (value.elements != nullptr));
+        _encodeAndAppend (encoder, value.count);
+        for (size_t i { 0 }; i < value.count; ++i)
+            _encodeAndAppend (encoder, value.elements[i]);
     }
 };
 
@@ -366,14 +340,14 @@ struct _ValueDecoder<ArrayArgument<ElementT>> : public _CompoundValueDecoderBase
     static inline bool decode (ArrayArgument<ElementT>& result, const MessageDecoder* decoder)
     {
         bool success { true };
-        MessageArgumentKey count;
-        success &= _readAndDecode (count, decoder, 0);
-        success &= (count == static_cast<MessageArgumentKey> (result.count));
-        if (count > static_cast<MessageArgumentKey> (result.count))
-            count = static_cast<MessageArgumentKey> (result.count);
+        size_t count;
+        success &= _readAndDecode (count, decoder);
+        success &= (count == result.count);
+        if (count > result.count)
+            count = result.count;
 
-        for (auto i { 0 }; i < count; ++i)
-            success &= _readAndDecode (result.elements[static_cast<size_t> (i)], decoder, i + 1);
+        for (size_t i { 0 }; i < count; ++i)
+            success &= _readAndDecode (result.elements[i], decoder);
         return success;
     }
 };
@@ -385,12 +359,24 @@ struct _ValueDecoder<std::vector<ElementT>> : public _CompoundValueDecoderBase<s
     static inline bool decode (std::vector<ElementT>& result, const MessageDecoder* decoder)
     {
         bool success { true };
-        MessageArgumentKey count;
-        success &= _readAndDecode (count, decoder, 0);
-        result.resize (static_cast<size_t> (count));
-        for (auto i { 0 }; i < count; ++i)
-            success &= _readAndDecode (result[static_cast<size_t> (i)], decoder, i + 1);
+        size_t count;
+        success &= _readAndDecode (count, decoder);
+        result.resize (count);
+        for (size_t i { 0 }; i < count; ++i)
+            success &= _readAndDecode (result[i], decoder);
         return success;
+    }
+};
+
+// specialization for encoding optional types
+template<typename ValueT>
+struct _ValueEncoder<std::optional<ValueT>>
+{
+    static inline void encodeAndAppend (MessageEncoder* encoder, const std::optional<ValueT>& argValue)
+    {
+        _appendToMessage (encoder, static_cast<int32_t> ((argValue) ? 1 : 0));
+        if (argValue)
+            _ValueEncoder<std::remove_const_t<ValueT>>::encodeAndAppend (encoder, *argValue);
     }
 };
 
@@ -398,18 +384,31 @@ struct _ValueDecoder<std::vector<ElementT>> : public _CompoundValueDecoderBase<s
 template<typename ValueT>
 struct _ValueDecoder<std::optional<ValueT>>
 {
-    static inline bool readAndDecode (std::optional<ValueT>& result, const MessageDecoder* decoder, const MessageArgumentKey argKey)
+    static inline bool readAndDecode (std::optional<ValueT>& result, const MessageDecoder* decoder)
     {
-        ValueT value;
-        if (_readAndDecode (value, decoder, argKey))
+        result = std::nullopt;
+        int32_t hasValue;
+        if (!_readAndDecode (hasValue, decoder))
+            return false;
+
+        if (hasValue != 0)
+        {
+            ValueT value;
+            if (!_readAndDecode (value, decoder))
+                return false;
             result = std::make_optional<ValueT> (std::move (value));
-        else
-            result = std::nullopt;
-        return true;    // failing to read an optional is not an error
+        }
+        return true;
     }
 };
 
+
 // specializations for en/decoding each ARA struct
+
+#define ARA_IPC_HAS_ADDENDUM_MEMBER(var, member)                                                \
+        /* \todo ARA_IMPLEMENTS_FIELD decorates the type with the ARA:: namespace,     */       \
+        /* this conflicts with decltype's result - this copied version drops the ARA:: */       \
+        (var.structSize > offsetof (std::remove_reference_t<decltype (var)>, member))
 
 #define ARA_IPC_BEGIN_ENCODE(StructT)                                                           \
 template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<StructT>            \
@@ -417,41 +416,40 @@ template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<Stru
     using StructType = StructT;                                                                 \
     static inline void encode (MessageEncoder* encoder, const StructType& value)                \
     {
+#define ARA_IPC_BEGIN_ENCODE_SIZED(StructT)                                                     \
+        ARA_IPC_BEGIN_ENCODE (StructT)                                                          \
+        _encodeAndAppend (encoder, value.structSize);
 #define ARA_IPC_ENCODE_MEMBER(member)                                                           \
-        _encodeAndAppend (encoder, offsetof (StructType, member), value.member);
+        _encodeAndAppend (encoder, value.member);
 #define ARA_IPC_ENCODE_EMBEDDED_BYTES(member)                                                   \
         const BytesEncoder tmp_##member { reinterpret_cast<const uint8_t*> (value.member), sizeof (value.member), true }; \
-        _encodeAndAppend (encoder, offsetof (StructType, member), tmp_##member);
+        _encodeAndAppend (encoder, tmp_##member);
 #define ARA_IPC_ENCODE_EMBEDDED_ARRAY(member)                                                   \
         const ArrayArgument<const std::remove_extent_t<decltype (value.member)>> tmp_##member { value.member, std::extent_v<decltype (value.member)> }; \
-        _encodeAndAppend (encoder, offsetof (StructType, member), tmp_##member);
+        _encodeAndAppend (encoder, tmp_##member);
 #define ARA_IPC_ENCODE_VARIABLE_ARRAY(member, count)                                            \
-        if ((value.count > 0) && (value.member != nullptr)) {                                   \
-            const ArrayArgument<const std::remove_pointer_t<decltype (value.member)>> tmp_##member { value.member, value.count }; \
-            _encodeAndAppend (encoder, offsetof (StructType, member), tmp_##member);            \
-        }
+        const ArrayArgument<const std::remove_pointer_t<decltype (value.member)>> tmp_##member { value.member, (value.member) ? value.count : 0 }; \
+        _encodeAndAppend (encoder, tmp_##member);
 #define ARA_IPC_ENCODE_OPTIONAL_MEMBER(member)                                                  \
-        if (value.member != nullptr)                                                            \
-            ARA_IPC_ENCODE_MEMBER (member)
-#define ARA_IPC_HAS_ADDENDUM_MEMBER(member)                                                     \
-        /* \todo ARA_IMPLEMENTS_FIELD decorates the type with the ARA:: namespace,     */       \
-        /* this conflicts with decltype's result - this copied version drops the ARA:: */       \
-        (value.structSize > offsetof (std::remove_reference_t<decltype (value)>, member))
+        _encodeAndAppend (encoder, (value.member) ? std::make_optional (value.member) : std::nullopt);
 #define ARA_IPC_ENCODE_ADDENDUM_MEMBER(member)                                                  \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (member))                                               \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                        \
             ARA_IPC_ENCODE_MEMBER (member)
 #define ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER(member)                                         \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (member))                                               \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                        \
             ARA_IPC_ENCODE_OPTIONAL_MEMBER (member)
 #define ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR(member)                                              \
-        if (value.member != nullptr)                                                            \
-            _encodeAndAppend (encoder, offsetof (StructType, member), *value.member);
+        _encodeAndAppend (encoder, (value.member) ? std::make_optional (*value.member) : std::nullopt);
 #define ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR(member)                                     \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (member))                                               \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                        \
             ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR (member)
 #define ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY(member, count)                                   \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (member))                                               \
-            ARA_IPC_ENCODE_VARIABLE_ARRAY (member, count)
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member)) {                                      \
+            ARA_IPC_ENCODE_VARIABLE_ARRAY (member, count)                                       \
+        } else {                                                                                \
+            const ArrayArgument<const std::remove_pointer_t<decltype (value.member)>> tmp_##member { value.member, 0 }; \
+            _encodeAndAppend (encoder, tmp_##member);                                           \
+        }
 #define ARA_IPC_END_ENCODE                                                                      \
     }                                                                                           \
 };
@@ -466,25 +464,29 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
         bool success { true };
 #define ARA_IPC_BEGIN_DECODE_SIZED(StructT)                                                     \
         ARA_IPC_BEGIN_DECODE (StructT)                                                          \
-        result.structSize = k##StructT##MinSize;
+        success &= _readAndDecode (result.structSize, decoder);                                 \
+        ARA_INTERNAL_ASSERT (success && (result.structSize >= k##StructT##MinSize));            \
+        /* this relies on the IPC code always supporting all data types in the API, because */  \
+        /* otherwise we'd need to limit structSize, since data beyond that is uninitialized */  \
+        /* (could be implemented by tracking the highest decoded member while decoding).    */
 #define ARA_IPC_DECODE_MEMBER(member)                                                           \
-        success &= _readAndDecode (result.member, decoder, offsetof (StructType, member));      \
+        success &= _readAndDecode (result.member, decoder);                                     \
         ARA_INTERNAL_ASSERT (success);
 #define ARA_IPC_DECODE_EMBEDDED_BYTES(member)                                                   \
         auto resultSize_##member { sizeof (result.member) };                                    \
         BytesDecoder tmp_##member { reinterpret_cast<uint8_t*> (result.member), resultSize_##member }; \
-        success &= _readAndDecode (tmp_##member, decoder, offsetof (StructType, member));       \
+        success &= _readAndDecode (tmp_##member, decoder);                                      \
         success &= (resultSize_##member == sizeof (result.member));                             \
         ARA_INTERNAL_ASSERT (success);
 #define ARA_IPC_DECODE_EMBEDDED_ARRAY(member)                                                   \
         ArrayArgument<std::remove_extent_t<decltype (result.member)>> tmp_##member { result.member, std::extent_v<decltype (result.member)> }; \
-        success &= _readAndDecode (tmp_##member, decoder, offsetof (StructType, member));       \
+        success &= _readAndDecode (tmp_##member, decoder);                                      \
         ARA_INTERNAL_ASSERT (success);
 #define ARA_IPC_DECODE_VARIABLE_ARRAY(member, count, updateCount)                               \
         /* \todo the outer struct contains a pointer to the inner struct, so we need some */    \
         /*       thread-safe place to store it - is there a better way to achieve this?   */    \
         thread_local std::vector<typename std::remove_const_t<std::remove_pointer_t<decltype (result.member)>>> tmp_##member; \
-        if (_readAndDecode (tmp_##member, decoder, offsetof (StructType, member))) {            \
+        if (_readAndDecode (tmp_##member, decoder)) {                                           \
             result.member = tmp_##member.data ();                                               \
             if (updateCount) { result.count = tmp_##member.size (); }                           \
         } else {                                                                                \
@@ -492,38 +494,32 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
             if (updateCount) { result.count = 0; }                                              \
         }
 #define ARA_IPC_DECODE_OPTIONAL_MEMBER(member)                                                  \
-        if (!_readAndDecode (result.member, decoder, offsetof (StructType, member)))            \
-            result.member = nullptr;
-#define ARA_IPC_UPDATE_STRUCT_SIZE_FOR_OPTIONAL(member)                                         \
-        /* \todo ARA_IMPLEMENTED_STRUCT_SIZE decorates the type with the ARA:: namespace, */    \
-        /* conflicting with the local alias StructType - this copy simply drops the ARA:: */    \
-        constexpr auto size { offsetof (StructType, member) + sizeof (static_cast<StructType*> (nullptr)->member) }; \
-        result.structSize = std::max (result.structSize, size);
+        std::optional<std::remove_reference_t<decltype (result.member)>> tmp_##member;          \
+        result.member = nullptr;                                                                \
+        success &= _readAndDecode (tmp_##member, decoder);                                      \
+        ARA_INTERNAL_ASSERT (success);                                                          \
+        if (success && tmp_##member)                                                            \
+            result.member = std::move (*tmp_##member);
 #define ARA_IPC_DECODE_ADDENDUM_MEMBER(member)                                                  \
-        if (_readAndDecode (result.member, decoder, offsetof (StructType, member))) {           \
-            ARA_IPC_UPDATE_STRUCT_SIZE_FOR_OPTIONAL (member);                                   \
-        }
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
+            { ARA_IPC_DECODE_MEMBER (member) }
 #define ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER(member)                                         \
-        ARA_IPC_DECODE_ADDENDUM_MEMBER (member)                                                 \
-        else {                                                                                  \
-            result.member = nullptr;                                                            \
-        }
-#define ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR(member, OPTIONAL_UPDATE_MACRO)                       \
-        auto subDecoder_##member { decoder->readSubMessage (offsetof (StructType, member)) };   \
-        if (subDecoder_##member != nullptr) {                                                   \
-            /* \todo the outer struct contains a pointer to the inner struct, so we need some */\
-            /*       thread-safe place to store it - is there a better way to achieve this?   */\
-            thread_local std::remove_const_t<std::remove_pointer_t<decltype (result.member)>> cache; \
-            success &= _ValueDecoder<decltype (cache)>::decode (cache, subDecoder_##member.get ());  \
-            ARA_INTERNAL_ASSERT (success);                                                      \
-            result.member = &cache;                                                             \
-            { OPTIONAL_UPDATE_MACRO }                                                           \
-        }                                                                                       \
-        else {                                                                                  \
-            result.member = nullptr;                                                            \
-        }
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
+           { ARA_IPC_DECODE_OPTIONAL_MEMBER (member) }
+#define ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY(member, count, updateCount)                      \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
+           { ARA_IPC_DECODE_VARIABLE_ARRAY (member, count, updateCount) }
+#define ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR(member)                                              \
+        /* \todo the outer struct contains a pointer to the inner struct, so we need some */    \
+        /*       thread-safe place to store it - is there a better way to achieve this?   */    \
+        thread_local std::optional<std::remove_const_t<std::remove_pointer_t<decltype (result.member)>>> cache; \
+        if ((_readAndDecode (cache, decoder)) && (cache))                                       \
+            result.member = &cache.value ();                                                    \
+        else                                                                                    \
+            result.member = nullptr;
 #define ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR(member)                                     \
-        ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR (member, ARA_IPC_UPDATE_STRUCT_SIZE_FOR_OPTIONAL (member))
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
+            { ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR (member) }
 #define ARA_IPC_END_DECODE                                                                      \
         return success;                                                                         \
     }                                                                                           \
@@ -541,14 +537,14 @@ ARA_IPC_BEGIN_DECODE (ARAColor)
     ARA_IPC_DECODE_MEMBER (b)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARADocumentProperties)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARADocumentProperties)
     ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARADocumentProperties)
     ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARAMusicalContextProperties)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARAMusicalContextProperties)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER (name)
     ARA_IPC_ENCODE_ADDENDUM_MEMBER (orderIndex)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
@@ -559,7 +555,7 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAMusicalContextProperties)
     ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARARegionSequenceProperties)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARARegionSequenceProperties)
     ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
     ARA_IPC_ENCODE_MEMBER (orderIndex)
     ARA_IPC_ENCODE_MEMBER (musicalContextRef)
@@ -574,7 +570,7 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARARegionSequenceProperties)
     ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER (persistentID)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARAAudioSourceProperties)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARAAudioSourceProperties)
     ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
     ARA_IPC_ENCODE_MEMBER (persistentID)
     ARA_IPC_ENCODE_MEMBER (sampleCount)
@@ -582,7 +578,7 @@ ARA_IPC_BEGIN_ENCODE (ARAAudioSourceProperties)
     ARA_IPC_ENCODE_MEMBER (channelCount)
     ARA_IPC_ENCODE_MEMBER (merits64BitSamples)
     ARA_IPC_ENCODE_ADDENDUM_MEMBER (channelArrangementDataType)
-    if (ARA_IPC_HAS_ADDENDUM_MEMBER (channelArrangement))
+    if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, channelArrangement))
     {
         // \todo potential endianess conversion is missing here if needed - but this is not known here,
         //       it must be performed in the calling code.
@@ -593,7 +589,7 @@ ARA_IPC_BEGIN_ENCODE (ARAAudioSourceProperties)
         if (size > 0)
         {
             const BytesEncoder tmp_channelArrangement { reinterpret_cast<const uint8_t*> (value.channelArrangement), size, true };
-            _encodeAndAppend (encoder, offsetof (ARAAudioSourceProperties, channelArrangement), tmp_channelArrangement);
+            _encodeAndAppend (encoder, tmp_channelArrangement);
         }
     }
 ARA_IPC_END_ENCODE
@@ -607,8 +603,6 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
     ARA_IPC_DECODE_ADDENDUM_MEMBER (channelArrangementDataType)
     if (result.structSize > offsetof (ARAAudioSourceProperties, channelArrangementDataType))
     {
-        ARA_IPC_UPDATE_STRUCT_SIZE_FOR_OPTIONAL (channelArrangement);
-
         if (result.channelArrangementDataType == kARAChannelArrangementUndefined)
         {
             result.channelArrangement = nullptr;
@@ -620,7 +614,7 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
             thread_local ARAByte cache[2016UL];   // some arbitrary space that can be conveniently allocated
             auto resultSize_channelArrangement { sizeof (cache) };
             BytesDecoder tmp_channelArrangement { cache, resultSize_channelArrangement };
-            if (_readAndDecode (tmp_channelArrangement, decoder, offsetof (ARAAudioSourceProperties, channelArrangement)) &&
+            if (_readAndDecode (tmp_channelArrangement, decoder) &&
                 (resultSize_channelArrangement < sizeof (cache)))
             {
                 result.channelArrangement = &cache;
@@ -635,7 +629,7 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
     }
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARAAudioModificationProperties)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARAAudioModificationProperties)
     ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
     ARA_IPC_ENCODE_MEMBER (persistentID)
 ARA_IPC_END_ENCODE
@@ -644,14 +638,13 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioModificationProperties)
     ARA_IPC_DECODE_MEMBER (persistentID)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARAPlaybackRegionProperties)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARAPlaybackRegionProperties)
     ARA_IPC_ENCODE_MEMBER (transformationFlags)
     ARA_IPC_ENCODE_MEMBER (startInModificationTime)
     ARA_IPC_ENCODE_MEMBER (durationInModificationTime)
     ARA_IPC_ENCODE_MEMBER (startInPlaybackTime)
     ARA_IPC_ENCODE_MEMBER (durationInPlaybackTime)
-    if (!ARA_IPC_HAS_ADDENDUM_MEMBER (regionSequenceRef))
-        ARA_IPC_ENCODE_MEMBER (musicalContextRef)
+    ARA_IPC_ENCODE_MEMBER (musicalContextRef)
     ARA_IPC_ENCODE_ADDENDUM_MEMBER (regionSequenceRef)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER (name)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
@@ -662,7 +655,7 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAPlaybackRegionProperties)
     ARA_IPC_DECODE_MEMBER (durationInModificationTime)
     ARA_IPC_DECODE_MEMBER (startInPlaybackTime)
     ARA_IPC_DECODE_MEMBER (durationInPlaybackTime)
-    ARA_IPC_DECODE_OPTIONAL_MEMBER (musicalContextRef)
+    ARA_IPC_DECODE_MEMBER (musicalContextRef)
     ARA_IPC_DECODE_ADDENDUM_MEMBER (regionSequenceRef)
     ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER (name)
     ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
@@ -776,7 +769,7 @@ ARA_IPC_BEGIN_DECODE (ARAContentLyricsEntry)
     ARA_IPC_DECODE_MEMBER (position)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARARestoreObjectsFilter)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARARestoreObjectsFilter)
     ARA_IPC_ENCODE_MEMBER (documentData)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceArchiveIDs, audioSourceIDsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceCurrentIDs, audioSourceIDsCount)
@@ -791,24 +784,24 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARARestoreObjectsFilter)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioSourceCurrentIDs, audioSourceIDsCount, false)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationArchiveIDs, audioModificationIDsCount, true)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationCurrentIDs, audioModificationIDsCount, false)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceArchiveIDs, regionSequenceIDsCount, true)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceCurrentIDs, regionSequenceIDsCount, false)
+    ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceArchiveIDs, regionSequenceIDsCount, true)
+    ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceCurrentIDs, regionSequenceIDsCount, false)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARAStoreObjectsFilter)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARAStoreObjectsFilter)
     ARA_IPC_ENCODE_MEMBER (documentData)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceRefs, audioSourceRefsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioModificationRefs, audioModificationRefsCount)
-    ARA_IPC_ENCODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount)
+    ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAStoreObjectsFilter)
     ARA_IPC_DECODE_MEMBER (documentData)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioSourceRefs, audioSourceRefsCount, true)
     ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationRefs, audioModificationRefsCount, true)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount, true)
+    ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount, true)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARAProcessingAlgorithmProperties)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARAProcessingAlgorithmProperties)
     ARA_IPC_ENCODE_MEMBER (persistentID)
     ARA_IPC_ENCODE_MEMBER (name)
 ARA_IPC_END_ENCODE
@@ -817,7 +810,7 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAProcessingAlgorithmProperties)
     ARA_IPC_DECODE_MEMBER (name)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARAViewSelection)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARAViewSelection)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (playbackRegionRefs, playbackRegionRefsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount)
     ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR (timeRange)
@@ -825,10 +818,10 @@ ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAViewSelection)
     ARA_IPC_DECODE_VARIABLE_ARRAY (playbackRegionRefs, playbackRegionRefsCount, true)
     ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount, true)
-    ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR (timeRange, )
+    ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR (timeRange)
 ARA_IPC_END_DECODE
 
-ARA_IPC_BEGIN_ENCODE (ARAFactory)
+ARA_IPC_BEGIN_ENCODE_SIZED (ARAFactory)
     ARA_IPC_ENCODE_MEMBER (lowestSupportedApiGeneration)
     ARA_IPC_ENCODE_MEMBER (highestSupportedApiGeneration)
     ARA_IPC_ENCODE_MEMBER (factoryID)
@@ -902,13 +895,14 @@ ARA_IPC_BEGIN_DECODE (GetPlaybackRegionHeadAndTailTimeReply)
 ARA_IPC_END_DECODE
 
 
+#undef ARA_IPC_HAS_ADDENDUM_MEMBER
+
 #undef ARA_IPC_BEGIN_ENCODE
 #undef ARA_IPC_ENCODE_MEMBER
 #undef ARA_IPC_ENCODE_EMBEDDED_BYES
 #undef ARA_IPC_ENCODE_EMBEDDED_ARRAY
 #undef ARA_IPC_ENCODE_VARIABLE_ARRAY
 #undef ARA_IPC_ENCODE_OPTIONAL_MEMBER
-#undef ARA_IPC_HAS_ADDENDUM_MEMBER
 #undef ARA_IPC_ENCODE_ADDENDUM_MEMBER
 #undef ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER
 #undef ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR
@@ -922,8 +916,8 @@ ARA_IPC_END_DECODE
 #undef ARA_IPC_DECODE_EMBEDDED_ARRAY
 #undef ARA_IPC_DECODE_VARIABLE_ARRAY
 #undef ARA_IPC_DECODE_OPTIONAL_MEMBER
-#undef ARA_IPC_UPDATE_STRUCT_SIZE_FOR_OPTIONAL
 #undef ARA_IPC_DECODE_ADDENDUM_MEMBER
+#undef ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY
 #undef ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER
 #undef ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR
 #undef ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR
@@ -933,14 +927,14 @@ ARA_IPC_END_DECODE
 // actual definitions of wrapper functions to implicitly deduce _ValueEn-/Decoder<> -
 // they are forward-declared above, before _ValueEn-/Decoder<> are defined
 template <typename ValueT>
-inline void _encodeAndAppend (MessageEncoder* encoder, const MessageArgumentKey argKey, const ValueT& argValue)
+inline void _encodeAndAppend (MessageEncoder* encoder, const ValueT& argValue)
 {
-    return _ValueEncoder<ValueT>::encodeAndAppend (encoder, argKey, argValue);
+    return _ValueEncoder<ValueT>::encodeAndAppend (encoder, argValue);
 }
 template <typename ValueT>
-inline bool _readAndDecode (ValueT& result, const MessageDecoder* decoder, const MessageArgumentKey argKey)
+inline bool _readAndDecode (ValueT& result, const MessageDecoder* decoder)
 {
-    return _ValueDecoder<ValueT>::readAndDecode (result, decoder, argKey);
+    return _ValueDecoder<ValueT>::readAndDecode (result, decoder);
 }
 
 
@@ -948,14 +942,14 @@ inline bool _readAndDecode (ValueT& result, const MessageDecoder* decoder, const
 
 
 // private helpers for decodeArguments() to deal with the variable arguments one at a time
-inline void _decodeArgumentsHelper (const MessageDecoder* /*decoder*/, const MessageArgumentKey /*argKey*/)
+inline void _decodeArgumentsHelper (const MessageDecoder* /*decoder*/)
 {
 }
 template<typename ArgT, typename... MoreArgs>
-inline void _decodeArgumentsHelper (const MessageDecoder* decoder, const MessageArgumentKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
+inline void _decodeArgumentsHelper (const MessageDecoder* decoder, ArgT& argValue, MoreArgs &... moreArgs)
 {
-    _readAndDecode (argValue, decoder, argKey);
-    _decodeArgumentsHelper (decoder, argKey + 1, moreArgs...);
+    _readAndDecode (argValue, decoder);
+    _decodeArgumentsHelper (decoder, moreArgs...);
 }
 
 // private helper for ARA_IPC_METHOD_ID
@@ -1212,32 +1206,33 @@ template<typename ArgT>
 inline constexpr auto _IsStructPointerArg = !_IsRefType<ArgT> && std::is_pointer_v<ArgT> && !std::is_same_v<ArgT, const char*>;
 
 template<typename ArgT, std::enable_if_t<!_IsStructPointerArg<ArgT>, int> = 0>
-inline void _encodeAndAppendHelper (MessageEncoder* encoder, const MessageArgumentKey argKey, const ArgT& argValue)
+inline void _encodeAndAppendHelper (MessageEncoder* encoder, const ArgT& argValue)
 {
-    _encodeAndAppend (encoder, argKey, argValue);
+    _encodeAndAppend (encoder, argValue);
 }
 template<typename ArgT, std::enable_if_t<_IsStructPointerArg<ArgT>, int> = 0>
-inline void _encodeAndAppendHelper (MessageEncoder* encoder, const MessageArgumentKey argKey, const ArgT& argValue)
+inline void _encodeAndAppendHelper (MessageEncoder* encoder, const ArgT& argValue)
 {
-    if (argValue != nullptr)
-        _encodeAndAppend (encoder, argKey, *argValue);
+    _encodeAndAppend (encoder, (argValue) ? std::make_optional (*argValue) : std::nullopt);
 }
-inline void _encodeAndAppendHelper (MessageEncoder* /*encoder*/, const MessageArgumentKey /*argKey*/, const std::nullptr_t& /*argValue*/)
-{}
+inline void _encodeAndAppendHelper (MessageEncoder* encoder, const std::nullptr_t& /*argValue*/)
+{
+    // all optional types encode the value-not-contained case the same, so we can just pick any type here
+    _encodeAndAppend (encoder, std::optional<size_t> ());
+}
 
 // caller side: create a message with the specified arguments
 template<typename... Args>
 inline void encodeArguments (MessageEncoder* encoder, const Args &... args)
 {
-    MessageArgumentKey key { 0 };
-    ((_encodeAndAppendHelper(encoder, key++, args)), ...);
+    ((_encodeAndAppendHelper (encoder, args)), ...);
 }
 
 // caller side: decode the received reply to a sent message
 template<typename RetT, std::enable_if_t<!std::is_class_v<RetT> || !std::is_pod_v<RetT>, bool> = true>
 inline bool decodeReply (RetT& result, const MessageDecoder* decoder)
 {
-    return _readAndDecode (result, decoder, 0);
+    return _readAndDecode (result, decoder);
 }
 template<typename RetT, std::enable_if_t<std::is_class_v<RetT> && std::is_pod_v<RetT>, bool> = true>
 inline bool decodeReply (RetT& result, const MessageDecoder* decoder)
@@ -1251,7 +1246,7 @@ template<typename... Args>
 inline void decodeArguments (const MessageDecoder* decoder, Args &... args)
 {
     ARA_INTERNAL_ASSERT (decoder != nullptr);
-    _decodeArgumentsHelper (decoder, 0, args...);
+    _decodeArgumentsHelper (decoder, args...);
 }
 
 // callee side: encode the reply to a received message
@@ -1259,7 +1254,7 @@ template<typename ValueT, std::enable_if_t<!std::is_class_v<ValueT> || !std::is_
 inline void encodeReply (MessageEncoder* encoder, const ValueT& value)
 {
     ARA_INTERNAL_ASSERT (encoder != nullptr);
-    _encodeAndAppend (encoder, 0, value);
+    _encodeAndAppend (encoder, value);
 }
 template<typename ValueT, std::enable_if_t<std::is_class_v<ValueT> && std::is_pod_v<ValueT>, bool> = true>
 inline void encodeReply (MessageEncoder* encoder, const ValueT& value)

@@ -339,7 +339,7 @@ DocumentController::DocumentController (Connection* connection, const ARAFactory
                 (_hostContentAccessController.isProvided ()) ? kARATrue : kARAFalse, contentAccessControllerHostRef,
                 (_hostModelUpdateController.isProvided ()) ? kARATrue : kARAFalse, modelUpdateControllerHostRef,
                 (_hostPlaybackController.isProvided ()) ? kARATrue : kARAFalse, playbackControllerHostRef,
-                properties);
+                *properties);
 
     ARA_LOG_MODELOBJECT_LIFETIME ("did create document controller", _remoteRef);
 }
@@ -1404,6 +1404,10 @@ const ARADocumentControllerInstance* ARAIPCProxyPlugInCreateDocumentControllerWi
                                             ARAIPCProxyPlugInRef proxyPlugInRef, const ARAPersistentID factoryID,
                                             const ARADocumentControllerHostInstance* hostInstance, const ARADocumentProperties* properties)
 {
+    ARA_INTERNAL_ASSERT (factoryID != nullptr);
+    ARA_INTERNAL_ASSERT (hostInstance != nullptr);
+    ARA_INTERNAL_ASSERT (properties != nullptr);
+
     const auto cached { _factories.find (std::string { factoryID }) };
     ARA_INTERNAL_ASSERT (cached != _factories.end ());
     if (cached == _factories.end ())

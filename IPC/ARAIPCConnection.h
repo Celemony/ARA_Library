@@ -59,7 +59,6 @@ using MessageHandler = std::function<void (const MessageID messageID, const Mess
                                            MessageEncoder* const replyEncoder)>;
 
 //! Reply Handler: a function passed to sendMessage() that is called to process the reply to a message
-//! decoder will be nullptr if incoming message was empty
 using ReplyHandler = std::function<void (const MessageDecoder* decoder)>;
 
 

@@ -74,10 +74,6 @@ _Pragma ("GCC diagnostic ignored \"-Wnullability-completeness\"")   // \todo add
 API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 
 
-// key to store message ID in XPC message
-constexpr NSString * _messageIDKey { @"msgID" };
-
-
 // message channel base class for both proxy implementations
 class AudioUnitMessageChannel : public MessageChannel
 {
@@ -102,25 +98,29 @@ public:
     {
         _currentRoutingThread = [NSThread currentThread];
         ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
-        const MessageID messageID { [(NSNumber *) [message objectForKey:_messageIDKey] intValue] };
-        auto decoder { std::make_unique<CFMessageDecoder> ((__bridge CFDictionaryRef) message) };
+        ARA_INTERNAL_ASSERT (message.allKeys.count == 1);
+        ARA_INTERNAL_ASSERT (message.allValues.count == 1);
+        const MessageID messageID { [((NSNumber *) message.allKeys.firstObject) intValue] };
+        const auto array { (__bridge CFArrayRef) message.allValues.firstObject };
+        ARA_INTERNAL_ASSERT (array != nullptr);
+        auto decoder { std::make_unique<CFMessageDecoder> (array) };
         routeReceivedMessage (messageID, std::move (decoder));
         _currentRoutingThread = nil;
     }
 
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) override
     {
-        const auto dictionary { static_cast<CFMessageEncoder *> (encoder.get ())->copyDictionary () };
+        const auto array { static_cast<CFMessageEncoder *> (encoder.get ())->copyArray () };
 #if !__has_feature(objc_arc)
-        auto message { (__bridge NSMutableDictionary *) dictionary };
+        auto nsArray { (__bridge NSArray *) array };
 #else
-        auto message { (__bridge_transfer NSMutableDictionary *) dictionary };
+        auto nsArray { (__bridge_transfer NSArray *) array };
 #endif
-        [message setObject:[NSNumber numberWithInt: messageID] forKey:_messageIDKey];
+        auto message { [NSDictionary dictionaryWithObject:nsArray forKey:[NSNumber numberWithInt: messageID]] };
         const auto reply { _sendMessage (message) };
         ARA_INTERNAL_ASSERT ([reply count] == 0);
 #if !__has_feature(objc_arc)
-        CFRelease (dictionary);
+        CFRelease (array);
 #endif
     }
 

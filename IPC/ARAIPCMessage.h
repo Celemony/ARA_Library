@@ -42,10 +42,6 @@ constexpr MessageID kReservedMessageIDRangeStart { 1 };
 constexpr MessageID kReservedMessageIDRangeEnd { 8*16*16 };
 
 
-//! key type for message dictionaries - negative keys are reserved for the implementation
-typedef ARAInt32 MessageArgumentKey;
-
-
 //! Message Encoder
 //! @{
 class MessageEncoder
@@ -56,23 +52,29 @@ public:
     //! number types
     //! The "size" variant will also be used for the pointer-sized ARA (host) refs.
     //@{
-    virtual void appendInt32 (MessageArgumentKey argKey, int32_t argValue) = 0;
-    virtual void appendInt64 (MessageArgumentKey argKey, int64_t argValue) = 0;
-    virtual void appendSize (MessageArgumentKey argKey, size_t argValue) = 0;
-    virtual void appendFloat (MessageArgumentKey argKey, float argValue) = 0;
-    virtual void appendDouble (MessageArgumentKey argKey, double argValue) = 0;
+    virtual void appendInt32 (int32_t argValue) = 0;
+    virtual void appendInt64 (int64_t argValue) = 0;
+    virtual void appendSize (size_t argValue) = 0;
+    virtual void appendFloat (float argValue) = 0;
+    virtual void appendDouble (double argValue) = 0;
     //@}
 
     //! UTF8-encoded C strings
-    virtual void appendString (MessageArgumentKey argKey, const char* argValue) = 0;
+    virtual void appendString (const char* argValue) = 0;
 
     //! raw bytes
     //! As optimization, disable copying if the memory containing the bytes stays
     //! alive&unchanged until the message has been sent.
-    virtual void appendBytes (MessageArgumentKey argKey, const uint8_t* argValue, size_t argSize, bool copy) = 0;
+    virtual void appendBytes (const uint8_t* argValue, size_t argSize, bool copy) = 0;
 
     //! sub-messages to encode compound types
-    virtual std::unique_ptr<MessageEncoder> appendSubMessage (MessageArgumentKey argKey) = 0;
+    //! The passed in encoder must have the same type as the receiver, i.e. you can only
+    //! pass in an IPCXMLMessageEncoder if the receiver is also an IPCXMLMessageEncoder.
+    virtual void appendSubMessage (std::unique_ptr<MessageEncoder>&& argValue) = 0;
+
+    //! helper to prepend data to an encoder by creating a new encoder,
+    //! adding the data and then the existing encoder.
+    virtual std::unique_ptr<MessageEncoder> createEncoder () = 0;
 };
 //! @}
 
@@ -86,35 +88,31 @@ public:
 
     //! number types
     //! The "size" variant will also be used for the pointer-sized ARA (host) refs.
-    //! Will return false and set argValue to 0 if key not found.
+    //! Will return false and set argValue to 0 if decoding fails
+    //! (e.g. because archive data is exhausted).
     //@{
-    virtual bool readInt32 (MessageArgumentKey argKey, int32_t* argValue) const = 0;
-    virtual bool readInt64 (MessageArgumentKey argKey, int64_t* argValue) const = 0;
-    virtual bool readSize (MessageArgumentKey argKey, size_t* argValue) const = 0;
-    virtual bool readFloat (MessageArgumentKey argKey, float* argValue) const = 0;
-    virtual bool readDouble (MessageArgumentKey argKey, double* argValue) const = 0;
+    virtual bool readInt32 (int32_t& argValue) const = 0;
+    virtual bool readInt64 (int64_t& argValue) const = 0;
+    virtual bool readSize (size_t& argValue) const = 0;
+    virtual bool readFloat (float& argValue) const = 0;
+    virtual bool readDouble (double& argValue) const = 0;
     //@}
 
     //! UTF8-encoded C strings
-    //! Will return false and set argValue to NULL if key not found.
-    //! Note that received string data is only valid as long as the message that
+    //! Will return false and set argValue to nullptr if decoding fails
+    //! (e.g. because archive data is exhausted).
+    //! Note that received string pointer is only valid as long as the message that
     //! provided them is alive.
-    virtual bool readString (MessageArgumentKey argKey, const char ** argValue) const = 0;
+    virtual bool readString (const char*& argValue) const = 0;
 
     //! raw bytes
-    //! first query size, then provide a buffer large enough to copy the bytes to.
-    //! readBytesSize () will return false and set argSize to 0 if key not found.
+    //! First query size, then provide a buffer large enough to copy the bytes to.
+    //! readBytesSize () will return false and set argSize to 0 if decoding fails
+    //! (e.g. because archive data is exhausted).
     //@{
-    virtual bool readBytesSize (MessageArgumentKey argKey, size_t* argSize) const = 0;
-    virtual void readBytes (MessageArgumentKey argKey, uint8_t* argValue) const = 0;
+    virtual bool readBytesSize (size_t& argSize) const = 0;
+    virtual void readBytes (uint8_t* argValue) const = 0;
     //@}
-
-    //! sub-messages to decode compound types
-    //! returns nullptr if key not found or if the value for the key is not representing a sub-message
-    virtual std::unique_ptr<MessageDecoder> readSubMessage (MessageArgumentKey argKey) const = 0;
-
-    //! test whether a given argument is present in the message
-    virtual bool hasDataForKey (MessageArgumentKey argKey) const = 0;
 };
 //! @}
 
