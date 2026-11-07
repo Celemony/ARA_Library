@@ -198,6 +198,8 @@ void MessageDispatcher::_sendMessage (std::unique_ptr<OutgoingMessage>&& message
                      ARA_IPC_DECODE_SENT_MESSAGE_ARGS (messageID),  ARA_IPC_LABEL_THREAD_ARGS,
                      (isNewTransaction) ? " (new transaction)" : "");
 
+    // \todo potential optimization: instead of discarding the message after sending it,
+    //       we could recycle it for the next message being sent, minimizing allocations.
     _messageChannel->sendMessage (std::move (message));
 }
 
@@ -498,7 +500,8 @@ void OtherThreadsMessageDispatcher::initializeMessage (OutgoingMessage* message,
 {
     _appendToMessage (message, messageID);
     _appendToMessage (message, _remoteTargetThread);
-    _appendToMessage (message, getCurrentThread ());    // will simply be ignored in replies
+    if (!isReply (messageID))
+        _appendToMessage (message, getCurrentThread ());    // not needed in replies
 }
 
 void OtherThreadsMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage>&& message,
@@ -535,9 +538,6 @@ void OtherThreadsMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage
 
             if (isReply (receivedMessageID))
             {
-                ThreadRef remoteTargetThread;
-                [[maybe_unused]] const auto success { _readFromMessage (receivedMessage.get (), remoteTargetThread) };
-                ARA_INTERNAL_ASSERT (success && (remoteTargetThread != _invalidThread));
                 _handleReply (std::move (receivedMessage), std::move (replyHandler));
                 break;
             }
@@ -575,9 +575,6 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (std::unique_ptr<const 
         {
             if (isReply (messageID))
             {
-                ThreadRef remoteTargetThread;
-                success = _readFromMessage (message.get (), remoteTargetThread);
-                ARA_INTERNAL_ASSERT (success && (remoteTargetThread != _invalidThread));
                 ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
                 ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
                 _handleReply (std::move (message), std::move (*_pendingReplyHandler->_replyHandler));
