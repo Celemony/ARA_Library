@@ -321,11 +321,11 @@ public:
 
     void routeReceivedMessage (std::unique_ptr<const IncomingMessage>&& message);
 
-    void processPendingMessageIfNeeded ()
+    void processPendingMessageIfNeeded (ARATimeDuration timeout)
     {
         ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
-        auto receivedData { _messageQueue.waitOnSemaphore (0.0) };
+        auto receivedData { _messageQueue.waitOnSemaphore (timeout) };
         if (receivedData)
             processMessage (receivedData->first, std::move (receivedData->second));
     }
@@ -364,7 +364,7 @@ void MainThreadMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage>&
     {
         if (getMessageChannel ()->receivesMessagesOnCurrentThread ())
         {
-            if (!getMessageChannel ()->waitForMessageOnCurrentThread ())
+            if (!getMessageChannel ()->waitForMessageOnCurrentThread (0.001))
                 getConnection ()->_callWaitForMessageDelegate ();
         }
         else
@@ -513,7 +513,7 @@ void OtherThreadsMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage
         _pendingReplyHandler = &pendingReplyHandler;
         do
         {
-            if (!getMessageChannel ()->waitForMessageOnCurrentThread ())
+            if (!getMessageChannel ()->waitForMessageOnCurrentThread (0.001))
                 getConnection ()->_callWaitForMessageDelegate ();
         } while (_pendingReplyHandler != previousPendingReplyHandler);
     }
@@ -754,9 +754,9 @@ void Connection::dispatchToCreationThread (DispatchableFunction func)
 #endif
 }
 
-void Connection::processPendingMessageOnCreationThreadIfNeeded ()
+void Connection::processPendingMessageOnCreationThreadIfNeeded (ARATimeDuration timeout)
 {
-    _mainThreadDispatcher->processPendingMessageIfNeeded ();
+    _mainThreadDispatcher->processPendingMessageIfNeeded (timeout);
 }
 
 void Connection::_callWaitForMessageDelegate ()

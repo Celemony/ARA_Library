@@ -129,9 +129,9 @@ public:
         return _currentRoutingThread == [NSThread currentThread];
     }
 
-    bool waitForMessageOnCurrentThread () override
+    bool waitForMessageOnCurrentThread (ARATimeDuration timeout) override
     {
-        return CFRunLoopRunInMode (kCFRunLoopDefaultMode, 0.01, true) != kCFRunLoopRunTimedOut;
+        return CFRunLoopRunInMode (kCFRunLoopDefaultMode, timeout, true) != kCFRunLoopRunTimedOut;
     }
 
 protected:
@@ -282,7 +282,7 @@ ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonn
 
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef)
 {
-    fromIPCRef (proxyPlugInRef)->getConnection ()->processPendingMessageOnCreationThreadIfNeeded ();
+    fromIPCRef (proxyPlugInRef)->getConnection ()->processPendingMessageOnCreationThreadIfNeeded (0.0);
 }
 
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,

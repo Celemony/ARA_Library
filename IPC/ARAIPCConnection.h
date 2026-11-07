@@ -79,7 +79,12 @@ public:
     virtual bool receivesMessagesOnCurrentThread () = 0;
 
     //! implemented by subclasses to receive messages if receivesMessagesOnCurrentThread() returns true
-    virtual bool waitForMessageOnCurrentThread () = 0;
+    //! waits up to the specified time in seconds for an incoming event and processes it
+    //! if timeout is 0, it returns immediately if no message is pending
+    //! returns true if an event was processed during the call
+    //! note that waiting may trigger execution of functions that have been dispatched via
+    //! Connection::dispatchToCreationThread()
+    virtual bool waitForMessageOnCurrentThread (ARATimeDuration timeout) = 0;
 
 protected:
     //! called by subclasses when messages arrive
@@ -141,7 +146,8 @@ public:
     void dispatchToCreationThread (DispatchableFunction func);
 
     //! spins message processing on the creation thread in case the thread is blocked by some outer loop
-    void processPendingMessageOnCreationThreadIfNeeded ();
+    //! will return immediately if timeout == 0 and no message pending
+    void processPendingMessageOnCreationThreadIfNeeded (ARATimeDuration timeout);
 
     // internal API: called internally when sending messages and by message dispatchers when creating replies
     std::unique_ptr<OutgoingMessage> _createOutgoingMessage ();
