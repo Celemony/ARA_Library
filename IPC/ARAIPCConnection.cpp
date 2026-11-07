@@ -127,14 +127,6 @@ namespace ARA {
 namespace IPC {
 
 
-#if defined (_WIN32)
-    #define readThreadRef readInt32
-    #define appendThreadRef appendInt32
-#else
-    #define readThreadRef readSize
-    #define appendThreadRef appendSize
-#endif
-
 static bool _debugAsHost {};
 
 //------------------------------------------------------------------------------
@@ -349,7 +341,7 @@ void MainThreadMessageDispatcher::initializeMessage (MessageEncoder* encoder)
 {
     // flag whether the outgoing call is made in response (reply or callback) to a currently
     // handled incoming call, or a new call - this allows for optimizing the routing in the receiver
-    encoder->appendInt32 ((_processingMessagesCount > 0) ? 1 : 0);
+    _appendToMessage (encoder, static_cast<int32_t> ((_processingMessagesCount > 0) ? 1 : 0));
 }
 
 void MainThreadMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
@@ -405,7 +397,7 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, std
 {
     ARA_INTERNAL_ASSERT (decoder);
     int32_t isResponse { 0 };
-    [[maybe_unused]] const auto success { decoder->readInt32 (isResponse) };
+    [[maybe_unused]] const auto success { _readFromMessage (decoder.get (), isResponse) };
     ARA_INTERNAL_ASSERT (success);
     ARA_INTERNAL_ASSERT (!isReply (messageID) || (isResponse != 0));    // replies always are responses
 
@@ -496,8 +488,8 @@ thread_local const OtherThreadsMessageDispatcher::PendingReplyHandler* OtherThre
 
 void OtherThreadsMessageDispatcher::initializeMessage (MessageEncoder* encoder)
 {
-    encoder->appendThreadRef (_remoteTargetThread);
-    encoder->appendThreadRef (getCurrentThread ());     // will simply be ignored in replies
+    _appendToMessage (encoder, _remoteTargetThread);
+    _appendToMessage (encoder, getCurrentThread ());    // will simply be ignored in replies
 }
 
 void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
@@ -535,7 +527,7 @@ void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::uniqu
             if (isReply (receivedMessageID))
             {
                 ThreadRef remoteTargetThread;
-                [[maybe_unused]] const auto success { receivedDecoder->readThreadRef (remoteTargetThread) };
+                [[maybe_unused]] const auto success { _readFromMessage (receivedDecoder.get (), remoteTargetThread) };
                 ARA_INTERNAL_ASSERT (success && (remoteTargetThread != _invalidThread));
                 _handleReply (std::move (receivedDecoder), std::move (replyHandler));
                 break;
@@ -561,7 +553,7 @@ OtherThreadsMessageDispatcher::RoutedMessage* OtherThreadsMessageDispatcher::_ge
 void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
 {
     ThreadRef targetThread;
-    [[maybe_unused]] auto success { decoder->readThreadRef (targetThread) };
+    [[maybe_unused]] auto success { _readFromMessage (decoder.get (), targetThread) };
     ARA_INTERNAL_ASSERT (success);
 
     if (targetThread != _invalidThread)
@@ -572,7 +564,7 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, s
             if (isReply (messageID))
             {
                 ThreadRef remoteTargetThread;
-                success = decoder->readThreadRef (remoteTargetThread);
+                success = _readFromMessage (decoder.get (), remoteTargetThread);
                 ARA_INTERNAL_ASSERT (success && (remoteTargetThread != _invalidThread));
                 ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
                 ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
@@ -620,7 +612,7 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
     const auto previousRemoteTargetThread { _remoteTargetThread };
 
     ThreadRef remoteTargetThread;
-    [[maybe_unused]] const auto success { decoder->readThreadRef (remoteTargetThread) };
+    [[maybe_unused]] const auto success { _readFromMessage (decoder.get (), remoteTargetThread) };
     ARA_INTERNAL_ASSERT (success && (remoteTargetThread != _invalidThread));
     _remoteTargetThread = remoteTargetThread;
 

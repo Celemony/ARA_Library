@@ -182,68 +182,113 @@ ARA_IPC_SPECIALIZE_FOR_REF_TYPE (ARAIPCPlugInInstanceRef)
 
 
 // primitives for appending an argument to a message
+template <typename T>
+inline void _appendNumberToMessage (MessageEncoder* encoder, T argValue)
+{
+    // \todo potential endianness conversion is missing here if needed...
+    encoder->appendBytes (reinterpret_cast<const uint8_t *> (&argValue), sizeof (argValue), true);
+}
 inline void _appendToMessage (MessageEncoder* encoder, const int32_t argValue)
 {
-    encoder->appendInt32 (argValue);
+    _appendNumberToMessage (encoder, argValue);
 }
 inline void _appendToMessage (MessageEncoder* encoder, const int64_t argValue)
 {
-    encoder->appendInt64 (argValue);
+    _appendNumberToMessage (encoder, argValue);
 }
 inline void _appendToMessage (MessageEncoder* encoder, const size_t argValue)
 {
-    encoder->appendSize (argValue);
+    _appendNumberToMessage (encoder, argValue);
 }
 inline void _appendToMessage (MessageEncoder* encoder, const float argValue)
 {
-    encoder->appendFloat (argValue);
+    _appendNumberToMessage (encoder, argValue);
 }
 inline void _appendToMessage (MessageEncoder* encoder, const double argValue)
 {
-    encoder->appendDouble (argValue);
+    _appendNumberToMessage (encoder, argValue);
 }
 inline void _appendToMessage (MessageEncoder* encoder, const char* const argValue)
 {
     if (argValue)
-        encoder->appendBytes (reinterpret_cast<const uint8_t *> (argValue), std::strlen (argValue) + 1, false); // includes terminator
+    {
+        const auto size { std::strlen (argValue) + 1 };     // includes terminator
+        _appendNumberToMessage (encoder, size);
+        encoder->appendBytes (reinterpret_cast<const uint8_t *> (argValue), size, false);
+    }
     else
-        encoder->appendBytes (nullptr, 0, false);
+    {
+        _appendToMessage (encoder, static_cast<size_t> (0));
+    }
 }
 inline void _appendToMessage (MessageEncoder* encoder, const BytesEncoder& argValue)
 {
-    encoder->appendBytes (argValue.bytes, argValue.size, argValue.copy);
+    ARA_INTERNAL_ASSERT ((argValue.bytes != nullptr) || (argValue.size == 0));
+    _appendNumberToMessage (encoder, argValue.size);
+    if (argValue.size)
+        encoder->appendBytes (argValue.bytes, argValue.size, argValue.copy);
 }
 
-// primitives for reading an (optional) argument from a message
+// primitives for reading an argument from a message
+template <typename T>
+inline bool _readNumberFromMessage (const MessageDecoder* decoder, T& argValue)
+{
+    constexpr auto size { sizeof (T) };
+    if (const auto bytes { decoder->readBytes (size) })
+    {
+        argValue = *reinterpret_cast<const T*> (bytes);
+        return true;
+    }
+    else
+    {
+        argValue = T { 0 };
+        return false;
+    }
+}
 inline bool _readFromMessage (const MessageDecoder* decoder, int32_t& argValue)
 {
-    return decoder->readInt32 (argValue);
+    return _readNumberFromMessage (decoder, argValue);
 }
 inline bool _readFromMessage (const MessageDecoder* decoder, int64_t& argValue)
 {
-    return decoder->readInt64 (argValue);
+    return _readNumberFromMessage (decoder, argValue);
 }
 inline bool _readFromMessage (const MessageDecoder* decoder, size_t& argValue)
 {
-    return decoder->readSize (argValue);
+    return _readNumberFromMessage (decoder, argValue);
 }
 inline bool _readFromMessage (const MessageDecoder* decoder, float& argValue)
 {
-    return decoder->readFloat (argValue);
+    return _readNumberFromMessage (decoder, argValue);
 }
 inline bool _readFromMessage (const MessageDecoder* decoder, double& argValue)
 {
-    return decoder->readDouble (argValue);
+    return _readNumberFromMessage (decoder, argValue);
+}
+inline bool _readFromMessage (const MessageDecoder* decoder, BytesDecoder& argValue)
+{
+    size_t size;
+    if (!_readFromMessage (decoder, size))
+        return false;
+
+    if (size == 0)
+        return argValue (nullptr, 0);
+
+    if (const auto bytes { decoder->readBytes (size) })
+        return argValue (bytes, size);
+    else
+        return false;
 }
 inline bool _readFromMessage (const MessageDecoder* decoder, const char*& argValue)
 {
-    size_t receivedSize;
+    size_t size;
     // \todo is there a safe/proper way across all compilers for this cast to avoid the copy?
-//  return decoder->readBytes (reinterpret_cast<const uint8_t*&> (argValue), receivedSize);
-    const uint8_t* receivedBytes;
-    if (decoder->readBytes (receivedBytes, receivedSize))
+//  BytesDecoder bytesDecoder { reinterpret_cast<const uint8_t*&> (argValue), size };
+    const uint8_t* bytes;
+    BytesDecoder bytesDecoder { bytes, size };
+    if (_readFromMessage (decoder, bytesDecoder))
     {
-        argValue = reinterpret_cast<const char*> (receivedBytes);
+        argValue = reinterpret_cast<const char*> (bytes);
         return true;
     }
     else
@@ -251,14 +296,6 @@ inline bool _readFromMessage (const MessageDecoder* decoder, const char*& argVal
         argValue = nullptr;
         return false;
     }
-}
-inline bool _readFromMessage (const MessageDecoder* decoder, BytesDecoder& argValue)
-{
-    const uint8_t* receivedBytes;
-    size_t receivedSize;
-    if (!decoder->readBytes (receivedBytes, receivedSize))
-        return false;
-    return argValue (receivedBytes, receivedSize);
 }
 
 
@@ -273,7 +310,7 @@ inline bool _readFromMessage (const MessageDecoder* decoder, BytesDecoder& argVa
 template<typename T, std::enable_if_t<_IsRefType<T>, bool> = true>
 inline void _appendToMessage (MessageEncoder* encoder, const T argValue)
 {
-    encoder->appendSize (reinterpret_cast<size_t> (argValue));
+    _appendToMessage (encoder, reinterpret_cast<size_t> (argValue));
 }
 template<typename T, std::enable_if_t<_IsRefType<T>, bool> = true>
 inline bool _readFromMessage (const MessageDecoder* decoder, T& argValue)
@@ -281,7 +318,7 @@ inline bool _readFromMessage (const MessageDecoder* decoder, T& argValue)
     // \todo is there a safe/proper way across all compilers for this cast to avoid the copy?
 //  return decoder.readSize (argKey, *reinterpret_cast<size_t*> (&argValue));
     size_t tmp;
-    const auto success { decoder->readSize (tmp) };
+    const auto success { _readFromMessage (decoder, tmp) };
     argValue = reinterpret_cast<T> (tmp);
     return success;
 }

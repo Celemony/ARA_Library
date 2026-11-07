@@ -33,38 +33,6 @@ namespace ARA {
 namespace IPC {
 
 
-void MessageEncoder::appendInt32 (int32_t argValue)
-{
-    _appendNumber (argValue);
-}
-
-void MessageEncoder::appendInt64 (int64_t argValue)
-{
-    _appendNumber (argValue);
-}
-
-void MessageEncoder::appendSize (size_t argValue)
-{
-    _appendNumber (argValue);
-}
-
-void MessageEncoder::appendFloat (float argValue)
-{
-    _appendNumber (argValue);
-}
-
-void MessageEncoder::appendDouble (double argValue)
-{
-    _appendNumber (argValue);
-}
-
-void MessageEncoder::appendBytes (const uint8_t* argValue, size_t argSize, bool /*copy*/)
-{
-    _appendNumber (argSize);
-    _appendBytes (argValue, argSize);
-}
-
-
 FixedSizeMessageEncoder::FixedSizeMessageEncoder (size_t bufferSize)
 : _buffer { new uint8_t[bufferSize] },
   _endOfBuffer { _buffer + bufferSize },
@@ -85,15 +53,15 @@ FixedSizeMessageEncoder::~FixedSizeMessageEncoder ()
         delete[] _buffer;
 }
 
-void FixedSizeMessageEncoder::_appendBytes (const void* bytes, size_t byteSize)
+void FixedSizeMessageEncoder::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
-    const auto newLocation { _writeLocation + byteSize };
+    const auto newLocation { _writeLocation + size };
     if (newLocation > _endOfBuffer)
     {
         ARA_INTERNAL_ASSERT (false);
         return;
     }
-    std::memcpy (_writeLocation, bytes, byteSize);
+    std::memcpy (_writeLocation, bytes, size);
     _writeLocation = newLocation;
 }
 
@@ -129,9 +97,9 @@ VectorMessageEncoder::VectorMessageEncoder (size_t capacity)
         _data.reserve (capacity);
 }
 
-void VectorMessageEncoder::_appendBytes (const void* bytes, size_t byteSize)
+void VectorMessageEncoder::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
-    std::basic_string_view<uint8_t> view { static_cast<const uint8_t*> (bytes), byteSize };
+    std::basic_string_view<uint8_t> view { bytes, size };
     _data.insert (_data.end (), view.begin (), view.end ());
 }
 
@@ -172,9 +140,9 @@ CFMessageEncoder::~CFMessageEncoder ()
         CFRelease (_data);
 }
 
-void CFMessageEncoder::_appendBytes (const void* bytes, size_t byteSize)
+void CFMessageEncoder::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
-    CFDataAppendBytes (_data, static_cast<const UInt8*> (bytes), static_cast<CFIndex> (byteSize));
+    CFDataAppendBytes (_data, static_cast<const UInt8*> (bytes), static_cast<CFIndex> (size));
 }
 
 __attribute__((cf_returns_retained)) CFDataRef CFMessageEncoder::convertToEncodedData ()
@@ -198,66 +166,16 @@ MessageDecoder::MessageDecoder (const uint8_t* buffer, size_t bufferSize)
   _readLocation { _buffer }
 {}
 
-template <typename T>
-bool MessageDecoder::_readNumber (T& value) const
+const uint8_t* MessageDecoder::readBytes (size_t size) const
 {
-    constexpr auto valueSize { sizeof (value) };
-    const auto location { _readLocation };
-    _readLocation += valueSize;
-    if (_readLocation > _endOfBuffer)
-    {
-        value = T { 0 };
-        return false;
-    }
-
-    value = *reinterpret_cast<const T*> (location);
-    // \todo potential endianness conversion is missing here if needed...
-    return true;
-}
-
-bool MessageDecoder::readInt32 (int32_t& argValue) const
-{
-    return _readNumber (argValue);
-}
-
-bool MessageDecoder::readInt64 (int64_t& argValue) const
-{
-    return _readNumber (argValue);
-}
-
-bool MessageDecoder::readSize (size_t& argValue) const
-{
-    return _readNumber (argValue);
-}
-
-bool MessageDecoder::readFloat (float& argValue) const
-{
-    return _readNumber (argValue);
-}
-
-bool MessageDecoder::readDouble (double& argValue) const
-{
-    return _readNumber (argValue);
-}
-
-bool MessageDecoder::readBytes (const uint8_t*& argValue, size_t& argSize) const
-{
-    if (!_readNumber (argSize))
-    {
-        argValue = nullptr;
-        return false;
-    }
-
-    argValue = _readLocation;
-    _readLocation += argSize;
+    auto result { _readLocation };
+    _readLocation += size;
     if (_readLocation > _endOfBuffer)
     {
         ARA_INTERNAL_ASSERT (false && "bytes are cut off");
-        argValue = nullptr;
-        argSize = 0;
-        return false;
+        return nullptr;
     }
-    return true;
+    return result;
 }
 
 std::unique_ptr<MessageDecoder> MessageDecoder::createWithMessageData (const uint8_t* data, const size_t dataSize)
