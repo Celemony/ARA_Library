@@ -76,15 +76,13 @@ public:
     bool readFloat (float& argValue) const override;
     bool readDouble (double& argValue) const override;
     bool readString (const char*& argValue) const override;
-    bool readBytesSize (size_t& argSize) const override;
-    void readBytes (uint8_t* argValue) const override;
+    bool readBytes (const uint8_t*& argValue, size_t& argSize) const override;
 
     static std::unique_ptr<CFMessageDecoder> createWithMessageData (CFDataRef messageData);
 
 private:
     CFArrayRef const _array;
     mutable CFIndex _index { 0 };
-    mutable CFDataRef _bytesCache { nullptr };
 };
 
 

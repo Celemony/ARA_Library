@@ -250,26 +250,21 @@ bool CFMessageDecoder::readString (const char*& argValue) const
     return true;
 }
 
-bool CFMessageDecoder::readBytesSize (size_t& argSize) const
+bool CFMessageDecoder::readBytes (const uint8_t*& argValue, size_t& argSize) const
 {
-    ARA_INTERNAL_ASSERT (_bytesCache == nullptr);
+    CFDataRef data { nullptr };
     if (_array)
-        _bytesCache = (CFDataRef) CFArrayGetValueAtIndex (_array, _index++);
-    if (!_bytesCache)
+        data = (CFDataRef) CFArrayGetValueAtIndex (_array, _index++);
+    if (!data)
     {
+        argValue = nullptr;
         argSize = 0;
         return false;
     }
-    ARA_INTERNAL_ASSERT (CFGetTypeID (_bytesCache) == CFDataGetTypeID ());
-    argSize = (size_t) CFDataGetLength (_bytesCache);
+    ARA_INTERNAL_ASSERT (CFGetTypeID (data) == CFDataGetTypeID ());
+    argSize = (size_t) CFDataGetLength (data);
+    argValue = CFDataGetBytePtr (data);
     return true;
-}
-
-void CFMessageDecoder::readBytes (uint8_t* argValue) const
-{
-    ARA_INTERNAL_ASSERT (_bytesCache != nullptr);
-    const auto length { CFDataGetLength (_bytesCache) };
-    CFDataGetBytes (_bytesCache, CFRangeMake (0, length), argValue);
 }
 
 std::unique_ptr<CFMessageDecoder> CFMessageDecoder::createWithMessageData (CFDataRef messageData)

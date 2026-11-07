@@ -51,50 +51,71 @@ namespace IPC {
 // wrapper factories to efficiently handle sending and receiving raw bytes
 //------------------------------------------------------------------------------
 
-// a read function based on a ptr+size pair or std::vector
-// it returns pointer to read bytes from and byte count via reference
-// copy should be set to false if the bytes are guaranteed to remain valid
+// providing an array of bytes for sending:
+// byte count, pointer to bytes, and flag whether to copy or reference the bytes
+// copy should be set to false whenever the bytes are guaranteed to remain valid
 // until the message has been sent - this is the case for all blocking sends,
-// but not for non-blocking sends and depends on context for replies
-class BytesEncoder : public std::function<void (const uint8_t*&, size_t&, bool&)>
+// but not for non-blocking sends, and depends on context for replies
+
+struct BytesEncoder
 {
-public:
-    BytesEncoder (const uint8_t* const bytes, const size_t size, const bool copy)
-    : std::function<void (const uint8_t*&, size_t&, bool&)> {
-        [bytes, size, copy] (const uint8_t*& bytesPtr, size_t& bytesSize, bool& bytesCopy) -> void
-        {
-            bytesPtr = bytes;
-            bytesSize = size;
-            bytesCopy = copy;
-        } }
+    const uint8_t* bytes;
+    size_t size;
+    bool copy;
+
+    BytesEncoder (const uint8_t* const data, const size_t dataSize, const bool copyData)
+    : bytes { data },
+      size { dataSize },
+      copy { copyData }
     {}
-    BytesEncoder (const std::vector<uint8_t>& bytes, const bool copy)
-    : BytesEncoder { bytes.data (), bytes.size (), copy }
+
+    BytesEncoder (const std::vector<uint8_t>& data, const bool copyData)
+    : BytesEncoder { data.data (), data.size (), copyData }
     {}
 };
 
-// a write function based on a ptr+size pair or std::vector
-// resizes to the desired byte count and returns pointer to write bytes to
-class BytesDecoder : public std::function<uint8_t* (size_t&)>
+// evaluating an received array of bytes
+// the callback must decide whether to copy the bytes or merely reference them,
+// depending on whether its evaluation will be completed before the message is destroyed -
+// e.g call arguments are typically only used during the call
+// the callback can return false if the data size does not match the current contest,
+// which will indicate failure and abort the decoding
+class BytesDecoder : public std::function<bool (const uint8_t* data, size_t dataSize)>
 {
 public:
-    BytesDecoder (uint8_t* const bytes, size_t& size)
-    : std::function<uint8_t* (size_t&)> {
-        [bytes, &size] (size_t& bytesSize) -> uint8_t*
+    // obtain reference to message data
+    BytesDecoder (const uint8_t*& bytes, size_t& size)
+    : std::function<bool (const uint8_t* data, size_t dataSize)> {
+        [&bytes, &size] (const uint8_t* data, size_t dataSize) -> bool
         {
-            if (bytesSize > size)
-                bytesSize = size;   // if there is more data then we can take, clip
-            else
-                size = bytesSize;   // otherwise store size
-            return bytes;
+            bytes = data;
+            size = dataSize;
+            return true;
         } }
     {}
-    BytesDecoder (std::vector<uint8_t>& bytes)
-    : std::function<uint8_t* (size_t&)> {
-        [&bytes] (size_t& size) -> uint8_t*
+
+    // copy to a provided buffer, with size being updated
+    BytesDecoder (uint8_t* bytes, size_t& size)
+    : std::function<bool (const uint8_t* data, size_t dataSize)> {
+        [bytes, &size] (const uint8_t* data, size_t dataSize) -> bool
         {
-            bytes.resize (size);
-            return bytes.data ();
+            if (dataSize > size)    // if there is more data then we can take, abort
+                return false;
+
+            std::memcpy (bytes, data, dataSize);
+            size = dataSize;
+            return true;
+        } }
+    {}
+
+    // copy to a provided std::vector of bytes
+    BytesDecoder (std::vector<uint8_t>& bytes)
+    : std::function<bool (const uint8_t* data, size_t dataSize)> {
+        [&bytes] (const uint8_t* data, size_t dataSize) -> bool
+        {
+            bytes.resize (dataSize);
+            std::memcpy (bytes.data (), data, dataSize);
+            return true;
         } }
     {}
 };
@@ -187,11 +208,7 @@ inline void _appendToMessage (MessageEncoder* encoder, const char* const argValu
 }
 inline void _appendToMessage (MessageEncoder* encoder, const BytesEncoder& argValue)
 {
-    const uint8_t* bytes;
-    size_t size;
-    bool copy;
-    argValue (bytes, size, copy);
-    encoder->appendBytes (bytes, size, copy);
+    encoder->appendBytes (argValue.bytes, argValue.size, argValue.copy);
 }
 
 // primitives for reading an (optional) argument from a message
@@ -221,15 +238,11 @@ inline bool _readFromMessage (const MessageDecoder* decoder, const char*& argVal
 }
 inline bool _readFromMessage (const MessageDecoder* decoder, BytesDecoder& argValue)
 {
+    const uint8_t* receivedBytes;
     size_t receivedSize;
-    if (!decoder->readBytesSize (receivedSize))
+    if (!decoder->readBytes (receivedBytes, receivedSize))
         return false;
-    auto availableSize { receivedSize };
-    const auto bytes { argValue (availableSize) };
-    if (availableSize < receivedSize)
-        return false;
-    decoder->readBytes (bytes);
-    return true;
+    return argValue (receivedBytes, receivedSize);
 }
 
 

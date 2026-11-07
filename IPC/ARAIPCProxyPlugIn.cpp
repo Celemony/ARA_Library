@@ -1557,15 +1557,17 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         ARAArchivingControllerHostRef controllerHostRef;
         ARAArchiveWriterHostRef archiveWriterHostRef;
         ARASize position;
-        std::vector<ARAByte> bytes;
-        BytesDecoder writer { bytes };
-        decodeArguments (decoder, controllerHostRef, archiveWriterHostRef, position, writer);
-        ARA_INTERNAL_ASSERT (bytes.size () > 0);
+        const uint8_t* bytes;
+        size_t size;
+        BytesDecoder readBytesPointer { bytes, size };
+        decodeArguments (decoder, controllerHostRef, archiveWriterHostRef, position, readBytesPointer);
+        ARA_INTERNAL_ASSERT (bytes != nullptr);
+        ARA_INTERNAL_ASSERT (size > 0);
 
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
-        encodeReply (replyEncoder, documentController->getHostArchivingController ()->writeBytesToArchive (archiveWriterHostRef, position, bytes.size (), bytes.data ()));
+        encodeReply (replyEncoder, documentController->getHostArchivingController ()->writeBytesToArchive (archiveWriterHostRef, position, size, bytes));
     }
     else if (messageID == ARA_IPC_METHOD_ID (ARAArchivingControllerInterface, notifyDocumentArchivingProgress))
     {

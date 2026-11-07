@@ -106,13 +106,11 @@ public:
     virtual bool readString (const char*& argValue) const = 0;
 
     //! raw bytes
-    //! First query size, then provide a buffer large enough to copy the bytes to.
-    //! readBytesSize () will return false and set argSize to 0 if decoding fails
+    //! Will return false and set argValue to nullptr and argSize to 0 if decoding fails
     //! (e.g. because archive data is exhausted).
-    //@{
-    virtual bool readBytesSize (size_t& argSize) const = 0;
-    virtual void readBytes (uint8_t* argValue) const = 0;
-    //@}
+    //! Note that received bytes pointer is only valid as long as the message that
+    //! provided them is alive.
+    virtual bool readBytes (const uint8_t*& argValue, size_t& argSize) const = 0;
 };
 //! @}
 
