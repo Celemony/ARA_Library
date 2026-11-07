@@ -76,6 +76,14 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize(ARAIPCProxyPlugInRef _Nonnull prox
 
 
 
+//! plug-in side: Once the host enables the run loop sync via ARAIPCAUProxyPlugInPrepareRunLoopSync(),
+//! this will block any main thread access while the host is running its main thread.
+//! However, some calls in the AUv3 API still need to be forwarded to the main thread synchronously,
+//! so this function must be used in the AUv3 layer instead of direct dispatch_sync() calls.
+//! Note that this function is not thread safe - it assumes that this is used for calls that the
+//! host only will make sequentially (i.e. from main thread or from synchronized init thread).
+void ARA_CALL ARAIPCAUProxyHostDispatchSyncToMainThread(void (^_Nonnull block)(void));
+
 //! plug-in side: implementation for AUAudioUnit messageChannelFor:
 id<AUMessageChannel> _Nullable ARA_CALL ARAIPCAUProxyHostMessageChannelFor(NSString * _Nonnull channelName);
 

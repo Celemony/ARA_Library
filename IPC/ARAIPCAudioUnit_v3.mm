@@ -321,6 +321,23 @@ public:
         ARAIPCProxyHostSetBindingHandler (handleBinding);
     }
 
+#if !__has_feature(objc_arc)
+    ~AUProxyHost ()
+    {
+        dispatch_release (_dispatchSyncSemaphore);
+    }
+#endif
+
+    void dispatchSyncToMainThread (void (^_Nonnull block) ())
+    {
+        getConnection ()->dispatchToCreationThread ([block, this] ()
+                            {
+                                block ();
+                                dispatch_semaphore_signal (_dispatchSyncSemaphore);
+                            });
+        dispatch_semaphore_wait (_dispatchSyncSemaphore, DISPATCH_TIME_FOREVER);
+    }
+
 private:
     static const ARAPlugInExtensionInstance * ARA_CALL handleBinding (ARAIPCPlugInInstanceRef plugInInstanceRef,
                                                                       ARADocumentControllerRef controllerRef,
@@ -329,9 +346,30 @@ private:
         auto audioUnit { (__bridge AUAudioUnit<ARAAudioUnit> *) plugInInstanceRef };
         return [audioUnit bindToDocumentController:controllerRef withRoles:assignedRoles knownRoles:knownRoles];
     }
+
+private:
+    dispatch_semaphore_t _dispatchSyncSemaphore;
 };
 
-AUProxyHost* _proxyHost;
+std::atomic<AUProxyHost*> _proxyHost { nullptr };
+
+
+void ARA_CALL ARAIPCAUProxyHostDispatchSyncToMainThread (void (^_Nonnull block) ())
+{
+    if ([NSThread isMainThread])
+    {
+        block ();
+    }
+    else if (auto proxyHost { _proxyHost.load (std::memory_order_acquire) })
+    {
+        proxyHost->dispatchSyncToMainThread (block);
+    }
+    else
+    {
+        dispatch_sync (dispatch_get_main_queue (), block);
+    }
+}
+
 
 typedef ARA_IPC_REF(ARAIPCMessageChannelRef);
 ARA_MAP_IPC_REF (AudioUnitMessageChannel, ARAIPCMessageChannelRef)
@@ -341,25 +379,19 @@ static ARAIPCMessageChannelRef _Nullable initializeMessageChannel (NSObject<AUMe
 {
     // \todo the connection currently stores the creation thread as main thread for Windows compatibility,
     //       so we need to make sure the proxy is created on the main thread
-    auto createProxyIfNeeded {
-             ^void ()
-             {
-                 if (!_proxyHost)
-                     _proxyHost = new AUProxyHost {};
-             }};
-
-     if ([NSThread isMainThread])
-         createProxyIfNeeded ();
-     else
-         dispatch_sync (dispatch_get_main_queue (), createProxyIfNeeded);
+    ARAIPCAUProxyHostDispatchSyncToMainThread (^void ()
+            {
+                if (!_proxyHost.load (std::memory_order_relaxed))
+                    _proxyHost.store (new AUProxyHost {}, std::memory_order_release);
+            });
 
     auto channel { std::make_unique<ProxyHostMessageChannel> (audioUnitChannel) };
     const auto result { toIPCRef (channel.get ()) };
 
     if (isMainThreadChannel)
-        _proxyHost->getConnection ()->setMainThreadChannel (std::move (channel));
+        _proxyHost.load (std::memory_order_relaxed)->getConnection ()->setMainThreadChannel (std::move (channel));
     else
-        _proxyHost->getConnection ()->setOtherThreadsChannel (std::move (channel));
+        _proxyHost.load (std::memory_order_relaxed)->getConnection ()->setOtherThreadsChannel (std::move (channel));
 
     return result;
 }
