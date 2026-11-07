@@ -181,27 +181,28 @@ bool AudioAccessController::readAudioSamples (ARAAudioReaderHostRef audioReaderH
     CustomDecodeFunction customDecode {
         [&success, &remoteAudioReader, &samplesPerChannel, &channelCount, &buffers] (const MessageDecoder* decoder) -> void
         {
+            const uint8_t* bytes;
+            size_t size;
+            BytesDecoder readBytesPointer { bytes, size };
+            success = decodeReply (readBytesPointer, decoder);
+
             const auto bufferSize { remoteAudioReader->sampleSize * static_cast<size_t> (samplesPerChannel) };
-            std::vector<size_t> resultSizes;
-            std::vector<BytesDecoder> decoders;
-            resultSizes.reserve (channelCount);
-            decoders.reserve (channelCount);
-            for (auto i { 0U }; i < channelCount; ++i)
+            const auto allBuffersSize { channelCount * bufferSize };
+            if (size == allBuffersSize)
             {
-                resultSizes.emplace_back (bufferSize);
-                decoders.emplace_back (static_cast<uint8_t*> (buffers[i]), resultSizes[i]);
+                ARA_INTERNAL_ASSERT (bytes != nullptr);
+            }
+            else
+            {
+                ARA_INTERNAL_ASSERT (size == 0);
+                success = false;
             }
 
-            ArrayArgument<BytesDecoder> channelData { decoders.data (), decoders.size () };
-            success = decodeReply (channelData, decoder);
-            if (success)
-                ARA_INTERNAL_ASSERT (channelData.count == channelCount);
-
-            for (auto i { 0U }; i < channelCount; ++i)
+            for (auto i { 0U }; i < channelCount; ++i, bytes += bufferSize)
             {
                 if (success)
                 {
-                    ARA_INTERNAL_ASSERT (resultSizes[i] == bufferSize);
+                    std::memcpy (buffers[i], bytes, bufferSize);
                     if (remoteAudioReader->swapFunction)
                         remoteAudioReader->swapFunction (buffers[i], samplesPerChannel);
                 }
@@ -210,7 +211,6 @@ bool AudioAccessController::readAudioSamples (ARAAudioReaderHostRef audioReaderH
                     std::memset (buffers[i], 0, bufferSize);
                 }
             }
-
         } };
     remoteCall (customDecode, ARA_IPC_METHOD_ID (ARAAudioAccessControllerInterface, readAudioSamples),
                 _remoteHostRef, remoteAudioReader->mainHostRef, samplePosition, samplesPerChannel);

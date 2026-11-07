@@ -1488,24 +1488,16 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         const auto channelCount { static_cast<size_t> (reader->audioSource->_channelCount) };
         const auto bufferSize { reader->sampleSize * static_cast<size_t> (samplesPerChannel) };
         const auto allBuffersSize { channelCount * bufferSize };
-        if (bufferData.size () < allBuffersSize)
-            bufferData.resize (allBuffersSize);
+        bufferData.resize (allBuffersSize);
 
         static std::vector<void *> sampleBuffers;
-        static std::vector<BytesEncoder> encoders;
         if (sampleBuffers.size () < channelCount)
             sampleBuffers.resize (channelCount, nullptr);
-        if (encoders.size () < channelCount)
-            encoders.resize (channelCount, { nullptr, 0, false });
         for (auto i { 0U }; i < channelCount; ++i)
-        {
-            const auto buffer { bufferData.data () + i * bufferSize };
-            sampleBuffers[i] = buffer;
-            encoders[i] = { buffer, bufferSize, false };
-        }
+            sampleBuffers[i] = bufferData.data () + i * bufferSize;
 
         if (documentController->getHostAudioAccessController ()->readAudioSamples (reader->hostRef, samplePosition, samplesPerChannel, sampleBuffers.data ()))
-            encodeReply (replyEncoder, ArrayArgument<const BytesEncoder> { encoders.data (), encoders.size () });
+            encodeReply (replyEncoder, BytesEncoder { bufferData, false });
         // else send empty reply as indication of failure
     }
     else if (messageID == ARA_IPC_METHOD_ID (ARAAudioAccessControllerInterface, destroyAudioReader))
