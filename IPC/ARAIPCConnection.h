@@ -107,7 +107,7 @@ public:
     using MessageEncoderFactory = std::function<std::unique_ptr<MessageEncoder> ()>;
     using WaitForMessageDelegate = std::function<void ()>;
     Connection (MessageEncoderFactory && messageEncoderFactory, MessageHandler && messageHandler,
-                bool receiverEndianessMatches, WaitForMessageDelegate && waitForMessageDelegate = {});
+                bool receiverEndiannessMatches, WaitForMessageDelegate && waitForMessageDelegate = {});
     ~Connection ();
 
     //! set the message channel for all main thread communication
@@ -130,7 +130,7 @@ public:
     void sendMessage (MessageID messageID, ArgumentsProvider&& argumentsProvider, ReplyHandler&& replyHandler = {});
 
     //! indicate byte order mismatch between sending and receiving machine
-    bool receiverEndianessMatches () const { return _receiverEndianessMatches; }
+    bool receiverEndiannessMatches () const { return _receiverEndiannessMatches; }
 
     bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
 
@@ -160,7 +160,7 @@ private:
 private:
     const MessageEncoderFactory _messageEncoderFactory;
     const MessageHandler _messageHandler;
-    const bool _receiverEndianessMatches;
+    const bool _receiverEndiannessMatches;
     const WaitForMessageDelegate _waitForMessageDelegate;
     std::unique_ptr<MainThreadMessageDispatcher> _mainThreadDispatcher {};
     std::unique_ptr<OtherThreadsMessageDispatcher> _otherThreadsDispatcher {};

@@ -687,10 +687,10 @@ void Connection::_performRunLoopSource (void* info)
 
 
 Connection::Connection (MessageEncoderFactory && messageEncoderFactory, MessageHandler&& messageHandler,
-                        bool receiverEndianessMatches, WaitForMessageDelegate && waitForMessageDelegate)
+                        bool receiverEndiannessMatches, WaitForMessageDelegate && waitForMessageDelegate)
 : _messageEncoderFactory { std::move (messageEncoderFactory) },
   _messageHandler { std::move (messageHandler) },
-  _receiverEndianessMatches { receiverEndianessMatches },
+  _receiverEndiannessMatches { receiverEndiannessMatches },
   _waitForMessageDelegate { std::move (waitForMessageDelegate) },
   _creationThreadID { std::this_thread::get_id () },
 #if defined (_WIN32)

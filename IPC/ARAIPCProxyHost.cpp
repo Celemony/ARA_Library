@@ -135,7 +135,7 @@ ARAAudioReaderHostRef AudioAccessController::createAudioReaderForSource (ARAAudi
     auto remoteAudioReader { new RemoteAudioReader };
     remoteAudioReader->audioSource = fromHostRef (audioSourceHostRef);
     remoteAudioReader->sampleSize = (use64BitSamples) ? sizeof (double) : sizeof (float);
-    if (receiverEndianessMatches ())
+    if (receiverEndiannessMatches ())
         remoteAudioReader->swapFunction = nullptr;
     else
         remoteAudioReader->swapFunction = (use64BitSamples) ? &_swapBuffer<double> : &_swapBuffer<float>;

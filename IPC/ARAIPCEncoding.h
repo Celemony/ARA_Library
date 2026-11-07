@@ -594,10 +594,10 @@ ARA_IPC_BEGIN_ENCODE_SIZED (ARAAudioSourceProperties)
     ARA_IPC_ENCODE_ADDENDUM_MEMBER (channelArrangementDataType)
     if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, channelArrangement))
     {
-        // \todo potential endianess conversion is missing here if needed - but this is not known here,
+        // \todo potential endianness conversion is missing here if needed - but this is not known here,
         //       it must be performed in the calling code.
         //       this means the caller would need to copy the incoming data for mutation -
-        //       maybe it would be better to move receiverEndianessMatches () from the sending side to
+        //       maybe it would be better to move receiverEndiannessMatches () from the sending side to
         //       the receiving side? We need to review how such a change would affect audio readers etc.
         const auto size { ChannelFormat::getChannelArrangementDataSize (value.channelCount, value.channelArrangementDataType, value.channelArrangement) };
         if (size > 0)
@@ -1402,7 +1402,7 @@ public:
                                   });
     }
 
-    bool receiverEndianessMatches () const { return _connection->receiverEndianessMatches (); }
+    bool receiverEndiannessMatches () const { return _connection->receiverEndiannessMatches (); }
 
     Connection* getConnection () const { return _connection; }
 
