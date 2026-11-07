@@ -24,6 +24,7 @@
 
 #include "ARA_Library/Debug/ARADebug.h"
 #include "ARA_Library/IPC/ARAIPCEncoding.h"
+#include "ARA_Library/Utilities/ARAStdVectorUtilities.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -154,7 +155,7 @@ protected:
     static bool isReply (MessageID messageID) { return messageID == 0; }
 
     void _sendMessage (std::unique_ptr<OutgoingMessage>&& message,
-                       MessageID messageID /*only for debug output*/, bool isNewTransaction /*only for debug output*/);
+                       MessageID messageID /*only for debug output*/);
     void _handleReply (std::unique_ptr<const IncomingMessage>&& message, ReplyHandler&& replyHandler);
     void _handleReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message, OutgoingMessage* reply);
 
@@ -183,14 +184,13 @@ MessageDispatcher::ThreadRef MessageDispatcher::getCurrentThread ()
 }
 
 void MessageDispatcher::_sendMessage (std::unique_ptr<OutgoingMessage>&& message,
-                                      [[maybe_unused]] MessageID messageID, [[maybe_unused]] bool isNewTransaction)
+                                      [[maybe_unused]] MessageID messageID)
 {
     if (isReply (messageID))
         ARA_IPC_LOG ("replies to message on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
     else
         ARA_IPC_LOG ("sends" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT "%s",
-                     ARA_IPC_DECODE_SENT_MESSAGE_ARGS (messageID),  ARA_IPC_LABEL_THREAD_ARGS,
-                     (isNewTransaction) ? " (new transaction)" : "");
+                     ARA_IPC_DECODE_SENT_MESSAGE_ARGS (messageID),  ARA_IPC_LABEL_THREAD_ARGS);
 
     // \todo potential optimization: instead of discarding the message after sending it,
     //       we could recycle it for the next message being sent, minimizing allocations.
@@ -216,88 +216,7 @@ void MessageDispatcher::_handleReceivedMessage (MessageID messageID, std::unique
 
 //------------------------------------------------------------------------------
 
-// helper for MainThreadMessageDispatcher: single-object message queue with semaphore to wait on
-class WaitableSingleMessageQueue
-{
-    public:
-        WaitableSingleMessageQueue ()
-#if __cplusplus >= 202002L
-        : _waitForMessageSemaphore { new std::binary_semaphore { 0 } }
-#elif defined (_WIN32)
-        : _waitForMessageSemaphore { ::CreateSemaphore (nullptr, 0, LONG_MAX, nullptr) }
-#elif defined (__APPLE__)
-        : _waitForMessageSemaphore { dispatch_semaphore_create (0) }
-#else
-#error "IPC not yet implemented for this platform"
-#endif
-        {}
-
-        ~WaitableSingleMessageQueue ()
-        {
-#if __cplusplus >= 202002L
-            delete static_cast<std::binary_semaphore*> (_waitForMessageSemaphore);
-#elif defined (_WIN32)
-            ::CloseHandle (_waitForMessageSemaphore);
-#elif defined (__APPLE__)
-            dispatch_release (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore));
-#else
-#error "IPC not yet implemented for this platform"
-#endif
-        }
-
-        std::optional<std::pair<MessageID, std::unique_ptr<const IncomingMessage>>> waitOnSemaphore (ARATimeDuration timeout)
-        {
-            bool didReceiveMessage;
-#if __cplusplus >= 202002L
-            didReceiveMessage = static_cast<std::binary_semaphore*> (_waitForMessageSemaphore)->try_acquire_for (std::chrono::duration<ARATimeDuration> { timeout });
-#elif defined (_WIN32)
-            didReceiveMessage = (::WaitForSingleObject (_waitForMessageSemaphore, static_cast<DWORD> (timeout * 1000.0 + 0.5)) == WAIT_OBJECT_0);
-#elif defined (__APPLE__)
-            const auto deadline { dispatch_time (DISPATCH_TIME_NOW, static_cast<int64_t> (10e9 * timeout + 0.5)) };
-            didReceiveMessage = (dispatch_semaphore_wait (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore), deadline) == 0);
-#else
-#error "IPC not yet implemented for this platform"
-#endif
-            if (didReceiveMessage)
-            {
-                const auto messageID { _pendingMessageID };
-                const auto message { _pendingIncomingMessage.load (std::memory_order_acquire) };
-                return std::make_pair (messageID, std::unique_ptr<const IncomingMessage> (message));
-            }
-            else
-            {
-                return {};
-            }
-        }
-
-        void signalSemaphore (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
-        {
-            _pendingMessageID = messageID;
-            _pendingIncomingMessage.store (message.release (), std::memory_order_release);
-#if __cplusplus >= 202002L
-            static_cast<std::binary_semaphore*> (_waitForMessageSemaphore)->release ();
-#elif defined (_WIN32)
-            ::ReleaseSemaphore (_waitForMessageSemaphore, 1, nullptr);
-#elif defined (__APPLE__)
-            dispatch_semaphore_signal (static_cast<dispatch_semaphore_t> (_waitForMessageSemaphore));
-#else
-#error "IPC not yet implemented for this platform"
-#endif
-        }
-
-    private:
-        MessageID _pendingMessageID { 0 };      // read/write _pendingIncomingMessage with proper barrier before/after reading/writing this
-        std::atomic<const IncomingMessage*> _pendingIncomingMessage { nullptr };
-        void* const _waitForMessageSemaphore;   // concrete type is platform-dependent
-};
-
-//------------------------------------------------------------------------------
-
 // single-threaded variant for main thread communication only
-// Adds an "isResponse" indicator to messages to optimize the routing of incoming messages:
-// After sending messages, the main thread is blocked and waits via a semaphore for a response -
-// either a reply or stacked callback. If the main thread is not in this post-send-wait-loop,
-// the routing code must wake up the run loop so it can pick up the message.
 class MainThreadMessageDispatcher : public MessageDispatcher
 {
 public:
@@ -315,34 +234,24 @@ public:
 
     void routeReceivedMessage (std::unique_ptr<const IncomingMessage>&& message);
 
-    void processPendingMessageIfNeeded (ARATimeDuration timeout)
+    bool processPendingMessageIfNeeded (ARATimeDuration timeout)
     {
         ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
-        auto receivedData { _messageQueue.waitOnSemaphore (timeout) };
-        if (receivedData)
-            processMessage (receivedData->first, std::move (receivedData->second));
+        return getMessageChannel ()->waitForMessageOnCurrentThread (timeout);
     }
 
 protected:
     void processMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message);
 
 private:
-    int32_t _processingMessagesCount { 0 };
-
     const PendingReplyHandler* _pendingReplyHandler { nullptr };
-
-    WaitableSingleMessageQueue _messageQueue {};
 };
 
 
 void MainThreadMessageDispatcher::initializeMessage (OutgoingMessage* message, MessageID messageID)
 {
     _appendToMessage (message, messageID);
-
-    // flag whether the outgoing call is made in response (reply or callback) to a currently
-    // handled incoming call, or a new call - this allows for optimizing the routing in the receiver
-    _appendToMessage (message, static_cast<int32_t> ((_processingMessagesCount > 0) ? 1 : 0));
 }
 
 void MainThreadMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage>&& message,
@@ -352,24 +261,14 @@ void MainThreadMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage>&
     const PendingReplyHandler pendingReplyHandler { &replyHandler, previousPendingReplyHandler };
     _pendingReplyHandler = &pendingReplyHandler;
 
-    _sendMessage (std::move (message), messageID, (_processingMessagesCount == 0));
+    _sendMessage (std::move (message), messageID);
 
-    while (previousPendingReplyHandler != _pendingReplyHandler)
+    do
     {
-        if (getMessageChannel ()->receivesMessagesOnCurrentThread ())
-        {
-            if (!getMessageChannel ()->waitForMessageOnCurrentThread (0.001))
-                getConnection ()->_callWaitForMessageDelegate ();
-        }
-        else
-        {
-            auto receivedData { _messageQueue.waitOnSemaphore (0.010) };
-            if (receivedData )
-                processMessage (receivedData->first, std::move (receivedData->second));
-            else
-                getConnection ()->_callWaitForMessageDelegate ();
-        }
+        if (!getMessageChannel ()->waitForMessageOnCurrentThread (0.001))
+            getConnection ()->_callWaitForMessageDelegate ();
     }
+    while (previousPendingReplyHandler != _pendingReplyHandler);
 }
 
 void MainThreadMessageDispatcher::processMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
@@ -384,13 +283,11 @@ void MainThreadMessageDispatcher::processMessage (MessageID messageID, std::uniq
     }
     else
     {
-        ++_processingMessagesCount;
         auto reply { getConnection ()->_createOutgoingMessage () };
         initializeMessage (reply.get (), 0);
         _handleReceivedMessage (messageID, std::move (message), reply.get ());
-        --_processingMessagesCount;
 
-        _sendMessage (std::move (reply), 0, false);
+        _sendMessage (std::move (reply), 0);
     }
 }
 
@@ -398,18 +295,10 @@ void MainThreadMessageDispatcher::routeReceivedMessage (std::unique_ptr<const In
 {
     ARA_INTERNAL_ASSERT (message);
     MessageID messageID;
-    int32_t isResponse;
     [[maybe_unused]] auto success { _readFromMessage (message.get (), messageID) };
-    success &= _readFromMessage (message.get (), isResponse);
     ARA_INTERNAL_ASSERT (success);
-    ARA_INTERNAL_ASSERT (!isReply (messageID) || (isResponse != 0));    // replies always are responses
 
-    // if on creation thread, responses can be processed immediately, and
-    // new transaction can only be processed immediately when no other transaction is going on
-    const auto processSynchronously { getConnection ()->wasCreatedOnCurrentThread () &&
-                                      ((isResponse != 0) || (_pendingReplyHandler == nullptr)) };
-
-    if (processSynchronously)
+    if (getConnection ()->wasCreatedOnCurrentThread ())
     {
         if (isReply (messageID))
             ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
@@ -427,12 +316,8 @@ void MainThreadMessageDispatcher::routeReceivedMessage (std::unique_ptr<const In
             ARA_IPC_LOG ("dispatches" ARA_IPC_DECODE_MESSAGE_FORMAT "from" ARA_IPC_LABEL_THREAD_FORMAT " to creation thread",
                          ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
 
-        // only new transactions must be dispatched, otherwise the target thread is already waiting for the message received signal
-        if (isResponse != 0)
-            _messageQueue.signalSemaphore (messageID, std::move (message));
-        else
-            getConnection ()->dispatchToCreationThread ([this, messageID, d { message.release () }] ()
-                                                        { processMessage (messageID, std::unique_ptr<const IncomingMessage> (d)); });
+        getConnection ()->dispatchToCreationThread ([this, messageID, d { message.release () }] ()
+                                                    { processMessage (messageID, std::unique_ptr<const IncomingMessage> (d)); });
     }
 }
 
@@ -497,7 +382,7 @@ void OtherThreadsMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage
                                                  ReplyHandler&& replyHandler, [[maybe_unused]] MessageID messageID)
 {
     _sendLock.lock ();
-    _sendMessage (std::move (message), messageID, (_remoteTargetThread == _invalidThread));
+    _sendMessage (std::move (message), messageID);
     _sendLock.unlock ();
 
     if (getMessageChannel ()->receivesMessagesOnCurrentThread ())
@@ -584,12 +469,9 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (std::unique_ptr<const 
                          ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS, targetThread);
 
         _routeLock.lock ();
-        RoutedMessage* routedMessage { _getRoutedMessageForThread (_invalidThread) };
+        auto routedMessage { _getRoutedMessageForThread (_invalidThread) };
         if (message == nullptr)
-        {
-            _routedMessages.push_back ({});
-            routedMessage = &_routedMessages.back ();
-        }
+            routedMessage = &_routedMessages.emplace_back (RoutedMessage {});
         routedMessage->_messageID = messageID;
         routedMessage->_message = std::move (message);
         routedMessage->_targetThread = targetThread;
@@ -612,7 +494,7 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
     _handleReceivedMessage (messageID, std::move (message), reply.get ());
 
     _sendLock.lock ();
-    _sendMessage (std::move (reply), 0, false);
+    _sendMessage (std::move (reply), 0);
     _sendLock.unlock ();
 
     _remoteTargetThread = previousRemoteTargetThread;
