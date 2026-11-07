@@ -422,6 +422,8 @@ void MainThreadMessageDispatcher::routeReceivedMessage (std::unique_ptr<const In
         else
             ARA_IPC_LOG ("processes" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
                          ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
+
+        processMessage (messageID, std::move (message));
     }
     else
     {
@@ -430,14 +432,7 @@ void MainThreadMessageDispatcher::routeReceivedMessage (std::unique_ptr<const In
         else
             ARA_IPC_LOG ("dispatches" ARA_IPC_DECODE_MESSAGE_FORMAT "from" ARA_IPC_LABEL_THREAD_FORMAT " to creation thread",
                          ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
-    }
 
-    if (processSynchronously)
-    {
-        processMessage (messageID, std::move (message));
-    }
-    else
-    {
         // only new transactions must be dispatched, otherwise the target thread is already waiting for the message received signal
         if (isResponse != 0)
             _messageQueue.signalSemaphore (messageID, std::move (message));
@@ -568,51 +563,44 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (std::unique_ptr<const 
     success &= _readFromMessage (message.get (), targetThread);
     ARA_INTERNAL_ASSERT (success);
 
-    if (targetThread != _invalidThread)
+    if ((targetThread == getCurrentThread ()) ||    // message directed to this thread...
+        (targetThread == _invalidThread))           // ...or no explicit thread specified (new transaction)
     {
-        ARA_INTERNAL_ASSERT (targetThread != _invalidThread);
-        if (targetThread == getCurrentThread ())
+        if (isReply (messageID))
         {
-            if (isReply (messageID))
-            {
-                ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
-                ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
-                _handleReply (std::move (message), std::move (*_pendingReplyHandler->_replyHandler));
-                _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
-            }
-            else
-            {
-                ARA_IPC_LOG ("processes" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
-                             ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
-                _processReceivedMessage (messageID, std::move (message));
-            }
+            ARA_INTERNAL_ASSERT (targetThread != _invalidThread);   // replies always must specify target thread
+            ARA_IPC_LOG ("processes reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
+            ARA_INTERNAL_ASSERT (_pendingReplyHandler != nullptr);
+            _handleReply (std::move (message), std::move (*_pendingReplyHandler->_replyHandler));
+            _pendingReplyHandler = _pendingReplyHandler->_prevPendingReplyHandler;
         }
         else
         {
-            if (isReply (messageID))
-                ARA_IPC_LOG ("dispatches reply from" ARA_IPC_LABEL_THREAD_FORMAT " to sending thread %p", ARA_IPC_LABEL_THREAD_ARGS, targetThread);
-            else
-                ARA_IPC_LOG ("dispatches" ARA_IPC_DECODE_MESSAGE_FORMAT "from" ARA_IPC_LABEL_THREAD_FORMAT " to sending thread %p",
-                             ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS, targetThread);
-
-            _routeLock.lock ();
-            RoutedMessage* routedMessage { _getRoutedMessageForThread (_invalidThread) };
-            if (message == nullptr)
-            {
-                _routedMessages.push_back ({});
-                routedMessage = &_routedMessages.back ();
-            }
-            routedMessage->_messageID = messageID;
-            routedMessage->_message = std::move (message);
-            routedMessage->_targetThread = targetThread;
-            _routeReceiveCondition.notify_all ();
-            _routeLock.unlock ();
+            ARA_IPC_LOG ("processes" ARA_IPC_DECODE_MESSAGE_FORMAT "on" ARA_IPC_LABEL_THREAD_FORMAT,
+                         ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS);
+            _processReceivedMessage (messageID, std::move (message));
         }
     }
     else
     {
-        ARA_INTERNAL_ASSERT (!isReply (messageID));
-        _processReceivedMessage (messageID, std::move (message));
+        if (isReply (messageID))
+            ARA_IPC_LOG ("dispatches reply from" ARA_IPC_LABEL_THREAD_FORMAT " to sending thread %p", ARA_IPC_LABEL_THREAD_ARGS, targetThread);
+        else
+            ARA_IPC_LOG ("dispatches" ARA_IPC_DECODE_MESSAGE_FORMAT "from" ARA_IPC_LABEL_THREAD_FORMAT " to sending thread %p",
+                         ARA_IPC_DECODE_RECEIVED_MESSAGE_ARGS (messageID), ARA_IPC_LABEL_THREAD_ARGS, targetThread);
+
+        _routeLock.lock ();
+        RoutedMessage* routedMessage { _getRoutedMessageForThread (_invalidThread) };
+        if (message == nullptr)
+        {
+            _routedMessages.push_back ({});
+            routedMessage = &_routedMessages.back ();
+        }
+        routedMessage->_messageID = messageID;
+        routedMessage->_message = std::move (message);
+        routedMessage->_targetThread = targetThread;
+        _routeReceiveCondition.notify_all ();
+        _routeLock.unlock ();
     }
 }
 
