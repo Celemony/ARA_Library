@@ -1627,14 +1627,14 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         ARAModelUpdateControllerHostRef controllerHostRef;
         ARAMusicalContextHostRef musicalContextHostRef;
         ARAContentType contentType;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         decodeArguments (decoder, controllerHostRef, musicalContextHostRef, contentType, range);
 
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
         auto hostContentReader { new HostContentReader };
-        hostContentReader->hostRef = documentController->getHostContentAccessController ()->createMusicalContextContentReader (musicalContextHostRef, contentType, (range.second) ? &range.first : nullptr);
+        hostContentReader->hostRef = documentController->getHostContentAccessController ()->createMusicalContextContentReader (musicalContextHostRef, contentType, (range) ? &range.value () : nullptr);
         hostContentReader->contentType = contentType;
 
         encodeReply (replyEncoder, ARAContentReaderHostRef { toHostRef (hostContentReader) });
@@ -1672,7 +1672,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         ARAModelUpdateControllerHostRef controllerHostRef;
         ARAAudioSourceHostRef audioSourceHostRef;
         ARAContentType contentType;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         decodeArguments (decoder, controllerHostRef, audioSourceHostRef, contentType, range);
 
         auto documentController { fromHostRef (controllerHostRef) };
@@ -1681,7 +1681,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         ARA_VALIDATE_API_ARGUMENT (audioSourceHostRef, isValidInstance (audioSource));
 
         auto hostContentReader { new HostContentReader };
-        hostContentReader->hostRef = documentController->getHostContentAccessController ()->createAudioSourceContentReader (audioSource->_hostRef, contentType, (range.second) ? &range.first : nullptr);
+        hostContentReader->hostRef = documentController->getHostContentAccessController ()->createAudioSourceContentReader (audioSource->_hostRef, contentType, (range) ? &range.value () : nullptr);
         hostContentReader->contentType = contentType;
         encodeReply (replyEncoder, ARAContentReaderHostRef { toHostRef (hostContentReader) });
     }
@@ -1745,7 +1745,7 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
     {
         ARAModelUpdateControllerHostRef controllerHostRef;
         ARAAudioSourceHostRef audioSourceHostRef;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         ARAContentUpdateFlags scopeFlags;
         decodeArguments (decoder, controllerHostRef, audioSourceHostRef, range, scopeFlags);
 
@@ -1754,33 +1754,33 @@ void ProxyPlugIn::handleReceivedMessage (const MessageID messageID, const Messag
         auto audioSource { fromHostRef (audioSourceHostRef) };
         ARA_VALIDATE_API_ARGUMENT (audioSourceHostRef, isValidInstance (audioSource));
 
-        documentController->getHostModelUpdateController ()->notifyAudioSourceContentChanged (audioSource->_hostRef, (range.second) ? &range.first : nullptr, scopeFlags);
+        documentController->getHostModelUpdateController ()->notifyAudioSourceContentChanged (audioSource->_hostRef, (range) ? &range.value () : nullptr, scopeFlags);
     }
     else if (messageID == ARA_IPC_METHOD_ID (ARAModelUpdateControllerInterface, notifyAudioModificationContentChanged))
     {
         ARAModelUpdateControllerHostRef controllerHostRef;
         ARAAudioModificationHostRef audioModificationHostRef;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         ARAContentUpdateFlags scopeFlags;
         decodeArguments (decoder, controllerHostRef, audioModificationHostRef, range, scopeFlags);
 
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
-        documentController->getHostModelUpdateController ()->notifyAudioModificationContentChanged (audioModificationHostRef, (range.second) ? &range.first : nullptr, scopeFlags);
+        documentController->getHostModelUpdateController ()->notifyAudioModificationContentChanged (audioModificationHostRef, (range) ? &range.value () : nullptr, scopeFlags);
     }
     else if (messageID == ARA_IPC_METHOD_ID (ARAModelUpdateControllerInterface, notifyPlaybackRegionContentChanged))
     {
         ARAModelUpdateControllerHostRef controllerHostRef;
         ARAPlaybackRegionHostRef playbackRegionHostRef;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         ARAContentUpdateFlags scopeFlags;
         decodeArguments (decoder, controllerHostRef, playbackRegionHostRef, range, scopeFlags);
 
         auto documentController { fromHostRef (controllerHostRef) };
         ARA_VALIDATE_API_ARGUMENT (controllerHostRef, isValidInstance (documentController));
 
-        documentController->getHostModelUpdateController ()->notifyPlaybackRegionContentChanged (playbackRegionHostRef, (range.second) ? &range.first : nullptr, scopeFlags);
+        documentController->getHostModelUpdateController ()->notifyPlaybackRegionContentChanged (playbackRegionHostRef, (range) ? &range.value () : nullptr, scopeFlags);
     }
     else if (messageID == ARA_IPC_METHOD_ID (ARAModelUpdateControllerInterface, notifyDocumentDataChanged))
     {

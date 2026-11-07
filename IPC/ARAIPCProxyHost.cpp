@@ -809,29 +809,29 @@ void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageD
     {
         ARADocumentControllerRef controllerRef;
         ARAArchiveReaderHostRef archiveReaderHostRef;
-        OptionalArgument<ARARestoreObjectsFilter> filter;
+        std::optional<ARARestoreObjectsFilter> filter;
         decodeArguments (decoder, controllerRef, archiveReaderHostRef, filter);
 
-        encodeReply (replyEncoder, fromRef (controllerRef)->restoreObjectsFromArchive (archiveReaderHostRef, (filter.second) ? &filter.first : nullptr) ? kARATrue : kARAFalse);
+        encodeReply (replyEncoder, fromRef (controllerRef)->restoreObjectsFromArchive (archiveReaderHostRef, (filter) ? &filter.value () : nullptr) ? kARATrue : kARAFalse);
     }
     else if (messageID == ARA_IPC_METHOD_ID (ARADocumentControllerInterface, storeObjectsToArchive))
     {
         ARADocumentControllerRef controllerRef;
         ARAArchiveWriterHostRef archiveWriterHostRef;
-        OptionalArgument<ARAStoreObjectsFilter> filter;
+        std::optional<ARAStoreObjectsFilter> filter;
         decodeArguments (decoder, controllerRef, archiveWriterHostRef, filter);
 
         std::vector<ARAAudioSourceRef> audioSourceRefs;
-        if (filter.second && (filter.first.audioSourceRefsCount > 0))
+        if (filter && (filter->audioSourceRefsCount > 0))
         {
-            audioSourceRefs.reserve (filter.first.audioSourceRefsCount);
-            for (auto i { 0U }; i < filter.first.audioSourceRefsCount; ++i)
-                audioSourceRefs.emplace_back (fromRef (filter.first.audioSourceRefs[i])->plugInRef);
+            audioSourceRefs.reserve (filter->audioSourceRefsCount);
+            for (auto i { 0U }; i < filter->audioSourceRefsCount; ++i)
+                audioSourceRefs.emplace_back (fromRef (filter->audioSourceRefs[i])->plugInRef);
 
-            filter.first.audioSourceRefs = audioSourceRefs.data ();
+            filter->audioSourceRefs = audioSourceRefs.data ();
         }
 
-        encodeReply (replyEncoder, fromRef (controllerRef)->storeObjectsToArchive (archiveWriterHostRef, (filter.second) ? &filter.first : nullptr) ? kARATrue : kARAFalse);
+        encodeReply (replyEncoder, fromRef (controllerRef)->storeObjectsToArchive (archiveWriterHostRef, (filter) ? &filter.value () : nullptr) ? kARATrue : kARAFalse);
     }
 
     else if (messageID == ARA_IPC_METHOD_ID (ARADocumentControllerInterface, updateDocumentProperties))
@@ -865,11 +865,11 @@ void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageD
     {
         ARADocumentControllerRef controllerRef;
         ARAMusicalContextRef musicalContextRef;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         ARAContentUpdateFlags flags;
         decodeArguments (decoder, controllerRef, musicalContextRef, range, flags);
 
-        fromRef (controllerRef)->updateMusicalContextContent (musicalContextRef, (range.second) ? &range.first : nullptr, flags);
+        fromRef (controllerRef)->updateMusicalContextContent (musicalContextRef, (range) ? &range.value () : nullptr, flags);
     }
     else if (messageID == ARA_IPC_METHOD_ID (ARADocumentControllerInterface, destroyMusicalContext))
     {
@@ -933,11 +933,11 @@ void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageD
     {
         ARADocumentControllerRef controllerRef;
         ARAAudioSourceRef audioSourceRef;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         ARAContentUpdateFlags flags;
         decodeArguments (decoder, controllerRef, audioSourceRef, range, flags);
 
-        fromRef (controllerRef)->updateAudioSourceContent (fromRef (audioSourceRef)->plugInRef, (range.second) ? &range.first : nullptr, flags);
+        fromRef (controllerRef)->updateAudioSourceContent (fromRef (audioSourceRef)->plugInRef, (range) ? &range.value () : nullptr, flags);
     }
     else if (messageID == ARA_IPC_METHOD_ID (ARADocumentControllerInterface, enableAudioSourceSamplesAccess))
     {
@@ -1012,11 +1012,11 @@ void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageD
         ARADocumentControllerRef controllerRef;
         ARAAudioSourceRef audioSourceRef;
         ARAContentType contentType;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         decodeArguments (decoder, controllerRef, audioSourceRef, contentType, range);
 
         auto remoteContentReader { new RemoteContentReader };
-        remoteContentReader->plugInRef = fromRef (controllerRef)->createAudioSourceContentReader (fromRef (audioSourceRef)->plugInRef, contentType, (range.second) ? &range.first : nullptr);
+        remoteContentReader->plugInRef = fromRef (controllerRef)->createAudioSourceContentReader (fromRef (audioSourceRef)->plugInRef, contentType, (range) ? &range.value () : nullptr);
         remoteContentReader->contentType = contentType;
         encodeReply (replyEncoder, ARAContentReaderRef { toRef (remoteContentReader) });
     }
@@ -1101,11 +1101,11 @@ void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageD
         ARADocumentControllerRef controllerRef;
         ARAAudioModificationRef audioModificationRef;
         ARAContentType contentType;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         decodeArguments (decoder, controllerRef, audioModificationRef, contentType, range);
 
         auto remoteContentReader { new RemoteContentReader };
-        remoteContentReader->plugInRef = fromRef (controllerRef)->createAudioModificationContentReader (audioModificationRef, contentType, (range.second) ? &range.first : nullptr);
+        remoteContentReader->plugInRef = fromRef (controllerRef)->createAudioModificationContentReader (audioModificationRef, contentType, (range) ? &range.value () : nullptr);
         remoteContentReader->contentType = contentType;
         encodeReply (replyEncoder, ARAContentReaderRef { toRef (remoteContentReader) });
     }
@@ -1181,11 +1181,11 @@ void ProxyHost::handleReceivedMessage (const MessageID messageID, const MessageD
         ARADocumentControllerRef controllerRef;
         ARAPlaybackRegionRef playbackRegionRef;
         ARAContentType contentType;
-        OptionalArgument<ARAContentTimeRange> range;
+        std::optional<ARAContentTimeRange> range;
         decodeArguments (decoder, controllerRef, playbackRegionRef, contentType, range);
 
         auto remoteContentReader { new RemoteContentReader };
-        remoteContentReader->plugInRef = fromRef (controllerRef)->createPlaybackRegionContentReader (playbackRegionRef, contentType, (range.second) ? &range.first : nullptr);
+        remoteContentReader->plugInRef = fromRef (controllerRef)->createPlaybackRegionContentReader (playbackRegionRef, contentType, (range) ? &range.value () : nullptr);
         remoteContentReader->contentType = contentType;
         encodeReply (replyEncoder, ARAContentReaderRef { toRef (remoteContentReader) });
     }

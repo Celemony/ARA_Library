@@ -37,6 +37,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <optional>
 
 
 //! @addtogroup ARA_Library_IPC
@@ -393,6 +394,20 @@ struct _ValueDecoder<std::vector<ElementT>> : public _CompoundValueDecoderBase<s
     }
 };
 
+// specialization for decoding optional types
+template<typename ValueT>
+struct _ValueDecoder<std::optional<ValueT>>
+{
+    static inline bool readAndDecode (std::optional<ValueT>& result, const MessageDecoder* decoder, const MessageArgumentKey argKey)
+    {
+        ValueT value;
+        if (_readAndDecode (value, decoder, argKey))
+            result = std::make_optional<ValueT> (std::move (value));
+        else
+            result = std::nullopt;
+        return true;    // failing to read an optional is not an error
+    }
+};
 
 // specializations for en/decoding each ARA struct
 
@@ -931,26 +946,15 @@ inline bool _readAndDecode (ValueT& result, const MessageDecoder* decoder, const
 
 //------------------------------------------------------------------------------
 
-// private helper for decodeArguments() to deal with optional arguments
-template<typename ArgT>
-inline constexpr bool _IsOptionalArgument { false };
-template<typename ArgT>
-inline constexpr bool _IsOptionalArgument<std::pair<ArgT, bool>> { true };
 
 // private helpers for decodeArguments() to deal with the variable arguments one at a time
 inline void _decodeArgumentsHelper (const MessageDecoder* /*decoder*/, const MessageArgumentKey /*argKey*/)
 {
 }
-template<typename ArgT, typename... MoreArgs, std::enable_if_t<!_IsOptionalArgument<ArgT>, bool> = true>
+template<typename ArgT, typename... MoreArgs>
 inline void _decodeArgumentsHelper (const MessageDecoder* decoder, const MessageArgumentKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
 {
     _readAndDecode (argValue, decoder, argKey);
-    _decodeArgumentsHelper (decoder, argKey + 1, moreArgs...);
-}
-template<typename ArgT, typename... MoreArgs, std::enable_if_t<_IsOptionalArgument<ArgT>, bool> = true>
-inline void _decodeArgumentsHelper (const MessageDecoder* decoder, const MessageArgumentKey argKey, ArgT& argValue, MoreArgs &... moreArgs)
-{
-    argValue.second = _readAndDecode (argValue.first, decoder, argKey);
     _decodeArgumentsHelper (decoder, argKey + 1, moreArgs...);
 }
 
@@ -1246,10 +1250,6 @@ inline void decodeArguments (const MessageDecoder* decoder, Args &... args)
     ARA_INTERNAL_ASSERT (decoder != nullptr);
     _decodeArgumentsHelper (decoder, 0, args...);
 }
-
-// callee side: wrapper for optional method arguments: first is the argument value, second if it was present
-template<typename ArgT>
-using OptionalArgument = typename std::pair<ArgT, bool>;
 
 // callee side: encode the reply to a received message
 template<typename ValueT, std::enable_if_t<!std::is_class_v<ValueT> || !std::is_pod_v<ValueT>, bool> = true>
