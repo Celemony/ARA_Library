@@ -1363,19 +1363,25 @@ public:
     {}
 
     template<typename... Args>
-    void remoteCall (const MethodID methodID, const Args &... args) const
+    inline void remoteCall (const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _connection->createEncoder () };
-        encodeMessage (encoder.get (), args...);
-        _connection->sendMessage (methodID.getMessageID (), std::move (encoder));
+        _connection->sendMessage (methodID.getMessageID (),
+                                  [&] (MessageEncoder* encoder)
+                                  {
+                                      ARA_INTERNAL_ASSERT (encoder);
+                                      encodeMessage (encoder, args...);
+                                  });
     }
 
     template<typename RetT, typename... Args>
-    void remoteCall (RetT& result, const MethodID methodID, const Args &... args) const
+    inline void remoteCall (RetT& result, const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _connection->createEncoder () };
-        encodeMessage (encoder.get (), args...);
-        _connection->sendMessage (methodID.getMessageID (), std::move (encoder),
+        _connection->sendMessage (methodID.getMessageID (),
+                                  [&] (MessageEncoder* encoder)
+                                  {
+                                      ARA_INTERNAL_ASSERT (encoder);
+                                      encodeMessage (encoder, args...);
+                                  },
                                   [&result] (const MessageDecoder* decoder)
                                   {
                                       ARA_INTERNAL_ASSERT (decoder);
@@ -1384,11 +1390,14 @@ public:
     }
 
     template<typename... Args>
-    void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args) const
+    inline void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args) const
     {
-        auto encoder { _connection->createEncoder () };
-        encodeMessage (encoder.get (), args...);
-        _connection->sendMessage (methodID.getMessageID (), std::move (encoder),
+        _connection->sendMessage (methodID.getMessageID (),
+                                  [&] (MessageEncoder* encoder)
+                                  {
+                                      ARA_INTERNAL_ASSERT (encoder);
+                                      encodeMessage (encoder, args...);
+                                  },
                                   [&decodeFunction] (const MessageDecoder* decoder)
                                   {
                                       ARA_INTERNAL_ASSERT (decoder);

@@ -105,21 +105,6 @@ void CFMessageEncoder::appendBytes (const uint8_t* argValue, size_t argSize, boo
     CFRelease (argObject);
 }
 
-void CFMessageEncoder::appendSubMessage (std::unique_ptr<MessageEncoder>&& argValue)
-{
-    const auto subMessage (dynamic_cast<CFMessageEncoder*> (argValue.release ()));
-    ARA_INTERNAL_ASSERT (subMessage != nullptr);
-
-    CFArrayAppendArray (_array, subMessage->_array, CFRangeMake (0, CFArrayGetCount (subMessage->_array)));
-    
-    delete subMessage;
-}
-
-std::unique_ptr<MessageEncoder> CFMessageEncoder::createEncoder ()
-{
-    return CFMessageEncoder::create ();
-}
-
 __attribute__((cf_returns_retained)) CFArrayRef CFMessageEncoder::copyArray () const
 {
     CFRetain (_array);

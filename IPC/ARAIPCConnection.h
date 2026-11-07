@@ -58,7 +58,10 @@ class OtherThreadsMessageDispatcher;
 using MessageHandler = std::function<void (const MessageID messageID, const MessageDecoder* const decoder,
                                            MessageEncoder* const replyEncoder)>;
 
-//! Reply Handler: a function passed to sendMessage() that is called to process the reply to a message
+//! Arguments Provider: callback passed to sendMessage() that stores the arguments into the outgoing message
+using ArgumentsProvider = std::function<void (MessageEncoder* encoder)>;
+
+//! Reply Handler: callback passed to sendMessage() that processed the incoming reply to the message
 using ReplyHandler = std::function<void (const MessageDecoder* decoder)>;
 
 
@@ -117,15 +120,14 @@ public:
 
     const MessageHandler& getMessageHandler () const { return _messageHandler; }
 
-    //! send an encoded messages to the receiving process
-    //! If an empty reply ("void") is expected, the replyHandler shall be omitted.
+    //! encode and send a messages to the receiving process
+    //! The connection will provide an encoder and pass it to the argumentsProvider
+    //! so it can store the arguments of the message.
     //! This method can be called from any thread, concurrent calls will be serialized.
     //! The calling thread will be blocked until the receiver has processed the message and
     //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
-    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, ReplyHandler && replyHandler = {});
-
-    //! message encoder factory for users of the connection
-    std::unique_ptr<MessageEncoder> createEncoder () { return _messageEncoderFactory (); }
+    //! If an empty reply ("void") is expected, the replyHandler shall be omitted.
+    void sendMessage (MessageID messageID, ArgumentsProvider&& argumentsProvider, ReplyHandler&& replyHandler = {});
 
     //! indicate byte order mismatch between sending and receiving machine
     bool receiverEndianessMatches () const { return _receiverEndianessMatches; }
@@ -140,6 +142,9 @@ public:
 
     //! spins message processing on the creation thread in case the thread is blocked by some outer loop
     void processPendingMessageOnCreationThreadIfNeeded ();
+
+    // internal API: called internally when sending messages and by message dispatchers when creating replies
+    std::unique_ptr<MessageEncoder> _createUninitializedEncoder ();
 
     // internal API: called by message dispatchers when blocking the current thread in a receive loop
     void _callWaitForMessageDelegate ();

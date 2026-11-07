@@ -66,15 +66,6 @@ public:
     //! As optimization, disable copying if the memory containing the bytes stays
     //! alive&unchanged until the message has been sent.
     virtual void appendBytes (const uint8_t* argValue, size_t argSize, bool copy) = 0;
-
-    //! sub-messages to encode compound types
-    //! The passed in encoder must have the same type as the receiver, i.e. you can only
-    //! pass in an IPCXMLMessageEncoder if the receiver is also an IPCXMLMessageEncoder.
-    virtual void appendSubMessage (std::unique_ptr<MessageEncoder>&& argValue) = 0;
-
-    //! helper to prepend data to an encoder by creating a new encoder,
-    //! adding the data and then the existing encoder.
-    virtual std::unique_ptr<MessageEncoder> createEncoder () = 0;
 };
 //! @}
 

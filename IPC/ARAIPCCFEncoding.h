@@ -48,8 +48,6 @@ public:
     void appendDouble (double argValue) override;
     void appendString (const char* argValue) override;
     void appendBytes (const uint8_t* argValue, size_t argSize, bool copy) override;
-    void appendSubMessage (std::unique_ptr<MessageEncoder>&& argValue) override;
-    std::unique_ptr<MessageEncoder> createEncoder () override;
 
     __attribute__((cf_returns_retained)) CFArrayRef copyArray () const;
     __attribute__((cf_returns_retained)) CFDataRef createMessageEncoderData ()  const;
