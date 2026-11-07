@@ -45,8 +45,8 @@ protected:
     explicit ProxyHost (std::unique_ptr<Connection> && connection);
 
 public:
-    void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
-                                MessageEncoder* const replyEncoder);
+    void handleReceivedMessage (const MessageID messageID, const IncomingMessage* const message,
+                                OutgoingMessage* const reply);
 private:
     const std::unique_ptr<Connection> _connection;
 };

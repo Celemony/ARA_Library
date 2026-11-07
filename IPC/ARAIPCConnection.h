@@ -55,14 +55,14 @@ class OtherThreadsMessageDispatcher;
 //! delegate function for processing messages received through an IPC connection
 //! IPC connections will call this function for incoming messages after
 //! filtering replies and routing them to the correct thread.
-using MessageHandler = std::function<void (const MessageID messageID, const MessageDecoder* const decoder,
-                                           MessageEncoder* const replyEncoder)>;
+using MessageHandler = std::function<void (const MessageID messageID, const IncomingMessage* const message,
+                                           OutgoingMessage* const reply)>;
 
 //! Arguments Provider: callback passed to sendMessage() that stores the arguments into the outgoing message
-using ArgumentsProvider = std::function<void (MessageEncoder* encoder)>;
+using ArgumentsProvider = std::function<void (OutgoingMessage* message)>;
 
 //! Reply Handler: callback passed to sendMessage() that processed the incoming reply to the message
-using ReplyHandler = std::function<void (const MessageDecoder* decoder)>;
+using ReplyHandler = std::function<void (const IncomingMessage* message)>;
 
 
 //! IPC message channel: primitive for sending and receiving messages
@@ -73,7 +73,7 @@ public:
     virtual ~MessageChannel () = default;
 
     //! implemented by subclasses to perform the actual message (or reply) sending
-    virtual void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) = 0;
+    virtual void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message) = 0;
 
     //! implemented by subclasses to inform the message dispatching code of the threading requirements
     virtual bool receivesMessagesOnCurrentThread () = 0;
@@ -83,17 +83,17 @@ public:
 
 protected:
     //! called by subclasses when messages arrive
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder)
+    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
     {
         ARA_INTERNAL_ASSERT (_receivedMessageRouter);
-        _receivedMessageRouter (messageID, std::move (decoder));
+        _receivedMessageRouter (messageID, std::move (message));
     }
 
 private:
     // configuration hook for the MessageDispatcher constructors
     friend class MainThreadMessageDispatcher;
     friend class OtherThreadsMessageDispatcher;
-    std::function<void (MessageID, std::unique_ptr<const MessageDecoder> &&)> _receivedMessageRouter {};
+    std::function<void (MessageID, std::unique_ptr<const IncomingMessage> &&)> _receivedMessageRouter {};
 };
 //! @}
 
@@ -104,10 +104,10 @@ private:
 class Connection
 {
 public:
-    using MessageEncoderFactory = std::function<std::unique_ptr<MessageEncoder> ()>;
+    using OutgoingMessageFactory = std::function<std::unique_ptr<OutgoingMessage> ()>;
     using WaitForMessageDelegate = std::function<void ()>;
-    Connection (MessageEncoderFactory && messageEncoderFactory, MessageHandler && messageHandler,
-                bool receiverEndiannessMatches, WaitForMessageDelegate && waitForMessageDelegate = {});
+    Connection (OutgoingMessageFactory&& outgoingMessageFactory, MessageHandler&& messageHandler,
+                bool receiverEndiannessMatches, WaitForMessageDelegate&& waitForMessageDelegate = {});
     ~Connection ();
 
     //! set the message channel for all main thread communication
@@ -121,8 +121,8 @@ public:
     const MessageHandler& getMessageHandler () const { return _messageHandler; }
 
     //! encode and send a messages to the receiving process
-    //! The connection will provide an encoder and pass it to the argumentsProvider
-    //! so it can store the arguments of the message.
+    //! The connection will provide an empty outgoing message and pass it to the argumentsProvider
+    //! so it can store the arguments into it.
     //! This method can be called from any thread, concurrent calls will be serialized.
     //! The calling thread will be blocked until the receiver has processed the message and
     //! returned a (potentially empty) reply, which will be forwarded to the replyHandler.
@@ -144,7 +144,7 @@ public:
     void processPendingMessageOnCreationThreadIfNeeded ();
 
     // internal API: called internally when sending messages and by message dispatchers when creating replies
-    std::unique_ptr<MessageEncoder> _createUninitializedEncoder ();
+    std::unique_ptr<OutgoingMessage> _createOutgoingMessage ();
 
     // internal API: called by message dispatchers when blocking the current thread in a receive loop
     void _callWaitForMessageDelegate ();
@@ -158,7 +158,7 @@ private:
 #endif
 
 private:
-    const MessageEncoderFactory _messageEncoderFactory;
+    const OutgoingMessageFactory _outgoingMessageFactory;
     const MessageHandler _messageHandler;
     const bool _receiverEndiannessMatches;
     const WaitForMessageDelegate _waitForMessageDelegate;

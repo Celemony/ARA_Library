@@ -33,27 +33,27 @@ namespace ARA {
 namespace IPC {
 
 
-FixedSizeMessageEncoder::FixedSizeMessageEncoder (size_t bufferSize)
+FixedSizeOutgoingMessage::FixedSizeOutgoingMessage (size_t bufferSize)
 : _buffer { new uint8_t[bufferSize] },
   _endOfBuffer { _buffer + bufferSize },
   _writeLocation { _buffer },
   _ownsBuffer { true }
 {}
 
-FixedSizeMessageEncoder::FixedSizeMessageEncoder (uint8_t* buffer, size_t bufferSize)
+FixedSizeOutgoingMessage::FixedSizeOutgoingMessage (uint8_t* buffer, size_t bufferSize)
 : _buffer { buffer },
   _endOfBuffer { _buffer + bufferSize },
   _writeLocation { _buffer },
   _ownsBuffer { false }
 {}
 
-FixedSizeMessageEncoder::~FixedSizeMessageEncoder ()
+FixedSizeOutgoingMessage::~FixedSizeOutgoingMessage ()
 {
     if (_ownsBuffer)
         delete[] _buffer;
 }
 
-void FixedSizeMessageEncoder::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
+void FixedSizeOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
     const auto newLocation { _writeLocation + size };
     if (newLocation > _endOfBuffer)
@@ -70,7 +70,7 @@ __attribute__((cf_returns_retained)) CFDataRef
 #else
 std::vector<uint8_t>
 #endif
-                                               FixedSizeMessageEncoder::convertToEncodedData ()
+                                               FixedSizeOutgoingMessage::convertToEncodedData ()
 {
     if (_writeLocation == _buffer)
         return {};
@@ -85,26 +85,26 @@ std::vector<uint8_t>
 #endif
 }
 
-std::unique_ptr<FixedSizeMessageEncoder> FixedSizeMessageEncoder::create ()
+std::unique_ptr<FixedSizeOutgoingMessage> FixedSizeOutgoingMessage::create ()
 {
-    return std::make_unique<FixedSizeMessageEncoder> (81920u);
+    return std::make_unique<FixedSizeOutgoingMessage> (81920u);
 }
 
 
-VectorMessageEncoder::VectorMessageEncoder (size_t capacity)
+VectorOutgoingMessage::VectorOutgoingMessage (size_t capacity)
 {
     if (capacity > 0)
         _data.reserve (capacity);
 }
 
-void VectorMessageEncoder::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
+void VectorOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
     std::basic_string_view<uint8_t> view { bytes, size };
     _data.insert (_data.end (), view.begin (), view.end ());
 }
 
 #if defined (__APPLE__)
-__attribute__((cf_returns_retained)) CFDataRef VectorMessageEncoder::convertToEncodedData ()
+__attribute__((cf_returns_retained)) CFDataRef VectorOutgoingMessage::convertToEncodedData ()
 {
     if (_data.empty ())
         return nullptr;
@@ -116,36 +116,36 @@ __attribute__((cf_returns_retained)) CFDataRef VectorMessageEncoder::convertToEn
 #else
 // \todo it would be better to return a std::vector<uint8_t>&& here, but that's not compatible
 //       with some of the other overrides...
-std::vector<uint8_t> VectorMessageEncoder::convertToEncodedData ()
+std::vector<uint8_t> VectorOutgoingMessage::convertToEncodedData ()
 {
     return std::move(_data);
 }
 #endif
 
-std::unique_ptr<VectorMessageEncoder> VectorMessageEncoder::create ()
+std::unique_ptr<VectorOutgoingMessage> VectorOutgoingMessage::create ()
 {
-    return std::make_unique<VectorMessageEncoder> ();
+    return std::make_unique<VectorOutgoingMessage> ();
 }
 
 
 #if defined (__APPLE__)
-CFMessageEncoder::CFMessageEncoder ()
+CFOutgoingMessage::CFOutgoingMessage ()
 : _data { CFDataCreateMutable (kCFAllocatorDefault, 0) }
 {}
 
-CFMessageEncoder::~CFMessageEncoder ()
+CFOutgoingMessage::~CFOutgoingMessage ()
 {
     ARA_INTERNAL_ASSERT (!_data);       // should have been reset via convertToEncodedData()
     if (_data)
         CFRelease (_data);
 }
 
-void CFMessageEncoder::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
+void CFOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
     CFDataAppendBytes (_data, static_cast<const UInt8*> (bytes), static_cast<CFIndex> (size));
 }
 
-__attribute__((cf_returns_retained)) CFDataRef CFMessageEncoder::convertToEncodedData ()
+__attribute__((cf_returns_retained)) CFDataRef CFOutgoingMessage::convertToEncodedData ()
 {
     ARA_INTERNAL_ASSERT (_data);        // convertToEncodedData() must only be called once
     const auto result { static_cast<CFDataRef> (_data) };
@@ -153,20 +153,20 @@ __attribute__((cf_returns_retained)) CFDataRef CFMessageEncoder::convertToEncode
     return result;
 }
 
-std::unique_ptr<CFMessageEncoder> CFMessageEncoder::create ()
+std::unique_ptr<CFOutgoingMessage> CFOutgoingMessage::create ()
 {
-    return std::make_unique<CFMessageEncoder> ();
+    return std::make_unique<CFOutgoingMessage> ();
 }
 #endif  // defined (__APPLE__)
 
 
-MessageDecoder::MessageDecoder (const uint8_t* buffer, size_t bufferSize)
+IncomingMessage::IncomingMessage (const uint8_t* buffer, size_t bufferSize)
 : _buffer { buffer },
   _endOfBuffer { _buffer + bufferSize },
   _readLocation { _buffer }
 {}
 
-const uint8_t* MessageDecoder::readBytes (size_t size) const
+const uint8_t* IncomingMessage::readBytes (size_t size) const
 {
     auto result { _readLocation };
     _readLocation += size;
@@ -178,37 +178,37 @@ const uint8_t* MessageDecoder::readBytes (size_t size) const
     return result;
 }
 
-std::unique_ptr<MessageDecoder> MessageDecoder::createWithMessageData (const uint8_t* data, const size_t dataSize)
+std::unique_ptr<IncomingMessage> IncomingMessage::createWithMessageData (const uint8_t* data, const size_t dataSize)
 {
-    return std::make_unique<MessageDecoder> (data, dataSize);
+    return std::make_unique<IncomingMessage> (data, dataSize);
 }
 
 
 #if defined (__APPLE__)
-CFMessageDecoder::CFMessageDecoder (CFDataRef data, bool retain)
-: MessageDecoder { CFDataGetBytePtr (data), static_cast<size_t> (CFDataGetLength (data)) },
+CFIncomingMessage::CFIncomingMessage (CFDataRef data, bool retain)
+: IncomingMessage { CFDataGetBytePtr (data), static_cast<size_t> (CFDataGetLength (data)) },
   _data { data }
 {
     if (data && retain)
         CFRetain (data);
 }
 
-CFMessageDecoder::~CFMessageDecoder ()
+CFIncomingMessage::~CFIncomingMessage ()
 {
     if (_data)
         CFRelease (_data);
 }
 
-std::unique_ptr<CFMessageDecoder> CFMessageDecoder::createWithMessageData (CFDataRef data, bool isTemporary)
+std::unique_ptr<CFIncomingMessage> CFIncomingMessage::createWithMessageData (CFDataRef data, bool isTemporary)
 {
     // \todo IPC implementations typically use message buffers that are only valid during the callback -
     //       accordingly, we need to copy the message when dispatching to another thread.
     //       We currently copy upon creation, but we could optimize this by adding a call to the
-    //       MessageDecoder API to trigger the copy only on-demand, when dispatching.
+    //       IncomingMessage API to trigger the copy only on-demand, when dispatching.
     //       But since currently most messages are dispatched anyways, we've postponed that for now.
     if (isTemporary)
         data = CFDataCreateCopy (kCFAllocatorDefault, data);
-    return std::make_unique<CFMessageDecoder> (data, false);
+    return std::make_unique<CFIncomingMessage> (data, false);
 }
 #endif // defined (__APPLE__)
 

@@ -51,10 +51,10 @@ constexpr MessageID kReservedMessageIDRangeEnd { 8*16*16 };
 //! @{
 
 //! base class for message encoders
-class MessageEncoder
+class OutgoingMessage
 {
 public:
-    virtual ~MessageEncoder () = default;
+    virtual ~OutgoingMessage () = default;
 
     //! raw bytes
     //! As optimization, disable copying if the memory containing the bytes stays
@@ -63,7 +63,7 @@ public:
     virtual void appendBytes (const uint8_t* bytes, size_t size, bool copy) = 0;
 
     //! extract data for sending through underlying IPC API
-    //! must be called exactly once for every encoder
+    //! must be called exactly once for every message object
     virtual
 #if defined (__APPLE__)
             __attribute__((cf_returns_retained)) CFDataRef
@@ -74,14 +74,14 @@ public:
 };
 
 
-//! message encoder backed by fixed-size storage
-class FixedSizeMessageEncoder : public MessageEncoder
+//! message backed by fixed-size storage
+class FixedSizeOutgoingMessage : public OutgoingMessage
 {
 public:
-    FixedSizeMessageEncoder (size_t bufferSize);
-    FixedSizeMessageEncoder (uint8_t* buffer, size_t bufferSize);
+    FixedSizeOutgoingMessage (size_t bufferSize);
+    FixedSizeOutgoingMessage (uint8_t* buffer, size_t bufferSize);
 
-    ~FixedSizeMessageEncoder () override;
+    ~FixedSizeOutgoingMessage () override;
 
 #if defined (__APPLE__)
     __attribute__((cf_returns_retained)) CFDataRef
@@ -90,7 +90,7 @@ public:
 #endif
                                                    convertToEncodedData () override;
 
-    static std::unique_ptr<FixedSizeMessageEncoder> create ();
+    static std::unique_ptr<FixedSizeOutgoingMessage> create ();
 
     void appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
 
@@ -102,11 +102,11 @@ private:
 };
 
 
-//! message encoder backed by std::vector
-class VectorMessageEncoder : public MessageEncoder
+//! message backed by std::vector
+class VectorOutgoingMessage : public OutgoingMessage
 {
 public:
-    VectorMessageEncoder (size_t capacity = 0);
+    VectorOutgoingMessage (size_t capacity = 0);
 
 #if defined (__APPLE__)
     __attribute__((cf_returns_retained)) CFDataRef
@@ -115,7 +115,7 @@ public:
 #endif
                                                    convertToEncodedData () override;
 
-    static std::unique_ptr<VectorMessageEncoder> create ();
+    static std::unique_ptr<VectorOutgoingMessage> create ();
 
     void appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
 
@@ -125,16 +125,16 @@ private:
 
 
 #if defined (__APPLE__)
-//! message encoder backed by CFData
-class CFMessageEncoder : public MessageEncoder
+//! message backed by CFData
+class CFOutgoingMessage : public OutgoingMessage
 {
 public:
-    CFMessageEncoder ();
-    ~CFMessageEncoder () override;
+    CFOutgoingMessage ();
+    ~CFOutgoingMessage () override;
 
     __attribute__((cf_returns_retained)) CFDataRef convertToEncodedData () override;
 
-    static std::unique_ptr<CFMessageEncoder> create ();
+    static std::unique_ptr<CFOutgoingMessage> create ();
 
     void appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
 
@@ -149,13 +149,13 @@ private:
 //! Message Decoding
 //! @{
 
-//! message decoder backed by raw pointer and size
-class MessageDecoder
+//! message backed by raw pointer and size
+class IncomingMessage
 {
 public:
-    MessageDecoder (const uint8_t* buffer, size_t bufferSize);
+    IncomingMessage (const uint8_t* buffer, size_t bufferSize);
 
-    virtual ~MessageDecoder () = default;
+    virtual ~IncomingMessage () = default;
 
     //! raw bytes
     //! Will return a pointer to the message data or nullptr if the requested size exceeds
@@ -165,7 +165,7 @@ public:
     //! Also used for reading numbers, strings etc.
     const uint8_t* readBytes (size_t size) const;
 
-    static std::unique_ptr<MessageDecoder> createWithMessageData (const uint8_t* data, const size_t dataSize);
+    static std::unique_ptr<IncomingMessage> createWithMessageData (const uint8_t* data, const size_t dataSize);
 
 private:
     const uint8_t* const _buffer;
@@ -175,14 +175,14 @@ private:
 
 
 #if defined (__APPLE__)
-//! message decoder backed by CFData
-class CFMessageDecoder : public MessageDecoder
+//! message backed by CFData
+class CFIncomingMessage : public IncomingMessage
 {
 public:
-    explicit CFMessageDecoder (CFDataRef data, bool retain = true);
-    ~CFMessageDecoder () override;
+    explicit CFIncomingMessage (CFDataRef data, bool retain = true);
+    ~CFIncomingMessage () override;
 
-    static std::unique_ptr<CFMessageDecoder> createWithMessageData (CFDataRef messageData, bool isTemporary);
+    static std::unique_ptr<CFIncomingMessage> createWithMessageData (CFDataRef messageData, bool isTemporary);
 
 private:
     CFDataRef const _data;

@@ -45,8 +45,8 @@ class ProxyPlugIn : public RemoteCaller
 public:
     ProxyPlugIn (std::unique_ptr<Connection> && connection);
 
-    static void handleReceivedMessage (const MessageID messageID, const MessageDecoder* const decoder,
-                                       MessageEncoder* const replyEncoder);
+    static void handleReceivedMessage (const MessageID messageID, const IncomingMessage* const message,
+                                       OutgoingMessage* const reply);
 
 private:
     const std::unique_ptr<Connection> _connection;

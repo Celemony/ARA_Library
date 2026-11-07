@@ -94,30 +94,30 @@ public:
 #endif
 
 public:
-    void routeReceivedDictionary (NSDictionary * _Nonnull message)
+    void routeReceivedDictionary (NSDictionary * _Nonnull dictionary)
     {
         _currentRoutingThread = [NSThread currentThread];
         ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
-        ARA_INTERNAL_ASSERT (message.allKeys.count == 1);
-        ARA_INTERNAL_ASSERT (message.allValues.count == 1);
-        const MessageID messageID { [((NSNumber *) message.allKeys.firstObject) intValue] };
-        const auto data { (__bridge CFDataRef) message.allValues.firstObject };
+        ARA_INTERNAL_ASSERT (dictionary.allKeys.count == 1);
+        ARA_INTERNAL_ASSERT (dictionary.allValues.count == 1);
+        const MessageID messageID { [((NSNumber *) dictionary.allKeys.firstObject) intValue] };
+        const auto data { (__bridge CFDataRef) dictionary.allValues.firstObject };
         ARA_INTERNAL_ASSERT (data != nullptr);
-        auto decoder { CFMessageDecoder::createWithMessageData (data, true) };
-        routeReceivedMessage (messageID, std::move (decoder));
+        auto message { CFIncomingMessage::createWithMessageData (data, true) };
+        routeReceivedMessage (messageID, std::move (message));
         _currentRoutingThread = nil;
     }
 
-    void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) override
+    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message) override
     {
-        const auto data { encoder->convertToEncodedData () };
+        const auto data { message->convertToEncodedData () };
 #if !__has_feature(objc_arc)
         auto nsData { (__bridge NSData *) data };
 #else
         auto nsData { (__bridge_transfer NSData *) data };
 #endif
-        auto message { [NSDictionary dictionaryWithObject:nsData forKey:[NSNumber numberWithInt: messageID]] };
-        const auto reply { _sendMessage (message) };
+        auto dictionary { [NSDictionary dictionaryWithObject:nsData forKey:[NSNumber numberWithInt: messageID]] };
+        const auto reply { _sendMessage (dictionary) };
         ARA_INTERNAL_ASSERT ([reply count] == 0);
 #if !__has_feature(objc_arc)
         CFRelease (data);
@@ -177,9 +177,9 @@ public:
     : AudioUnitMessageChannel { audioUnitChannel }
     {
         _audioUnitChannel.callHostBlock =
-            ^NSDictionary * _Nullable (NSDictionary * _Nonnull message)
+            ^NSDictionary * _Nullable (NSDictionary * _Nonnull dictionary)
             {
-                routeReceivedDictionary (message);
+                routeReceivedDictionary (dictionary);
                 return [NSDictionary dictionary];   // \todo it would yield better performance if the callHostBlock would allow nil as return value
             };
 
@@ -244,7 +244,7 @@ private:
                    AUAudioUnit * _Nonnull initAU,
                    ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
                    void * _Nullable delegateUserData)
-    : ProxyPlugIn { std::make_unique<Connection> (&CFMessageEncoder::create,
+    : ProxyPlugIn { std::make_unique<Connection> (&CFOutgoingMessage::create,
                                                   ProxyPlugIn::handleReceivedMessage,
                                                   true, // \todo shouldn't the AUMessageChannel provide this information?
                                                   (waitForMessageDelegate) ?
@@ -314,7 +314,7 @@ class AUProxyHost : public ProxyHost
 {
 public:
     AUProxyHost ()
-    : ProxyHost { std::make_unique<Connection> (&CFMessageEncoder::create,
+    : ProxyHost { std::make_unique<Connection> (&CFOutgoingMessage::create,
                                                 [this] (auto&& ...args) { handleReceivedMessage (args...); },
                                                 true) } // \todo shouldn't the AUMessageChannel provide this information?
     {
