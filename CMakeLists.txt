@@ -139,6 +139,12 @@ set(ARA_Library_Common_Files
     "${CMAKE_CURRENT_SOURCE_DIR}/ChangeLog.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt"
 )
+if(APPLE OR WIN32)
+    list (APPEND ARA_Library_Common_Files
+        "${CMAKE_CURRENT_SOURCE_DIR}/Utilities/ARAFunctionDispatcher.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Utilities/ARAFunctionDispatcher.cpp"
+    )
+endif()
 
 # ======================
 

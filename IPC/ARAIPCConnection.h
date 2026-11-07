@@ -20,23 +20,16 @@
 #define ARAIPCConnection_h
 
 #include "ARA_Library/IPC/ARAIPCMessage.h"
-#include "ARA_Library/Debug/ARADebug.h"
 
 #if ARA_ENABLE_IPC
 
 
-#if defined (_WIN32)
-    #include <Windows.h>
-#elif defined (__APPLE__)
-    #include <CoreFoundation/CFRunLoop.h>
-#endif
+#include "ARA_Library/Debug/ARADebug.h"
+#include "ARA_Library/Utilities/ARAFunctionDispatcher.h"
 
 #include <functional>
-#include <mutex>
 #include <memory>
 #include <thread>
-#include <queue>
-#include <vector>
 
 
 //! @addtogroup ARA_Library_IPC
@@ -83,7 +76,7 @@ public:
     //! if timeout is 0, it returns immediately if no message is pending
     //! returns true if an event was processed during the call
     //! note that waiting may trigger execution of functions that have been dispatched via
-    //! Connection::dispatchToCreationThread()
+    //! FunctionDispatcher::dispatchToCreationThread()
     virtual bool waitForMessageOnCurrentThread (ARATimeDuration timeout) = 0;
 
 protected:
@@ -111,7 +104,10 @@ class Connection
 public:
     using OutgoingMessageFactory = std::function<std::unique_ptr<OutgoingMessage> ()>;
     using WaitForMessageDelegate = std::function<void ()>;
+    using CreationThreadDispatcher = std::function<void (std::function<void ()>)>;
+
     Connection (OutgoingMessageFactory&& outgoingMessageFactory, MessageHandler&& messageHandler,
+                CreationThreadDispatcher&& creationThreadDispatcher,
                 bool receiverEndiannessMatches, WaitForMessageDelegate&& waitForMessageDelegate = {});
     ~Connection ();
 
@@ -140,10 +136,12 @@ public:
     bool wasCreatedOnCurrentThread () const { return std::this_thread::get_id () == _creationThreadID; }
 
     //! if IPC messages that need to be processed on the creation thread are received on some
-    //! other thread due to the design of the underlying IPC APIs, then this dispatch allows them
-    //! to forward it to the creation thread
-    using DispatchableFunction = std::function<void ()>;
-    void dispatchToCreationThread (DispatchableFunction func);
+    //! other thread due to the design of the underlying IPC APIs, then this dispatch allows
+    //! to forward their processing to the creation thread
+    void dispatchToCreationThread (std::function<void ()> func)
+    {
+        _creationThreadDispatcher (func);
+    }
 
     //! spins message processing on the creation thread in case the thread is blocked by some outer loop
     //! will return immediately if timeout == 0 and no message pending
@@ -158,29 +156,15 @@ public:
     // internal API: debug output helper
     static void _setDebugMessageHint (bool isHost);
 
-#if defined (__APPLE__)
-private:
-    static void _performRunLoopSource (void* info);
-#endif
-
 private:
     const OutgoingMessageFactory _outgoingMessageFactory;
     const MessageHandler _messageHandler;
+    const CreationThreadDispatcher _creationThreadDispatcher;
     const bool _receiverEndiannessMatches;
     const WaitForMessageDelegate _waitForMessageDelegate;
     std::unique_ptr<MainThreadMessageDispatcher> _mainThreadDispatcher {};
     std::unique_ptr<OtherThreadsMessageDispatcher> _otherThreadsDispatcher {};
     std::thread::id const _creationThreadID;
-#if defined (_WIN32)
-    HANDLE const _creationThreadHandle;
-#elif defined (__APPLE__)
-    CFRunLoopRef const _creationThreadRunLoop;
-    CFRunLoopSourceRef _runLoopSource;
-    std::queue<DispatchableFunction> _queue;    // \todo instead of locking, use a lockless concurrent queue,
-    std::recursive_mutex _mutex;                // eg this one: https://github.com/hogliux/farbot
-#else
-    #error "not yet implemented on this platform"
-#endif
 };
 
 }   // namespace IPC

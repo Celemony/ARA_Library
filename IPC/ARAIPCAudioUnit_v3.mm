@@ -207,7 +207,7 @@ protected:
 
 // host side: proxy plug-in implementation
 #if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
-class AUProxyPlugIn : public ProxyPlugIn
+class AUProxyPlugIn : public ProxyPlugIn, public FunctionDispatcher
 {
 public:
     static AUProxyPlugIn* createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit,
@@ -246,6 +246,7 @@ private:
                    void * _Nullable delegateUserData)
     : ProxyPlugIn { std::make_unique<Connection> (&CFOutgoingMessage::create,
                                                   ProxyPlugIn::handleReceivedMessage,
+                                                  [this] (auto&& func) { dispatchToCreationThread (func); },
                                                   true, // \todo shouldn't the AUMessageChannel provide this information?
                                                   (waitForMessageDelegate) ?
                                                         [waitForMessageDelegate, delegateUserData] { waitForMessageDelegate(delegateUserData); } :
@@ -310,13 +311,15 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCProxyPlugInRef _Nonnull pro
 // plug-in side: proxy host C adapter
 #if !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
 
-class AUProxyHost : public ProxyHost
+class AUProxyHost : public ProxyHost, public FunctionDispatcher
 {
 public:
     AUProxyHost ()
     : ProxyHost { std::make_unique<Connection> (&CFOutgoingMessage::create,
                                                 [this] (auto&& ...args) { handleReceivedMessage (args...); },
-                                                true) } // \todo shouldn't the AUMessageChannel provide this information?
+                                                [this] (auto&& func) { dispatchToCreationThread (func); },
+                                                true) },    // \todo shouldn't the AUMessageChannel provide this information?
+      _dispatchSyncSemaphore { dispatch_semaphore_create (0) }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
     }
@@ -330,7 +333,7 @@ public:
 
     void dispatchSyncToMainThread (void (^_Nonnull block) ())
     {
-        getConnection ()->dispatchToCreationThread ([block, this] ()
+        dispatchToCreationThread ([block, this] ()
                             {
                                 block ();
                                 dispatch_semaphore_signal (_dispatchSyncSemaphore);

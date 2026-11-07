@@ -25,16 +25,10 @@
 #include "ARA_Library/Debug/ARADebug.h"
 #include "ARA_Library/IPC/ARAIPCEncoding.h"
 
+#include <condition_variable>
+#include <mutex>
 #include <utility>
-#include <optional>
-#if __cplusplus >= 202002L
-    #include <chrono>
-    #include <semaphore>
-#endif
-
-#if defined (__APPLE__)
-    #include <CoreFoundation/CoreFoundation.h>
-#endif
+#include <vector>
 
 
 #if ARA_ENABLE_DEBUG_OUTPUT && 0
@@ -626,81 +620,19 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
 
 //------------------------------------------------------------------------------
 
-#if defined (_WIN32)
-
-// from https://devblogs.microsoft.com/oldnewthing/20141015-00/?p=43843
-BOOL ConvertToRealHandle(HANDLE h,
-                         BOOL bInheritHandle,
-                         HANDLE *phConverted)
-{
- return DuplicateHandle(GetCurrentProcess(), h,
-                        GetCurrentProcess(), phConverted,
-                        0, bInheritHandle, DUPLICATE_SAME_ACCESS);
-}
-
-HANDLE _GetRealCurrentThread ()
-{
-    HANDLE currentThread {};
-    [[maybe_unused]] const auto success { ConvertToRealHandle (::GetCurrentThread (), FALSE, &currentThread) };
-    ARA_INTERNAL_ASSERT (success);
-    return currentThread;
-}
-
-void APCRouteNewTransactionFunc (ULONG_PTR parameter)
-{
-    auto funcPtr { reinterpret_cast<Connection::DispatchableFunction*> (parameter) };
-    (*funcPtr) ();
-    delete funcPtr;
-}
-
-#elif defined (__APPLE__)
-
-void Connection::_performRunLoopSource (void* info)
-{
-    auto connection { reinterpret_cast<Connection*> (info) };
-    connection->_mutex.lock ();
-    while (!connection->_queue.empty ())
-    {
-        auto func { connection->_queue.front () };
-        connection->_queue.pop ();
-        connection->_mutex.unlock ();
- 
-        func ();
- 
-        connection->_mutex.lock ();
-    }
-    connection->_mutex.unlock ();
-}
-
-#endif
-
-
 Connection::Connection (OutgoingMessageFactory&& outgoingMessageFactory, MessageHandler&& messageHandler,
+                        CreationThreadDispatcher&& creationThreadDispatcher,
                         bool receiverEndiannessMatches, WaitForMessageDelegate&& waitForMessageDelegate)
 : _outgoingMessageFactory { std::move (outgoingMessageFactory) },
   _messageHandler { std::move (messageHandler) },
+  _creationThreadDispatcher { std::move (creationThreadDispatcher) },
   _receiverEndiannessMatches { receiverEndiannessMatches },
   _waitForMessageDelegate { std::move (waitForMessageDelegate) },
-  _creationThreadID { std::this_thread::get_id () },
-#if defined (_WIN32)
-  _creationThreadHandle { _GetRealCurrentThread () }
+  _creationThreadID { std::this_thread::get_id () }
 {}
-#elif defined (__APPLE__)
-  _creationThreadRunLoop { CFRunLoopGetCurrent () }
-{
-    CFRunLoopSourceContext context { 0, this, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, _performRunLoopSource };
-    _runLoopSource = CFRunLoopSourceCreate (kCFAllocatorDefault, 0, &context);
-    CFRunLoopAddSource (_creationThreadRunLoop, _runLoopSource, kCFRunLoopCommonModes);
-}
-#endif
 
 Connection::~Connection ()
-{
-#if defined (__APPLE__)
-    CFRunLoopRemoveSource (_creationThreadRunLoop, _runLoopSource, kCFRunLoopCommonModes);
-    CFRelease (_runLoopSource);
-#endif
-}
+{}
 
 void Connection::setMainThreadChannel (std::unique_ptr<MessageChannel>&& messageChannel)
 {
@@ -737,21 +669,6 @@ void Connection::sendMessage (MessageID messageID, ArgumentsProvider&& arguments
         _mainThreadDispatcher->sendMessage (std::move (message), std::move (replyHandler), messageID);
     else
         _otherThreadsDispatcher->sendMessage (std::move (message), std::move (replyHandler), messageID);
-}
-
-void Connection::dispatchToCreationThread (DispatchableFunction func)
-{
-#if defined (_WIN32)
-    auto funcPtr { new DispatchableFunction { func } };
-    [[maybe_unused]] const auto result { ::QueueUserAPC (APCRouteNewTransactionFunc, _creationThreadHandle, reinterpret_cast<ULONG_PTR> (funcPtr)) };
-    ARA_INTERNAL_ASSERT (result != 0);
-#elif defined (__APPLE__)
-    _mutex.lock ();
-    _queue.emplace (std::move (func));
-    _mutex.unlock ();
-    CFRunLoopSourceSignal (_runLoopSource);
-    CFRunLoopWakeUp (_creationThreadRunLoop);
-#endif
 }
 
 void Connection::processPendingMessageOnCreationThreadIfNeeded (ARATimeDuration timeout)
