@@ -660,7 +660,7 @@ static const ARAFactory* getFactoryWithID (ARAPersistentID factoryID)
 
 /*******************************************************************************/
 
-ProxyHost::ProxyHost (std::unique_ptr<Connection> && connection)
+ProxyHost::ProxyHost (std::unique_ptr<Connection>&& connection)
 : RemoteCaller { connection.get () },
   _connection { std::move (connection) }
 {

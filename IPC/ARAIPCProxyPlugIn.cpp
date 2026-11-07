@@ -1442,7 +1442,7 @@ void ARAIPCProxyPlugInUninitializeARA (ARAIPCProxyPlugInRef proxyPlugInRef, cons
 
 /*******************************************************************************/
 
-ProxyPlugIn::ProxyPlugIn (std::unique_ptr<Connection> && connection)
+ProxyPlugIn::ProxyPlugIn (std::unique_ptr<Connection>&& connection)
 : RemoteCaller (connection.get ()),
   _connection (std::move (connection))
 {

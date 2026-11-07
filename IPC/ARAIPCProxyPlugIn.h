@@ -43,7 +43,7 @@ extern "C" {
 class ProxyPlugIn : public RemoteCaller
 {
 public:
-    ProxyPlugIn (std::unique_ptr<Connection> && connection);
+    ProxyPlugIn (std::unique_ptr<Connection>&& connection);
 
     static void handleReceivedMessage (const MessageID messageID, const IncomingMessage* const message,
                                        OutgoingMessage* const reply);

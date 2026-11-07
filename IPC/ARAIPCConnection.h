@@ -73,7 +73,7 @@ public:
     virtual ~MessageChannel () = default;
 
     //! implemented by subclasses to perform the actual message (or reply) sending
-    virtual void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message) = 0;
+    virtual void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message) = 0;
 
     //! implemented by subclasses to inform the message dispatching code of the threading requirements
     virtual bool receivesMessagesOnCurrentThread () = 0;
@@ -83,7 +83,7 @@ public:
 
 protected:
     //! called by subclasses when messages arrive
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
+    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
     {
         ARA_INTERNAL_ASSERT (_receivedMessageRouter);
         _receivedMessageRouter (messageID, std::move (message));
@@ -93,7 +93,7 @@ private:
     // configuration hook for the MessageDispatcher constructors
     friend class MainThreadMessageDispatcher;
     friend class OtherThreadsMessageDispatcher;
-    std::function<void (MessageID, std::unique_ptr<const IncomingMessage> &&)> _receivedMessageRouter {};
+    std::function<void (MessageID, std::unique_ptr<const IncomingMessage>&&)> _receivedMessageRouter {};
 };
 //! @}
 
@@ -112,11 +112,11 @@ public:
 
     //! set the message channel for all main thread communication
     //! Must be done before sending or receiving the first message on any channel.
-    void setMainThreadChannel (std::unique_ptr<MessageChannel> && messageChannel);
+    void setMainThreadChannel (std::unique_ptr<MessageChannel>&& messageChannel);
 
     //! set the message channel for all non-main thread communication
     //! Must be done before sending or receiving the first message on any channel.
-    void setOtherThreadsChannel (std::unique_ptr<MessageChannel> && messageChannel);
+    void setOtherThreadsChannel (std::unique_ptr<MessageChannel>&& messageChannel);
 
     const MessageHandler& getMessageHandler () const { return _messageHandler; }
 

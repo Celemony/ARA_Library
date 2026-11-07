@@ -152,16 +152,16 @@ protected:
     };
 
 protected:
-    explicit MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel);
+    explicit MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel>&& messageChannel);
 
     Connection* getConnection () const { return  _connection; }
     MessageChannel* getMessageChannel () const { return  _messageChannel.get (); }
 
     static bool isReply (MessageID messageID) { return messageID == 0; }
 
-    void _sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message, bool isNewTransaction);
-    void _handleReply (std::unique_ptr<const IncomingMessage> && message, ReplyHandler && replyHandler);
-    void _handleReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message, OutgoingMessage* reply);
+    void _sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message, bool isNewTransaction);
+    void _handleReply (std::unique_ptr<const IncomingMessage>&& message, ReplyHandler&& replyHandler);
+    void _handleReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message, OutgoingMessage* reply);
 
 private:
     Connection* const _connection;
@@ -169,7 +169,7 @@ private:
 };
 
 
-MessageDispatcher::MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel)
+MessageDispatcher::MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel>&& messageChannel)
 : _connection { connection },
   _messageChannel { std::move (messageChannel) }
 {
@@ -187,7 +187,7 @@ MessageDispatcher::ThreadRef MessageDispatcher::getCurrentThread ()
     return result;
 }
 
-void MessageDispatcher::_sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message, [[maybe_unused]] bool isNewTransaction)
+void MessageDispatcher::_sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message, [[maybe_unused]] bool isNewTransaction)
 {
     if (isReply (messageID))
         ARA_IPC_LOG ("replies to message on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
@@ -199,14 +199,14 @@ void MessageDispatcher::_sendMessage (MessageID messageID, std::unique_ptr<Outgo
     _messageChannel->sendMessage (messageID, std::move (message));
 }
 
-void MessageDispatcher::_handleReply (std::unique_ptr<const IncomingMessage> && message, ReplyHandler && replyHandler)
+void MessageDispatcher::_handleReply (std::unique_ptr<const IncomingMessage>&& message, ReplyHandler&& replyHandler)
 {
     ARA_IPC_LOG ("handles reply on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
     if (replyHandler)
         replyHandler (message.get ());
 }
 
-void MessageDispatcher::_handleReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message, OutgoingMessage* reply)
+void MessageDispatcher::_handleReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message, OutgoingMessage* reply)
 {
     ARA_INTERNAL_ASSERT (!isReply (messageID));
 
@@ -272,7 +272,7 @@ class WaitableSingleMessageQueue
             }
         }
 
-        void signalSemaphore (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
+        void signalSemaphore (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
         {
             _pendingMessageID = messageID;
             _pendingIncomingMessage.store (message.release (), std::memory_order_release);
@@ -303,18 +303,18 @@ class WaitableSingleMessageQueue
 class MainThreadMessageDispatcher : public MessageDispatcher
 {
 public:
-    MainThreadMessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel)
+    MainThreadMessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel>&& messageChannel)
     : MessageDispatcher { connection, std::move (messageChannel) }
     {
-        getMessageChannel ()->_receivedMessageRouter = [this] (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
+        getMessageChannel ()->_receivedMessageRouter = [this] (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
                                                               { routeReceivedMessage (messageID, std::move (message)); };
     }
 
     void initializeMessage (OutgoingMessage* message);
 
-    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message, ReplyHandler && replyHandler);
+    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message, ReplyHandler&& replyHandler);
 
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message);
+    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message);
 
     void processPendingMessageIfNeeded ()
     {
@@ -326,7 +326,7 @@ public:
     }
 
 protected:
-    void processMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message);
+    void processMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message);
 
 private:
     int32_t _processingMessagesCount { 0 };
@@ -344,8 +344,8 @@ void MainThreadMessageDispatcher::initializeMessage (OutgoingMessage* message)
     _appendToMessage (message, static_cast<int32_t> ((_processingMessagesCount > 0) ? 1 : 0));
 }
 
-void MainThreadMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message,
-                                               ReplyHandler && replyHandler)
+void MainThreadMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message,
+                                               ReplyHandler&& replyHandler)
 {
     const auto previousPendingReplyHandler { _pendingReplyHandler };
     const PendingReplyHandler pendingReplyHandler { &replyHandler, previousPendingReplyHandler };
@@ -371,7 +371,7 @@ void MainThreadMessageDispatcher::sendMessage (MessageID messageID, std::unique_
     }
 }
 
-void MainThreadMessageDispatcher::processMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
+void MainThreadMessageDispatcher::processMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
 {
     ARA_INTERNAL_ASSERT (getConnection ()->wasCreatedOnCurrentThread ());
 
@@ -393,7 +393,7 @@ void MainThreadMessageDispatcher::processMessage (MessageID messageID, std::uniq
     }
 }
 
-void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
+void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
 {
     ARA_INTERNAL_ASSERT (message);
     int32_t isResponse { 0 };
@@ -447,18 +447,18 @@ void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, std
 class OtherThreadsMessageDispatcher : public MessageDispatcher
 {
 public:
-    OtherThreadsMessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel)
+    OtherThreadsMessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel>&& messageChannel)
     : MessageDispatcher { connection, std::move (messageChannel) }
     {
-        getMessageChannel ()->_receivedMessageRouter = [this] (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
+        getMessageChannel ()->_receivedMessageRouter = [this] (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
                                                               { routeReceivedMessage (messageID, std::move (message)); };
     }
 
     void initializeMessage (OutgoingMessage* message);
 
-    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message, ReplyHandler && replyHandler);
+    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message, ReplyHandler&& replyHandler);
 
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message);
+    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message);
 
 private:
     struct RoutedMessage
@@ -469,7 +469,7 @@ private:
     };
     RoutedMessage* _getRoutedMessageForThread (ThreadRef thread);
 
-    void _processReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message);
+    void _processReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message);
 
 private:
     // incoming data is stored in _routedMessages by the receive handler for the
@@ -492,8 +492,8 @@ void OtherThreadsMessageDispatcher::initializeMessage (OutgoingMessage* message)
     _appendToMessage (message, getCurrentThread ());    // will simply be ignored in replies
 }
 
-void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message,
-                                                 ReplyHandler && replyHandler)
+void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message,
+                                                 ReplyHandler&& replyHandler)
 {
     _sendLock.lock ();
     _sendMessage (messageID, std::move (message), (_remoteTargetThread == _invalidThread));
@@ -550,7 +550,7 @@ OtherThreadsMessageDispatcher::RoutedMessage* OtherThreadsMessageDispatcher::_ge
     return nullptr;
 }
 
-void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
+void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
 {
     ThreadRef targetThread;
     [[maybe_unused]] auto success { _readFromMessage (message.get (), targetThread) };
@@ -607,7 +607,7 @@ void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, s
     }
 }
 
-void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage> && message)
+void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
 {
     const auto previousRemoteTargetThread { _remoteTargetThread };
 
@@ -705,13 +705,13 @@ Connection::~Connection ()
 #endif
 }
 
-void Connection::setMainThreadChannel (std::unique_ptr<MessageChannel> && messageChannel)
+void Connection::setMainThreadChannel (std::unique_ptr<MessageChannel>&& messageChannel)
 {
     ARA_INTERNAL_ASSERT (_mainThreadDispatcher == nullptr);
     _mainThreadDispatcher = std::make_unique<MainThreadMessageDispatcher> (this, std::move (messageChannel));
 }
 
-void Connection::setOtherThreadsChannel (std::unique_ptr<MessageChannel> && messageChannel)
+void Connection::setOtherThreadsChannel (std::unique_ptr<MessageChannel>&& messageChannel)
 {
     ARA_INTERNAL_ASSERT (_otherThreadsDispatcher == nullptr);
     _otherThreadsDispatcher = std::make_unique<OtherThreadsMessageDispatcher> (this, std::move (messageChannel));

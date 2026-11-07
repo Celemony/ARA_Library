@@ -108,7 +108,7 @@ public:
         _currentRoutingThread = nil;
     }
 
-    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage> && message) override
+    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message) override
     {
         const auto data { message->convertToEncodedData () };
 #if !__has_feature(objc_arc)
