@@ -100,15 +100,15 @@ public:
         ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
         ARA_INTERNAL_ASSERT (dictionary.allKeys.count == 1);
         ARA_INTERNAL_ASSERT (dictionary.allValues.count == 1);
-        const MessageID messageID { [((NSNumber *) dictionary.allKeys.firstObject) intValue] };
+        ARA_INTERNAL_ASSERT ([@"msg" isEqualTo: dictionary.allKeys.firstObject]);
         const auto data { (__bridge CFDataRef) dictionary.allValues.firstObject };
         ARA_INTERNAL_ASSERT (data != nullptr);
         auto message { CFIncomingMessage::createWithMessageData (data, true) };
-        routeReceivedMessage (messageID, std::move (message));
+        routeReceivedMessage (std::move (message));
         _currentRoutingThread = nil;
     }
 
-    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message) override
+    void sendMessage (std::unique_ptr<OutgoingMessage>&& message) override
     {
         const auto data { message->convertToEncodedData () };
 #if !__has_feature(objc_arc)
@@ -116,7 +116,7 @@ public:
 #else
         auto nsData { (__bridge_transfer NSData *) data };
 #endif
-        auto dictionary { [NSDictionary dictionaryWithObject:nsData forKey:[NSNumber numberWithInt: messageID]] };
+        auto dictionary { [NSDictionary dictionaryWithObject:nsData forKey:@"msg"] };
         const auto reply { _sendMessage (dictionary) };
         ARA_INTERNAL_ASSERT ([reply count] == 0);
 #if !__has_feature(objc_arc)

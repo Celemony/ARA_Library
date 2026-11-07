@@ -73,7 +73,7 @@ public:
     virtual ~MessageChannel () = default;
 
     //! implemented by subclasses to perform the actual message (or reply) sending
-    virtual void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message) = 0;
+    virtual void sendMessage (std::unique_ptr<OutgoingMessage>&& message) = 0;
 
     //! implemented by subclasses to inform the message dispatching code of the threading requirements
     virtual bool receivesMessagesOnCurrentThread () = 0;
@@ -83,17 +83,17 @@ public:
 
 protected:
     //! called by subclasses when messages arrive
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
+    void routeReceivedMessage (std::unique_ptr<const IncomingMessage>&& message)
     {
         ARA_INTERNAL_ASSERT (_receivedMessageRouter);
-        _receivedMessageRouter (messageID, std::move (message));
+        _receivedMessageRouter (std::move (message));
     }
 
 private:
     // configuration hook for the MessageDispatcher constructors
     friend class MainThreadMessageDispatcher;
     friend class OtherThreadsMessageDispatcher;
-    std::function<void (MessageID, std::unique_ptr<const IncomingMessage>&&)> _receivedMessageRouter {};
+    std::function<void (std::unique_ptr<const IncomingMessage>&&)> _receivedMessageRouter {};
 };
 //! @}
 

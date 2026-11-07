@@ -159,7 +159,8 @@ protected:
 
     static bool isReply (MessageID messageID) { return messageID == 0; }
 
-    void _sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message, bool isNewTransaction);
+    void _sendMessage (std::unique_ptr<OutgoingMessage>&& message,
+                       MessageID messageID /*only for debug output*/, bool isNewTransaction /*only for debug output*/);
     void _handleReply (std::unique_ptr<const IncomingMessage>&& message, ReplyHandler&& replyHandler);
     void _handleReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message, OutgoingMessage* reply);
 
@@ -187,7 +188,8 @@ MessageDispatcher::ThreadRef MessageDispatcher::getCurrentThread ()
     return result;
 }
 
-void MessageDispatcher::_sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message, [[maybe_unused]] bool isNewTransaction)
+void MessageDispatcher::_sendMessage (std::unique_ptr<OutgoingMessage>&& message,
+                                      [[maybe_unused]] MessageID messageID, [[maybe_unused]] bool isNewTransaction)
 {
     if (isReply (messageID))
         ARA_IPC_LOG ("replies to message on" ARA_IPC_LABEL_THREAD_FORMAT, ARA_IPC_LABEL_THREAD_ARGS);
@@ -196,7 +198,7 @@ void MessageDispatcher::_sendMessage (MessageID messageID, std::unique_ptr<Outgo
                      ARA_IPC_DECODE_SENT_MESSAGE_ARGS (messageID),  ARA_IPC_LABEL_THREAD_ARGS,
                      (isNewTransaction) ? " (new transaction)" : "");
 
-    _messageChannel->sendMessage (messageID, std::move (message));
+    _messageChannel->sendMessage (std::move (message));
 }
 
 void MessageDispatcher::_handleReply (std::unique_ptr<const IncomingMessage>&& message, ReplyHandler&& replyHandler)
@@ -306,15 +308,16 @@ public:
     MainThreadMessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel>&& messageChannel)
     : MessageDispatcher { connection, std::move (messageChannel) }
     {
-        getMessageChannel ()->_receivedMessageRouter = [this] (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
-                                                              { routeReceivedMessage (messageID, std::move (message)); };
+        getMessageChannel ()->_receivedMessageRouter = [this] (std::unique_ptr<const IncomingMessage>&& message)
+                                                              { routeReceivedMessage (std::move (message)); };
     }
 
-    void initializeMessage (OutgoingMessage* message);
+    void initializeMessage (OutgoingMessage* message, MessageID messageID);
 
-    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message, ReplyHandler&& replyHandler);
+    void sendMessage (std::unique_ptr<OutgoingMessage>&& message, ReplyHandler&& replyHandler,
+                      MessageID messageID /*only for debug output*/);
 
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message);
+    void routeReceivedMessage (std::unique_ptr<const IncomingMessage>&& message);
 
     void processPendingMessageIfNeeded ()
     {
@@ -337,21 +340,23 @@ private:
 };
 
 
-void MainThreadMessageDispatcher::initializeMessage (OutgoingMessage* message)
+void MainThreadMessageDispatcher::initializeMessage (OutgoingMessage* message, MessageID messageID)
 {
+    _appendToMessage (message, messageID);
+
     // flag whether the outgoing call is made in response (reply or callback) to a currently
     // handled incoming call, or a new call - this allows for optimizing the routing in the receiver
     _appendToMessage (message, static_cast<int32_t> ((_processingMessagesCount > 0) ? 1 : 0));
 }
 
-void MainThreadMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message,
-                                               ReplyHandler&& replyHandler)
+void MainThreadMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage>&& message,
+                                               ReplyHandler&& replyHandler, [[maybe_unused]] MessageID messageID)
 {
     const auto previousPendingReplyHandler { _pendingReplyHandler };
     const PendingReplyHandler pendingReplyHandler { &replyHandler, previousPendingReplyHandler };
     _pendingReplyHandler = &pendingReplyHandler;
 
-    _sendMessage (messageID, std::move (message), (_processingMessagesCount == 0));
+    _sendMessage (std::move (message), messageID, (_processingMessagesCount == 0));
 
     while (previousPendingReplyHandler != _pendingReplyHandler)
     {
@@ -385,19 +390,21 @@ void MainThreadMessageDispatcher::processMessage (MessageID messageID, std::uniq
     {
         ++_processingMessagesCount;
         auto reply { getConnection ()->_createOutgoingMessage () };
-        initializeMessage (reply.get ());
+        initializeMessage (reply.get (), 0);
         _handleReceivedMessage (messageID, std::move (message), reply.get ());
         --_processingMessagesCount;
 
-        _sendMessage (0, std::move (reply), false);
+        _sendMessage (std::move (reply), 0, false);
     }
 }
 
-void MainThreadMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
+void MainThreadMessageDispatcher::routeReceivedMessage (std::unique_ptr<const IncomingMessage>&& message)
 {
     ARA_INTERNAL_ASSERT (message);
-    int32_t isResponse { 0 };
-    [[maybe_unused]] const auto success { _readFromMessage (message.get (), isResponse) };
+    MessageID messageID;
+    int32_t isResponse;
+    [[maybe_unused]] auto success { _readFromMessage (message.get (), messageID) };
+    success &= _readFromMessage (message.get (), isResponse);
     ARA_INTERNAL_ASSERT (success);
     ARA_INTERNAL_ASSERT (!isReply (messageID) || (isResponse != 0));    // replies always are responses
 
@@ -450,15 +457,16 @@ public:
     OtherThreadsMessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel>&& messageChannel)
     : MessageDispatcher { connection, std::move (messageChannel) }
     {
-        getMessageChannel ()->_receivedMessageRouter = [this] (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
-                                                              { routeReceivedMessage (messageID, std::move (message)); };
+        getMessageChannel ()->_receivedMessageRouter = [this] (std::unique_ptr<const IncomingMessage>&& message)
+                                                              { routeReceivedMessage (std::move (message)); };
     }
 
-    void initializeMessage (OutgoingMessage* message);
+    void initializeMessage (OutgoingMessage* message, MessageID messageID);
 
-    void sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message, ReplyHandler&& replyHandler);
+    void sendMessage (std::unique_ptr<OutgoingMessage>&& message, ReplyHandler&& replyHandler,
+                      MessageID messageID /*only for debug output*/);
 
-    void routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message);
+    void routeReceivedMessage (std::unique_ptr<const IncomingMessage>&& message);
 
 private:
     struct RoutedMessage
@@ -486,17 +494,18 @@ thread_local MessageDispatcher::ThreadRef OtherThreadsMessageDispatcher::_remote
 thread_local const OtherThreadsMessageDispatcher::PendingReplyHandler* OtherThreadsMessageDispatcher::_pendingReplyHandler { nullptr };
 
 
-void OtherThreadsMessageDispatcher::initializeMessage (OutgoingMessage* message)
+void OtherThreadsMessageDispatcher::initializeMessage (OutgoingMessage* message, MessageID messageID)
 {
+    _appendToMessage (message, messageID);
     _appendToMessage (message, _remoteTargetThread);
     _appendToMessage (message, getCurrentThread ());    // will simply be ignored in replies
 }
 
-void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<OutgoingMessage>&& message,
-                                                 ReplyHandler&& replyHandler)
+void OtherThreadsMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage>&& message,
+                                                 ReplyHandler&& replyHandler, [[maybe_unused]] MessageID messageID)
 {
     _sendLock.lock ();
-    _sendMessage (messageID, std::move (message), (_remoteTargetThread == _invalidThread));
+    _sendMessage (std::move (message), messageID, (_remoteTargetThread == _invalidThread));
     _sendLock.unlock ();
 
     if (getMessageChannel ()->receivesMessagesOnCurrentThread ())
@@ -550,10 +559,13 @@ OtherThreadsMessageDispatcher::RoutedMessage* OtherThreadsMessageDispatcher::_ge
     return nullptr;
 }
 
-void OtherThreadsMessageDispatcher::routeReceivedMessage (MessageID messageID, std::unique_ptr<const IncomingMessage>&& message)
+void OtherThreadsMessageDispatcher::routeReceivedMessage (std::unique_ptr<const IncomingMessage>&& message)
 {
+    ARA_INTERNAL_ASSERT (message);
+    MessageID messageID;
     ThreadRef targetThread;
-    [[maybe_unused]] auto success { _readFromMessage (message.get (), targetThread) };
+    [[maybe_unused]] auto success { _readFromMessage (message.get (), messageID) };
+    success &= _readFromMessage (message.get (), targetThread);
     ARA_INTERNAL_ASSERT (success);
 
     if (targetThread != _invalidThread)
@@ -617,11 +629,11 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
     _remoteTargetThread = remoteTargetThread;
 
     auto reply { getConnection ()->_createOutgoingMessage () };
-    initializeMessage (reply.get ());
+    initializeMessage (reply.get (), 0);
     _handleReceivedMessage (messageID, std::move (message), reply.get ());
 
     _sendLock.lock ();
-    _sendMessage (0, std::move (reply), false);
+    _sendMessage (std::move (reply), 0, false);
     _sendLock.unlock ();
 
     _remoteTargetThread = previousRemoteTargetThread;
@@ -730,16 +742,16 @@ void Connection::sendMessage (MessageID messageID, ArgumentsProvider&& arguments
 
     auto message { _createOutgoingMessage () };
     if (useMainThreadDispatcher)
-        _mainThreadDispatcher->initializeMessage (message.get ());
+        _mainThreadDispatcher->initializeMessage (message.get (), messageID);
     else
-        _otherThreadsDispatcher->initializeMessage (message.get ());
+        _otherThreadsDispatcher->initializeMessage (message.get (), messageID);
 
     argumentsProvider (message.get ());
 
     if (useMainThreadDispatcher)
-        _mainThreadDispatcher->sendMessage (messageID, std::move (message), std::move (replyHandler));
+        _mainThreadDispatcher->sendMessage (std::move (message), std::move (replyHandler), messageID);
     else
-        _otherThreadsDispatcher->sendMessage (messageID, std::move (message), std::move (replyHandler));
+        _otherThreadsDispatcher->sendMessage (std::move (message), std::move (replyHandler), messageID);
 }
 
 void Connection::dispatchToCreationThread (DispatchableFunction func)
