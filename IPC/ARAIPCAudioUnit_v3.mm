@@ -110,7 +110,7 @@ public:
 
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) override
     {
-        const auto array { static_cast<CFMessageEncoder *> (encoder.get ())->copyArray () };
+        const auto array { static_cast<CFMessageEncoder *> (encoder.get ())->convertToEncodedArray () };
 #if !__has_feature(objc_arc)
         auto nsArray { (__bridge NSArray *) array };
 #else

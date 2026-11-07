@@ -44,7 +44,9 @@ CFMessageEncoder::CFMessageEncoder ()
 
 CFMessageEncoder::~CFMessageEncoder ()
 {
-    CFRelease (_array);
+    ARA_INTERNAL_ASSERT (!_array);      // should have been reset via convertToEncodedData()/-Array()
+    if (_array)
+        CFRelease (_array);
 }
 
 void CFMessageEncoder::appendInt32 (int32_t argValue)
@@ -96,17 +98,22 @@ void CFMessageEncoder::appendBytes (const uint8_t* argValue, size_t argSize, boo
     CFRelease (argObject);
 }
 
-__attribute__((cf_returns_retained)) CFArrayRef CFMessageEncoder::copyArray () const
+__attribute__((cf_returns_retained)) CFArrayRef CFMessageEncoder::convertToEncodedArray ()
 {
-    CFRetain (_array);
-    return _array;
+    ARA_INTERNAL_ASSERT (_array);       // convertToEncodedData()/-Array() must only be called once
+    const auto result { _array };
+    _array = nullptr;
+    return result;
 }
 
-__attribute__((cf_returns_retained)) CFDataRef CFMessageEncoder::createMessageEncoderData ()  const
+__attribute__((cf_returns_retained)) CFDataRef CFMessageEncoder::convertToEncodedData ()
 {
-    if (CFArrayGetCount (_array) == 0)
-        return nullptr;
-    return CFPropertyListCreateData (kCFAllocatorDefault, _array, kCFPropertyListBinaryFormat_v1_0, 0, nullptr);
+    ARA_INTERNAL_ASSERT (_array);       // convertToEncodedData()/-Array() must only be called once
+    const auto result { (CFArrayGetCount (_array) != 0) ?
+                            CFPropertyListCreateData (kCFAllocatorDefault, _array, kCFPropertyListBinaryFormat_v1_0, 0, nullptr) : nullptr };
+    CFRetain (_array);
+    _array = nullptr;
+    return result;
 }
 
 

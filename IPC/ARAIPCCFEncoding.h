@@ -21,7 +21,7 @@
 
 #include "ARA_Library/IPC/ARAIPCMessage.h"
 
-#if ARA_ENABLE_IPC
+#if ARA_ENABLE_IPC && defined (__APPLE__)
 
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -48,8 +48,8 @@ public:
     void appendDouble (double argValue) override;
     void appendBytes (const uint8_t* argValue, size_t argSize, bool copy) override;
 
-    __attribute__((cf_returns_retained)) CFArrayRef copyArray () const;
-    __attribute__((cf_returns_retained)) CFDataRef createMessageEncoderData ()  const;
+    __attribute__((cf_returns_retained)) CFArrayRef convertToEncodedArray ();
+    __attribute__((cf_returns_retained)) CFDataRef convertToEncodedData () override;
 
     static std::unique_ptr<CFMessageEncoder> create () { return std::unique_ptr<CFMessageEncoder> { new CFMessageEncoder }; }
 
@@ -57,7 +57,7 @@ private:
     CFMessageEncoder ();
 
 private:
-    CFMutableArrayRef const _array;
+    CFMutableArrayRef _array;
 };
 
 
@@ -87,6 +87,6 @@ private:
 
 //! @} ARA_Library_IPC
 
-#endif // ARA_ENABLE_IPC
+#endif // ARA_ENABLE_IPC && defined (__APPLE__)
 
 #endif // ARAIPCCFEncoding_h

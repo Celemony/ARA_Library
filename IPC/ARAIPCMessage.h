@@ -25,6 +25,11 @@
 
 
 #include <memory>
+#if defined (__APPLE__)
+    #include <CoreFoundation/CoreFoundation.h>
+#else
+    #include <vector>
+#endif
 
 
 //! @addtogroup ARA_Library_IPC
@@ -64,6 +69,16 @@ public:
     //! alive&unchanged until the message has been sent.
     //! Also used for appending strings.
     virtual void appendBytes (const uint8_t* argValue, size_t argSize, bool copy) = 0;
+
+    //! extract data for sending through underlying IPC API
+    //! must be called exactly once for every encoder
+    virtual
+#if defined (__APPLE__)
+            __attribute__((cf_returns_retained)) CFDataRef
+#else
+            std::vector<uint8_t>
+#endif
+                                                           convertToEncodedData () = 0;
 };
 //! @}
 
