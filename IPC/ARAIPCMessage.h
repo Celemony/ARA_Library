@@ -37,9 +37,9 @@ namespace IPC {
 //! ID type for messages
 typedef ARAInt32 MessageID;
 
-//! the implementation reserves this range of IDs, any custom messages must be >= kMessageIDRangeStart and < kMessageIDRangeEnd
+//! the implementation reserves this range of IDs, any custom messages must be < kReservedMessageIDRangeStart or >= kReservedMessageIDRangeEnd
 constexpr MessageID kReservedMessageIDRangeStart { 1 };
-constexpr MessageID kReservedMessageIDRangeEnd { 8*16*16 - 1 };
+constexpr MessageID kReservedMessageIDRangeEnd { 8*16*16 };
 
 
 //! key type for message dictionaries - negative keys are reserved for the implementation

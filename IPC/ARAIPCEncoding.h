@@ -963,24 +963,24 @@ template<typename StructT>
 constexpr MessageID _getInterfaceID ();
 // host interface specializations
 template<>
-constexpr MessageID _getInterfaceID<ARAAudioAccessControllerInterface> () { return 0; }
+constexpr MessageID _getInterfaceID<ARAAudioAccessControllerInterface> () { return 1; }
 template<>
-constexpr MessageID _getInterfaceID<ARAArchivingControllerInterface> () { return 1; }
+constexpr MessageID _getInterfaceID<ARAArchivingControllerInterface> () { return 2; }
 template<>
-constexpr MessageID _getInterfaceID<ARAContentAccessControllerInterface> () { return 2; }
+constexpr MessageID _getInterfaceID<ARAContentAccessControllerInterface> () { return 3; }
 template<>
-constexpr MessageID _getInterfaceID<ARAModelUpdateControllerInterface> () { return 3; }
+constexpr MessageID _getInterfaceID<ARAModelUpdateControllerInterface> () { return 4; }
 template<>
-constexpr MessageID _getInterfaceID<ARAPlaybackControllerInterface> () { return 4; }
+constexpr MessageID _getInterfaceID<ARAPlaybackControllerInterface> () { return 5; }
 // plug-in interface specializations
 template<>
-constexpr MessageID _getInterfaceID<ARADocumentControllerInterface> () { return 0; }
+constexpr MessageID _getInterfaceID<ARADocumentControllerInterface> () { return 1; }
 template<>
-constexpr MessageID _getInterfaceID<ARAPlaybackRendererInterface> () { return 1; }
+constexpr MessageID _getInterfaceID<ARAPlaybackRendererInterface> () { return 2; }
 template<>
-constexpr MessageID _getInterfaceID<ARAEditorRendererInterface> () { return 2; }
+constexpr MessageID _getInterfaceID<ARAEditorRendererInterface> () { return 3; }
 template<>
-constexpr MessageID _getInterfaceID<ARAEditorViewInterface> () { return 3; }
+constexpr MessageID _getInterfaceID<ARAEditorViewInterface> () { return 4; }
 
 
 //------------------------------------------------------------------------------
@@ -1005,19 +1005,22 @@ public:
 #if defined (__i386__) || defined (_M_IX86)
         static_assert ((sizeof (void*) == 4), "compiler settings imply 32 bit pointers");
         static_assert (((offset & 0x3FFFFFF4) == offset), "offset is misaligned or too large");
-        return (offset << 1) + interfaceID; // lower 2 bits of offset are 0 due to alignment, must shift 1 bit to store interface ID
+        // lower 2 bits of offset are 0 due to alignment, must shift 1 bit to store interface ID
+        constexpr auto messageID { (offset << 1) + interfaceID };
 #else
         static_assert ((sizeof (void*) == 8), "assuming 64 bit pointers per default");
         static_assert (((offset & 0x7FFFFFF8) == offset), "offset is misaligned or too large");
-        return offset + interfaceID;        // lower 3 bits of offset are 0 due to alignment, can be used to store interface ID
+        // lower 3 bits of offset are 0 due to alignment, can be used to store interface ID
+        constexpr auto messageID { offset + interfaceID };
 #endif
-    }
-
-    template<MessageID messageID>
-    static inline constexpr MethodID createWithARAGlobalMessageID ()
-    {
         static_assert (!isCustomMessageID (messageID), "must not be in custom message range");
         return messageID;
+    }
+
+    template<size_t index>
+    static inline constexpr MethodID createWithARAGlobalMessageIndex ()
+    {
+        return createWithARAInterfaceIDAndOffset <0, (index << 3)> ();
     }
 
     template<MessageID messageID>
@@ -1061,13 +1064,13 @@ inline bool operator!= (const MethodID methodID, const MessageID messageID)
 
 
 // "global" messages for startup and teardown that are not calculated based on interface structs
-inline constexpr auto kGetFactoriesCountMethodID { MethodID::createWithARAGlobalMessageID<1> () };
-inline constexpr auto kGetFactoryMethodID { MethodID::createWithARAGlobalMessageID<2> () };
-inline constexpr auto kInitializeARAMethodID { MethodID::createWithARAGlobalMessageID<3> () };
-inline constexpr auto kCreateDocumentControllerMethodID { MethodID::createWithARAGlobalMessageID<4> () };
-inline constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARAGlobalMessageID<5> () };
-inline constexpr auto kCleanupBindingMethodID { MethodID::createWithARAGlobalMessageID<6> () };
-inline constexpr auto kUninitializeARAMethodID { MethodID::createWithARAGlobalMessageID<7> () };
+inline constexpr auto kGetFactoriesCountMethodID { MethodID::createWithARAGlobalMessageIndex<1> () };
+inline constexpr auto kGetFactoryMethodID { MethodID::createWithARAGlobalMessageIndex<2> () };
+inline constexpr auto kInitializeARAMethodID { MethodID::createWithARAGlobalMessageIndex<3> () };
+inline constexpr auto kCreateDocumentControllerMethodID { MethodID::createWithARAGlobalMessageIndex<4> () };
+inline constexpr auto kBindToDocumentControllerMethodID { MethodID::createWithARAGlobalMessageIndex<5> () };
+inline constexpr auto kCleanupBindingMethodID { MethodID::createWithARAGlobalMessageIndex<6> () };
+inline constexpr auto kUninitializeARAMethodID { MethodID::createWithARAGlobalMessageIndex<7> () };
 
 
 // private helpers for decodeHost/PlugInMessageID()
