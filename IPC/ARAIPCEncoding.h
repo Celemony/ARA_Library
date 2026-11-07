@@ -953,18 +953,6 @@ inline bool _readAndDecode (ValueT& result, const MessageDecoder* decoder)
 
 //------------------------------------------------------------------------------
 
-
-// private helpers for decodeArguments() to deal with the variable arguments one at a time
-inline void _decodeArgumentsHelper (const MessageDecoder* /*decoder*/)
-{
-}
-template<typename ArgT, typename... MoreArgs>
-inline void _decodeArgumentsHelper (const MessageDecoder* decoder, ArgT& argValue, MoreArgs &... moreArgs)
-{
-    _readAndDecode (argValue, decoder);
-    _decodeArgumentsHelper (decoder, moreArgs...);
-}
-
 // private helper for ARA_IPC_METHOD_ID
 template<typename StructT>
 constexpr MessageID _getInterfaceID ();
@@ -1218,6 +1206,7 @@ inline const char* decodePlugInMessageID (const MessageID messageID, const bool 
 template<typename ArgT>
 inline constexpr auto _IsStructPointerArg = !_IsRefType<ArgT> && std::is_pointer_v<ArgT> && !std::is_same_v<ArgT, const char*>;
 
+// helper template for encodeMessage() to replace potential null pointers with optionals
 template<typename ArgT, std::enable_if_t<!_IsStructPointerArg<ArgT>, int> = 0>
 inline void _encodeAndAppendHelper (MessageEncoder* encoder, const ArgT& argValue)
 {
@@ -1234,46 +1223,25 @@ inline void _encodeAndAppendHelper (MessageEncoder* encoder, const std::nullptr_
     _encodeAndAppend (encoder, std::optional<size_t> ());
 }
 
-// caller side: create a message with the specified arguments
+
+//------------------------------------------------------------------------------
+// Top-level en- and decoding methods
+//------------------------------------------------------------------------------
+
 template<typename... Args>
-inline void encodeArguments (MessageEncoder* encoder, const Args &... args)
+inline void encodeMessage (MessageEncoder* encoder, const Args &... args)
 {
+    ARA_INTERNAL_ASSERT (encoder != nullptr);
     ((_encodeAndAppendHelper (encoder, args)), ...);
 }
 
-// caller side: decode the received reply to a sent message
-template<typename RetT, std::enable_if_t<!std::is_class_v<RetT> || !std::is_pod_v<RetT>, bool> = true>
-inline bool decodeReply (RetT& result, const MessageDecoder* decoder)
-{
-    return _readAndDecode (result, decoder);
-}
-template<typename RetT, std::enable_if_t<std::is_class_v<RetT> && std::is_pod_v<RetT>, bool> = true>
-inline bool decodeReply (RetT& result, const MessageDecoder* decoder)
-{
-    return _ValueDecoder<RetT>::decode (result, decoder);
-}
-
-
-// callee side: decode the arguments of a received message
 template<typename... Args>
-inline void decodeArguments (const MessageDecoder* decoder, Args &... args)
+inline bool decodeMessage (const MessageDecoder* decoder, Args &... args)
 {
     ARA_INTERNAL_ASSERT (decoder != nullptr);
-    _decodeArgumentsHelper (decoder, args...);
-}
-
-// callee side: encode the reply to a received message
-template<typename ValueT, std::enable_if_t<!std::is_class_v<ValueT> || !std::is_pod_v<ValueT>, bool> = true>
-inline void encodeReply (MessageEncoder* encoder, const ValueT& value)
-{
-    ARA_INTERNAL_ASSERT (encoder != nullptr);
-    _encodeAndAppend (encoder, value);
-}
-template<typename ValueT, std::enable_if_t<std::is_class_v<ValueT> && std::is_pod_v<ValueT>, bool> = true>
-inline void encodeReply (MessageEncoder* encoder, const ValueT& value)
-{
-    ARA_INTERNAL_ASSERT (encoder != nullptr);
-    _ValueEncoder<ValueT>::encode (encoder, value);
+    bool success { true };
+    ((success &= _readAndDecode (args, decoder)), ...);
+    return success;
 }
 
 
@@ -1285,13 +1253,13 @@ inline void encodeContentEvent (MessageEncoder* encoder, const ARAContentType ty
 {
     switch (type)
     {
-        case kARAContentTypeNotes:          encodeReply (encoder, *static_cast<const ARAContentNote*> (eventData)); break;
-        case kARAContentTypeTempoEntries:   encodeReply (encoder, *static_cast<const ARAContentTempoEntry*> (eventData)); break;
-        case kARAContentTypeBarSignatures:  encodeReply (encoder, *static_cast<const ARAContentBarSignature*> (eventData)); break;
-        case kARAContentTypeStaticTuning:   encodeReply (encoder, *static_cast<const ARAContentTuning*> (eventData)); break;
-        case kARAContentTypeKeySignatures:  encodeReply (encoder, *static_cast<const ARAContentKeySignature*> (eventData)); break;
-        case kARAContentTypeSheetChords:    encodeReply (encoder, *static_cast<const ARAContentChord*> (eventData)); break;
-        case kARAContentTypeLyricEntries:   encodeReply (encoder, *static_cast<const ARAContentLyricsEntry*> (eventData)); break;
+        case kARAContentTypeNotes:          encodeMessage (encoder, *static_cast<const ARAContentNote*> (eventData)); break;
+        case kARAContentTypeTempoEntries:   encodeMessage (encoder, *static_cast<const ARAContentTempoEntry*> (eventData)); break;
+        case kARAContentTypeBarSignatures:  encodeMessage (encoder, *static_cast<const ARAContentBarSignature*> (eventData)); break;
+        case kARAContentTypeStaticTuning:   encodeMessage (encoder, *static_cast<const ARAContentTuning*> (eventData)); break;
+        case kARAContentTypeKeySignatures:  encodeMessage (encoder, *static_cast<const ARAContentKeySignature*> (eventData)); break;
+        case kARAContentTypeSheetChords:    encodeMessage (encoder, *static_cast<const ARAContentChord*> (eventData)); break;
+        case kARAContentTypeLyricEntries:   encodeMessage (encoder, *static_cast<const ARAContentLyricsEntry*> (eventData)); break;
         default:                            ARA_INTERNAL_ASSERT (false && "content type not implemented yet"); break;
     }
 }
@@ -1316,7 +1284,7 @@ private:
     template<typename ContentT>
     void _decodeContentEvent (const MessageDecoder* decoder)
     {
-        decodeReply (*reinterpret_cast<ContentT*> (&this->_eventStorage), decoder);
+        decodeMessage (decoder, *reinterpret_cast<ContentT*> (&this->_eventStorage));
         if (this->_contentString != nullptr)
         {
             this->_stringStorage.assign (*this->_contentString);
@@ -1398,7 +1366,7 @@ public:
     void remoteCall (const MethodID methodID, const Args &... args) const
     {
         auto encoder { _connection->createEncoder () };
-        encodeArguments (encoder.get (), args...);
+        encodeMessage (encoder.get (), args...);
         _connection->sendMessage (methodID.getMessageID (), std::move (encoder));
     }
 
@@ -1406,12 +1374,12 @@ public:
     void remoteCall (RetT& result, const MethodID methodID, const Args &... args) const
     {
         auto encoder { _connection->createEncoder () };
-        encodeArguments (encoder.get (), args...);
+        encodeMessage (encoder.get (), args...);
         _connection->sendMessage (methodID.getMessageID (), std::move (encoder),
                                   [&result] (const MessageDecoder* decoder)
                                   {
                                       ARA_INTERNAL_ASSERT (decoder);
-                                      decodeReply (result, decoder);
+                                      decodeMessage (decoder, result);
                                   });
     }
 
@@ -1419,7 +1387,7 @@ public:
     void remoteCall (CustomDecodeFunction& decodeFunction, const MethodID methodID, const Args &... args) const
     {
         auto encoder { _connection->createEncoder () };
-        encodeArguments (encoder.get (), args...);
+        encodeMessage (encoder.get (), args...);
         _connection->sendMessage (methodID.getMessageID (), std::move (encoder),
                                   [&decodeFunction] (const MessageDecoder* decoder)
                                   {
