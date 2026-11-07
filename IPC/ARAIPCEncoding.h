@@ -31,6 +31,7 @@
 #include "ARA_Library/Utilities/ARAChannelFormat.h"
 
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <map>
 #include <string>
@@ -214,7 +215,7 @@ inline void _appendToMessage (OutgoingMessage* message, const char* const argVal
     {
         const auto size { std::strlen (argValue) + 1 };     // includes terminator
         _appendNumberToMessage (message, size);
-        message->appendBytes (reinterpret_cast<const uint8_t *> (argValue), size, false);
+        message->appendBytes (reinterpret_cast<const uint8_t *> (argValue), size, true);
     }
     else
     {
@@ -471,464 +472,456 @@ struct _ValueDecoder<std::optional<ValueT>>
 
 // specializations for en/decoding each ARA struct
 
-#define ARA_IPC_HAS_ADDENDUM_MEMBER(var, member)                                                \
-        /* \todo ARA_IMPLEMENTS_FIELD decorates the type with the ARA:: namespace,     */       \
-        /* this conflicts with decltype's result - this copied version drops the ARA:: */       \
+// primary templates, must be specialized for all ARA structs that contain 4-byte values (ARAInt32, float),
+// 8-byte values (size_t, ARA refs, double) and strings respectively
+// \todo this must be adjusted if pointer-size (size_t, refs) should ever change
+// \todo this should eventually be implemented using C++26 reflection
+template<typename StructT>
+struct _4ByteValueMemberOffsets
+{
+    static constexpr std::array<size_t, 0> _get () { return {{}}; }
+};
+template<typename StructT>
+struct _8ByteValueMemberOffsets
+{
+    static constexpr std::array<size_t, 0> _get () { return {{}}; }
+};
+template<typename StructT>
+struct _StringMemberOffsets
+{
+    static constexpr std::array<size_t, 0> _get () { return {{}}; }
+};
+#define ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1(StructT, Template, member1)                             \
+template<> struct Template<StructT>                                                                 \
+{ static constexpr std::array<size_t, 1> _get () { return {{ offsetof (StructT, member1) }}; }      \
+};
+#define ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2(StructT, Template, member1, member2)                    \
+template<> struct Template<StructT>                                                                 \
+{ static constexpr std::array<size_t, 2> _get () { return {{ offsetof (StructT, member1), offsetof (StructT, member2) }}; } \
+};
+#define ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_3(StructT, Template, member1, member2, member3)           \
+template<> struct Template<StructT>                                                                 \
+{ static constexpr std::array<size_t, 3> _get () { return {{ offsetof (StructT, member1), offsetof (StructT, member2), offsetof (StructT, member3) }}; } \
+};
+#define ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_4(StructT, Template, member1, member2, member3, member4) \
+template<> struct Template<StructT>                                                                 \
+{ static constexpr std::array<size_t, 4> _get () { return {{ offsetof (StructT, member1), offsetof (StructT, member2), offsetof (StructT, member3), offsetof (StructT, member4) }}; } \
+};
+#define ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_5(StructT, Template, member1, member2, member3, member4, member5) \
+template<> struct Template<StructT>                                                                 \
+{ static constexpr std::array<size_t, 5> _get () { return {{ offsetof (StructT, member1), offsetof (StructT, member2), offsetof (StructT, member3), offsetof (StructT, member4), offsetof (StructT, member5) }}; } \
+};
+#define ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_6(StructT, Template, member1, member2, member3, member4, member5, member6) \
+template<> struct Template<StructT>                                                                 \
+{ static constexpr std::array<size_t, 6> _get () { return {{ offsetof (StructT, member1), offsetof (StructT, member2), offsetof (StructT, member3), offsetof (StructT, member4), offsetof (StructT, member5), offsetof (StructT, member6) }}; } \
+};
+#define ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_7(StructT, Template, member1, member2, member3, member4, member5, member6, member7) \
+template<> struct Template<StructT>                                                                 \
+{ static constexpr std::array<size_t, 7> _get () { return {{ offsetof (StructT, member1), offsetof (StructT, member2), offsetof (StructT, member3), offsetof (StructT, member4), offsetof (StructT, member5), offsetof (StructT, member6), offsetof (StructT, member7) }}; } \
+};
+
+#define ARA_IPC_HAS_ADDENDUM_MEMBER(var, member)                                                    \
+        /* \todo ARA_IMPLEMENTS_FIELD decorates the type with the ARA:: namespace,     */           \
+        /* this conflicts with decltype's result - this copied version drops the ARA:: */           \
         (var.structSize > offsetof (std::remove_reference_t<decltype (var)>, member))
 
-#define ARA_IPC_BEGIN_ENCODE(StructT)                                                           \
-template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<StructT>            \
-{                                               /* specialization for given struct */           \
-    using StructType = StructT;                                                                 \
-    static inline void encode (OutgoingMessage* message, const StructType& value)               \
-    {
-#define ARA_IPC_BEGIN_ENCODE_SIZED(StructT)                                                     \
-        ARA_IPC_BEGIN_ENCODE (StructT)                                                          \
-        _encodeAndAppend (message, value.structSize);
-#define ARA_IPC_ENCODE_MEMBER(member)                                                           \
-        _encodeAndAppend (message, value.member);
-#define ARA_IPC_ENCODE_EMBEDDED_BYTES(member)                                                   \
-        const BytesEncoder tmp_##member { reinterpret_cast<const uint8_t*> (value.member), sizeof (value.member), true }; \
-        _encodeAndAppend (message, tmp_##member);
-#define ARA_IPC_ENCODE_EMBEDDED_ARRAY(member)                                                   \
-        const ArrayArgument<const std::remove_extent_t<decltype (value.member)>> tmp_##member { value.member, std::extent_v<decltype (value.member)> }; \
-        _encodeAndAppend (message, tmp_##member);
-#define ARA_IPC_ENCODE_VARIABLE_ARRAY(member, count)                                            \
-        const ArrayArgument<const std::remove_pointer_t<decltype (value.member)>> tmp_##member { value.member, (value.member) ? value.count : 0 }; \
-        _encodeAndAppend (message, tmp_##member);
-#define ARA_IPC_ENCODE_ADDENDUM_MEMBER(member)                                                  \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                        \
-            ARA_IPC_ENCODE_MEMBER (member)
-#define ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR(member)                                              \
-        _encodeAndAppend (message, (value.member) ? std::make_optional (*value.member) : std::nullopt);
-#define ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR(member)                                     \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                        \
-            ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR (member)
-#define ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY(member, count)                                   \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member)) {                                      \
-            ARA_IPC_ENCODE_VARIABLE_ARRAY (member, count)                                       \
-        } else {                                                                                \
-            const ArrayArgument<const std::remove_pointer_t<decltype (value.member)>> tmp_##member { value.member, 0 }; \
-            _encodeAndAppend (message, tmp_##member);                                           \
+#define ARA_IPC_BEGIN_ENCODE_STRUCT(StructT, sizeExpr)                                              \
+template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<StructT>                \
+{                                                                                                   \
+    static inline void encode (OutgoingMessage* message, const StructT& value)                      \
+    {   const auto structPtr { reinterpret_cast<const uint8_t*> (&value) };                         \
+        const auto structSize { sizeExpr };                                                         \
+        [[maybe_unused]] const auto data { message->appendBytes (structPtr, structSize, true) };    \
+        ARA_INTERNAL_ASSERT (data != nullptr);                                                      \
+        [[maybe_unused]] std::vector<BytesEncoder> pendingBytes;
+#define ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT(StructT)                                                  \
+        ARA_IPC_BEGIN_ENCODE_STRUCT (StructT, sizeof (StructT))
+#define ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT(StructT)                                                  \
+        ARA_IPC_BEGIN_ENCODE_STRUCT (StructT, value.structSize)
+
+#define ARA_IPC_ENCODE_VARIABLE_ARRAY(member, count)                                                \
+        if (value.count > 0)                                                                        \
+            pendingBytes.emplace_back (reinterpret_cast<const uint8_t*> (value.member), value.count * sizeof (*value.member), true);
+#define ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY(member, count)                                       \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                            \
+        {   ARA_IPC_ENCODE_VARIABLE_ARRAY (member, count)                                           \
         }
-#define ARA_IPC_END_ENCODE                                                                      \
-    }                                                                                           \
-};
-
-
-#define ARA_IPC_BEGIN_DECODE(StructT)                                                           \
-template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<StructT>            \
-{                                               /* specialization for given struct */           \
-    using StructType = StructT;                                                                 \
-    static inline bool decode (StructType& result, const IncomingMessage* message)              \
-    {                                                                                           \
-        bool success { true };
-#define ARA_IPC_BEGIN_DECODE_SIZED(StructT)                                                     \
-        ARA_IPC_BEGIN_DECODE (StructT)                                                          \
-        success &= _readAndDecode (result.structSize, message);                                 \
-        ARA_INTERNAL_ASSERT (success && (result.structSize >= k##StructT##MinSize));            \
-        /* this relies on the IPC code always supporting all data types in the API, because */  \
-        /* otherwise we'd need to limit structSize, since data beyond that is uninitialized */  \
-        /* (could be implemented by tracking the highest decoded member while decoding).    */
-#define ARA_IPC_DECODE_MEMBER(member)                                                           \
-        success &= _readAndDecode (result.member, message);                                     \
-        ARA_INTERNAL_ASSERT (success);
-#define ARA_IPC_DECODE_EMBEDDED_BYTES(member)                                                   \
-        auto resultSize_##member { sizeof (result.member) };                                    \
-        BytesDecoder tmp_##member { reinterpret_cast<uint8_t*> (result.member), resultSize_##member }; \
-        success &= _readAndDecode (tmp_##member, message);                                      \
-        success &= (resultSize_##member == sizeof (result.member));                             \
-        ARA_INTERNAL_ASSERT (success);
-#define ARA_IPC_DECODE_EMBEDDED_ARRAY(member)                                                   \
-        ArrayArgument<std::remove_extent_t<decltype (result.member)>> tmp_##member { result.member, std::extent_v<decltype (result.member)> }; \
-        success &= _readAndDecode (tmp_##member, message);                                      \
-        ARA_INTERNAL_ASSERT (success);
-#define ARA_IPC_DECODE_VARIABLE_ARRAY(member, count, updateCount)                               \
-        /* \todo the outer struct contains a pointer to the inner struct, so we need some */    \
-        /*       thread-safe place to store it - is there a better way to achieve this?   */    \
-        thread_local std::vector<typename std::remove_const_t<std::remove_pointer_t<decltype (result.member)>>> tmp_##member; \
-        if (_readAndDecode (tmp_##member, message)) {                                           \
-            result.member = tmp_##member.data ();                                               \
-            if (updateCount) { result.count = tmp_##member.size (); }                           \
-        } else {                                                                                \
-            result.member = nullptr;                                                            \
-            if (updateCount) { result.count = 0; }                                              \
+#define ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY(member, count)                                         \
+        /* because this is only used on the main thread, a simple static works here */              \
+        static std::vector<size_t> member##Sizes;                                                   \
+        member##Sizes.clear ();                                                                     \
+        member##Sizes.reserve (value.count);                                                        \
+        for (size_t i { 0 }; i < value.count; ++i)                                                  \
+        {   const auto stringSize { std::strlen (value.member[i]) + 1 };  /* includes terminator */ \
+            member##Sizes.emplace_back (stringSize);   /* no reallocation due to reserve() above */ \
+            pendingBytes.emplace_back (reinterpret_cast<const uint8_t*> (member##Sizes.data () + i), sizeof (size_t), true); \
+            pendingBytes.emplace_back (reinterpret_cast<const uint8_t*> (value.member[i]), stringSize, true); \
         }
-#define ARA_IPC_DECODE_ADDENDUM_MEMBER(member)                                                  \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
-            { ARA_IPC_DECODE_MEMBER (member) }
-#define ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY(member, count, updateCount)                      \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
-           { ARA_IPC_DECODE_VARIABLE_ARRAY (member, count, updateCount) }
-#define ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR(member)                                              \
-        /* \todo the outer struct contains a pointer to the inner struct, so we need some */    \
-        /*       thread-safe place to store it - is there a better way to achieve this?   */    \
-        thread_local std::optional<std::remove_const_t<std::remove_pointer_t<decltype (result.member)>>> cache; \
-        if ((_readAndDecode (cache, message)) && (cache))                                       \
-            result.member = &cache.value ();                                                    \
-        else                                                                                    \
-            result.member = nullptr;
-#define ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR(member)                                     \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
-            { ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR (member) }
-#define ARA_IPC_END_DECODE                                                                      \
-        return success;                                                                         \
-    }                                                                                           \
+#define ARA_IPC_ENCODE_ADDENDUM_VARIABLE_STRING_ARRAY(member, count)                                \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                            \
+        {   ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY (member, count)                                    \
+        }
+
+// careful: these currently simply memcpy the struct, which only works for very simple ones without strings etc.
+//          \todo restructure code to allow for properly recursively en-/decoding structs
+#define ARA_IPC_ENCODE_STRUCT_PTR_MEMBER(member)                                                    \
+        if (value.member != nullptr)                                                                \
+            pendingBytes.emplace_back (reinterpret_cast<const uint8_t*> (value.member), sizeof (*value.member), true);
+#define ARA_IPC_ENCODE_ADDENDUM_STRUCT_PTR_MEMBER(member)                                           \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                            \
+        {   ARA_IPC_ENCODE_STRUCT_PTR_MEMBER (member)                                               \
+        }
+
+#define ARA_IPC_END_ENCODE_STRUCT(StructT)                                                          \
+        for (auto offset : _StringMemberOffsets<StructT>::_get ())                                  \
+            if (offset < structSize)                                                                \
+                if (auto stringPtr { *reinterpret_cast<const char* const*> (structPtr + offset) })  \
+                {   const auto stringSize { std::strlen (stringPtr) + 1 };  /* includes terminator */ \
+                    pendingBytes.emplace_back (reinterpret_cast<const uint8_t*> (stringPtr), stringSize, true); \
+                    *reinterpret_cast<size_t*> (data + offset) = stringSize;                        \
+                }                                                                                   \
+        /* we begin appending here, which invalidates our data ptr! */                              \
+        for (auto pending : pendingBytes)                                                           \
+            message->appendBytes (pending.bytes, pending.size, pending.copy);                       \
+    }                                                                                               \
 };
+#define ARA_IPC_END_ENCODE_FIXED_STRUCT(StructT)                                                    \
+        ARA_IPC_END_ENCODE_STRUCT(StructT)
+#define ARA_IPC_END_ENCODE_SIZED_STRUCT(StructT)                                                    \
+        ARA_IPC_END_ENCODE_STRUCT(StructT)
 
 
-ARA_IPC_BEGIN_ENCODE (ARAColor)
-    ARA_IPC_ENCODE_MEMBER (r)
-    ARA_IPC_ENCODE_MEMBER (g)
-    ARA_IPC_ENCODE_MEMBER (b)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAColor)
-    ARA_IPC_DECODE_MEMBER (r)
-    ARA_IPC_DECODE_MEMBER (g)
-    ARA_IPC_DECODE_MEMBER (b)
-ARA_IPC_END_DECODE
+#define ARA_IPC_BEGIN_DECODE_STRUCT(StructT, sizeExpr)                                              \
+template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<StructT>                \
+{                                                                                                   \
+    static inline bool decode (StructT& result, const IncomingMessage* message)                     \
+    {   const auto structPtr { reinterpret_cast<uint8_t*> (&result) };                              \
+        const auto data { message->readBytes (sizeExpr) };                                          \
+        ARA_INTERNAL_ASSERT (data != nullptr);                                                      \
+        if (data == nullptr)                                                                        \
+            return false;                                                                           \
+        std::memcpy (structPtr, data, sizeExpr);
+#define ARA_IPC_BEGIN_DECODE_FIXED_STRUCT(StructT)                                                  \
+        ARA_IPC_BEGIN_DECODE_STRUCT (StructT, sizeof (StructT))
+#define ARA_IPC_BEGIN_DECODE_SIZED_STRUCT(StructT)                                                  \
+        ARA_IPC_BEGIN_DECODE_STRUCT (StructT, k##StructT##MinSize)                                  \
+        ARA_INTERNAL_ASSERT (result.structSize >= k##StructT##MinSize);                             \
+        /* We rely on the IPC code always supporting all data types used in the receiver -   */     \
+        /* if it doesn't fully decode/initialize the struct, access to addendums will crash. */     \
+        /* Thus any addition to the API structs must be reflected here immediately.          */     \
+        if (result.structSize > k##StructT##MinSize)                                                \
+        {   const auto data2 { message->readBytes (result.structSize - k##StructT##MinSize) };      \
+            ARA_INTERNAL_ASSERT (data2 != nullptr);                                                 \
+            if (data2 == nullptr)                                                                   \
+                return false;                                                                       \
+            std::memcpy (structPtr + k##StructT##MinSize, data2, result.structSize - k##StructT##MinSize); \
+        }
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARADocumentProperties)
-    ARA_IPC_ENCODE_MEMBER (name)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARADocumentProperties)
-    ARA_IPC_DECODE_MEMBER (name)
-ARA_IPC_END_DECODE
+#define ARA_IPC_DECODE_STRUCT_PTR_MEMBER(member)                                                    \
+        if (result.member != nullptr)                                                               \
+        {   const auto memberData { message->readBytes (sizeof (*result.member)) };                 \
+            ARA_INTERNAL_ASSERT (memberData != nullptr);                                            \
+            result.member = reinterpret_cast<decltype (result.member)> (memberData);                \
+            if (memberData == nullptr)                                                              \
+                return false;                                                                       \
+        }
+#define ARA_IPC_DECODE_ADDENDUM_STRUCT_PTR_MEMBER(member)                                           \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                           \
+        {   ARA_IPC_DECODE_STRUCT_PTR_MEMBER (member)                                               \
+        }
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARAMusicalContextProperties)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (name)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (orderIndex)
-    ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARAMusicalContextProperties)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (name)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (orderIndex)
-    ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
-ARA_IPC_END_DECODE
+#define ARA_IPC_DECODE_VARIABLE_ARRAY(member, count)                                                \
+        if (result.count > 0)                                                                       \
+        {   const auto memberData { message->readBytes (result.count * sizeof (*result.member)) };  \
+            ARA_INTERNAL_ASSERT (memberData != nullptr);                                            \
+            result.member = reinterpret_cast<decltype (result.member)> (memberData);                \
+            if (memberData == nullptr)                                                              \
+                return false;                                                                       \
+        }
+#define ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY(member, count)                                       \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                           \
+        {   ARA_IPC_DECODE_VARIABLE_ARRAY (member, count)                                           \
+        }
+#define ARA_IPC_DECODE_VARIABLE_STRING_ARRAY(member, count)                                         \
+        /* because this is only used on the main thread, a simple static works here */              \
+        static std::vector<const char*> member##Pointers;                                           \
+        member##Pointers.clear ();                                                                  \
+        bool member##Success { true };                                                              \
+        for (size_t i { 0 }; (i < result.count) && member##Success; ++i)                            \
+        {   const uint8_t* stringData;                                                              \
+            size_t stringSize;                                                                      \
+            BytesDecoder bytesDecoder { stringData, stringSize };                                   \
+            member##Success &= _readFromMessage (message, bytesDecoder);                            \
+            member##Pointers.emplace_back (reinterpret_cast<const char*> (stringData));             \
+        }                                                                                           \
+        result.member = member##Pointers.data ();                                                   \
+        if (!member##Success)                                                                       \
+        {   result.count = 0;                                                                       \
+            result.member = nullptr;                                                                \
+            return false;                                                                           \
+        }
+#define ARA_IPC_DECODE_ADDENDUM_VARIABLE_STRING_ARRAY(member, count)                                \
+        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                           \
+        {   ARA_IPC_DECODE_VARIABLE_STRING_ARRAY (member, count)                                    \
+        }
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARARegionSequenceProperties)
-    ARA_IPC_ENCODE_MEMBER (name)
-    ARA_IPC_ENCODE_MEMBER (orderIndex)
-    ARA_IPC_ENCODE_MEMBER (musicalContextRef)
-    ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (persistentID)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARARegionSequenceProperties)
-    ARA_IPC_DECODE_MEMBER (name)
-    ARA_IPC_DECODE_MEMBER (orderIndex)
-    ARA_IPC_DECODE_MEMBER (musicalContextRef)
-    ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (persistentID)
-ARA_IPC_END_DECODE
+#define ARA_IPC_END_DECODE_STRUCT(StructT, sizeExpr)                                                \
+        for (auto offset : _StringMemberOffsets<StructT>::_get ())                                  \
+            if (offset < sizeExpr)                                                                  \
+                if (const auto stringSize { *reinterpret_cast<size_t*> (structPtr + offset) })      \
+                {   const auto stringData { message->readBytes (stringSize) };                      \
+                    ARA_INTERNAL_ASSERT (stringData != nullptr);                                    \
+                    *reinterpret_cast<const char**> (structPtr + offset) = reinterpret_cast<const char*> (stringData); \
+                    if (stringData == nullptr)                                                      \
+                        return false;                                                               \
+                }                                                                                   \
+        return true;                                                                                \
+    }                                                                                               \
+};
+#define ARA_IPC_END_DECODE_FIXED_STRUCT(StructT)                                                    \
+        ARA_IPC_END_DECODE_STRUCT (StructT, sizeof (StructT))
+#define ARA_IPC_END_DECODE_SIZED_STRUCT(StructT)                                                    \
+        ARA_IPC_END_DECODE_STRUCT (StructT, result.structSize)
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARAAudioSourceProperties)
-    ARA_IPC_ENCODE_MEMBER (name)
-    ARA_IPC_ENCODE_MEMBER (persistentID)
-    ARA_IPC_ENCODE_MEMBER (sampleCount)
-    ARA_IPC_ENCODE_MEMBER (sampleRate)
-    ARA_IPC_ENCODE_MEMBER (channelCount)
-    ARA_IPC_ENCODE_MEMBER (merits64BitSamples)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (channelArrangementDataType)
-    if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, channelArrangement))
-    {
-        // \todo potential endianness conversion is missing here if needed - but this is not known here,
-        //       it must be performed in the calling code.
-        //       this means the caller would need to copy the incoming data for mutation -
-        //       maybe it would be better to move receiverEndiannessMatches () from the sending side to
-        //       the receiving side? We need to review how such a change would affect audio readers etc.
+
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_3 (ARAColor, _4ByteValueMemberOffsets, r, g, b)
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAColor)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAColor)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAColor)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAColor)
+
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARADocumentProperties, _StringMemberOffsets, name)
+
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARADocumentProperties)
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARADocumentProperties)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARADocumentProperties)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARADocumentProperties)
+
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAMusicalContextProperties, _4ByteValueMemberOffsets, orderIndex)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAMusicalContextProperties, _StringMemberOffsets, name)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARAMusicalContextProperties)
+    ARA_IPC_ENCODE_ADDENDUM_STRUCT_PTR_MEMBER (color)
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARAMusicalContextProperties)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARAMusicalContextProperties)
+    ARA_IPC_DECODE_ADDENDUM_STRUCT_PTR_MEMBER (color)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARAMusicalContextProperties)
+
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARARegionSequenceProperties, _4ByteValueMemberOffsets, orderIndex)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARARegionSequenceProperties, _8ByteValueMemberOffsets, musicalContextRef)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARARegionSequenceProperties, _StringMemberOffsets, name, persistentID)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARARegionSequenceProperties)
+    ARA_IPC_ENCODE_ADDENDUM_STRUCT_PTR_MEMBER (color)
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARARegionSequenceProperties)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARARegionSequenceProperties)
+    ARA_IPC_DECODE_ADDENDUM_STRUCT_PTR_MEMBER (color)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARARegionSequenceProperties)
+
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_3 (ARAAudioSourceProperties, _4ByteValueMemberOffsets, channelCount, merits64BitSamples, channelArrangementDataType)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAAudioSourceProperties, _8ByteValueMemberOffsets, sampleCount, sampleRate)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAAudioSourceProperties, _StringMemberOffsets, name, persistentID)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARAAudioSourceProperties)
+    if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, channelArrangement) && (value.channelArrangement != nullptr))
+    {   // \todo potential endianness conversion is missing here -
+        //       since the details of the formats are no known at the IPC layer,
+        //       this should be added to the ChannelFormat class.
         const auto size { ChannelFormat::getChannelArrangementDataSize (value.channelCount, value.channelArrangementDataType, value.channelArrangement) };
-        if (size > 0)
-        {
-            const BytesEncoder tmp_channelArrangement { reinterpret_cast<const uint8_t*> (value.channelArrangement), size, true };
-            _encodeAndAppend (message, tmp_channelArrangement);
-        }
+        pendingBytes.emplace_back (reinterpret_cast<const uint8_t*> (value.channelArrangement), size, true);
+        *reinterpret_cast<size_t*> (data + offsetof (ARAAudioSourceProperties, channelArrangement)) = size;
     }
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
-    ARA_IPC_DECODE_MEMBER (name)
-    ARA_IPC_DECODE_MEMBER (persistentID)
-    ARA_IPC_DECODE_MEMBER (sampleCount)
-    ARA_IPC_DECODE_MEMBER (sampleRate)
-    ARA_IPC_DECODE_MEMBER (channelCount)
-    ARA_IPC_DECODE_MEMBER (merits64BitSamples)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (channelArrangementDataType)
-    if (result.structSize > offsetof (ARAAudioSourceProperties, channelArrangementDataType))
-    {
-        if (result.channelArrangementDataType == kARAChannelArrangementUndefined)
-        {
-            result.channelArrangement = nullptr;
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARAAudioSourceProperties)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARAAudioSourceProperties)
+    if (result.structSize > offsetof (ARAAudioSourceProperties, channelArrangement))
+    {   if (result.channelArrangementDataType == kARAChannelArrangementUndefined)
+        {   result.channelArrangement = nullptr;
         }
         else
-        {
-            /* \todo the outer struct contains a pointer to the inner struct, so we need some */
-            /*       thread-safe place to store it - is there a better way to achieve this?   */
-            thread_local ARAByte cache[2016UL];   // some arbitrary space that can be conveniently allocated
-            auto resultSize_channelArrangement { sizeof (cache) };
-            BytesDecoder tmp_channelArrangement { cache, resultSize_channelArrangement };
-            if (_readAndDecode (tmp_channelArrangement, message) &&
-                (resultSize_channelArrangement < sizeof (cache)))
-            {
-                result.channelArrangement = &cache;
-            }
-            else
-            {
-                result.channelArrangementDataType = kARAChannelArrangementUndefined;
-                result.channelArrangement = nullptr;
-                success = false;
+        {   if (const auto channelArrangementSize { reinterpret_cast<size_t> (result.channelArrangement) })
+            {   const auto channelArrangementData { message->readBytes (channelArrangementSize) };
+                ARA_INTERNAL_ASSERT (channelArrangementData != nullptr);
+                result.channelArrangement = channelArrangementData;
+                if (channelArrangementData == nullptr)
+                {   result.channelArrangementDataType = kARAChannelArrangementUndefined;
+                    return false;
+                }
             }
         }
     }
-ARA_IPC_END_DECODE
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARAAudioSourceProperties)
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARAAudioModificationProperties)
-    ARA_IPC_ENCODE_MEMBER (name)
-    ARA_IPC_ENCODE_MEMBER (persistentID)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioModificationProperties)
-    ARA_IPC_DECODE_MEMBER (name)
-    ARA_IPC_DECODE_MEMBER (persistentID)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAAudioModificationProperties, _StringMemberOffsets, name, persistentID)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARAAudioModificationProperties)
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARAAudioModificationProperties)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARAAudioModificationProperties)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARAAudioModificationProperties)
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARAPlaybackRegionProperties)
-    ARA_IPC_ENCODE_MEMBER (transformationFlags)
-    ARA_IPC_ENCODE_MEMBER (startInModificationTime)
-    ARA_IPC_ENCODE_MEMBER (durationInModificationTime)
-    ARA_IPC_ENCODE_MEMBER (startInPlaybackTime)
-    ARA_IPC_ENCODE_MEMBER (durationInPlaybackTime)
-    ARA_IPC_ENCODE_MEMBER (musicalContextRef)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (regionSequenceRef)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (name)
-    ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARAPlaybackRegionProperties)
-    ARA_IPC_DECODE_MEMBER (transformationFlags)
-    ARA_IPC_DECODE_MEMBER (startInModificationTime)
-    ARA_IPC_DECODE_MEMBER (durationInModificationTime)
-    ARA_IPC_DECODE_MEMBER (startInPlaybackTime)
-    ARA_IPC_DECODE_MEMBER (durationInPlaybackTime)
-    ARA_IPC_DECODE_MEMBER (musicalContextRef)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (regionSequenceRef)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (name)
-    ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAPlaybackRegionProperties, _4ByteValueMemberOffsets, transformationFlags)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_6 (ARAPlaybackRegionProperties, _8ByteValueMemberOffsets, startInModificationTime, durationInModificationTime, startInPlaybackTime, durationInPlaybackTime, musicalContextRef, regionSequenceRef)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAPlaybackRegionProperties, _StringMemberOffsets, name)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARAPlaybackRegionProperties)
+    ARA_IPC_ENCODE_ADDENDUM_STRUCT_PTR_MEMBER (color)
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARAPlaybackRegionProperties)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARAPlaybackRegionProperties)
+    ARA_IPC_DECODE_ADDENDUM_STRUCT_PTR_MEMBER (color)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARAPlaybackRegionProperties)
 
-ARA_IPC_BEGIN_ENCODE (ARAContentTimeRange)
-    ARA_IPC_ENCODE_MEMBER (start)
-    ARA_IPC_ENCODE_MEMBER (duration)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAContentTimeRange)
-    ARA_IPC_DECODE_MEMBER (start)
-    ARA_IPC_DECODE_MEMBER (duration)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAContentTimeRange, _8ByteValueMemberOffsets, start, duration)
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAContentTimeRange)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAContentTimeRange)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAContentTimeRange)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAContentTimeRange)
 
-ARA_IPC_BEGIN_ENCODE (ARAContentTempoEntry)
-    ARA_IPC_ENCODE_MEMBER (timePosition)
-    ARA_IPC_ENCODE_MEMBER (quarterPosition)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAContentTempoEntry)
-    ARA_IPC_DECODE_MEMBER (timePosition)
-    ARA_IPC_DECODE_MEMBER (quarterPosition)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAContentTempoEntry, _8ByteValueMemberOffsets, timePosition, quarterPosition)
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAContentTempoEntry)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAContentTempoEntry)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAContentTempoEntry)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAContentTempoEntry)
 
-ARA_IPC_BEGIN_ENCODE (ARAContentBarSignature)
-    ARA_IPC_ENCODE_MEMBER (numerator)
-    ARA_IPC_ENCODE_MEMBER (denominator)
-    ARA_IPC_ENCODE_MEMBER (position)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAContentBarSignature)
-    ARA_IPC_DECODE_MEMBER (numerator)
-    ARA_IPC_DECODE_MEMBER (denominator)
-    ARA_IPC_DECODE_MEMBER (position)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAContentBarSignature, _4ByteValueMemberOffsets, numerator, denominator)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAContentBarSignature, _8ByteValueMemberOffsets, position)
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAContentBarSignature)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAContentBarSignature)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAContentBarSignature)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAContentBarSignature)
 
-ARA_IPC_BEGIN_ENCODE (ARAContentNote)
-    ARA_IPC_ENCODE_MEMBER (frequency)
-    ARA_IPC_ENCODE_MEMBER (pitchNumber)
-    ARA_IPC_ENCODE_MEMBER (volume)
-    ARA_IPC_ENCODE_MEMBER (startPosition)
-    ARA_IPC_ENCODE_MEMBER (attackDuration)
-    ARA_IPC_ENCODE_MEMBER (noteDuration)
-    ARA_IPC_ENCODE_MEMBER (signalDuration)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAContentNote)
-    ARA_IPC_DECODE_MEMBER (frequency)
-    ARA_IPC_DECODE_MEMBER (pitchNumber)
-    ARA_IPC_DECODE_MEMBER (volume)
-    ARA_IPC_DECODE_MEMBER (startPosition)
-    ARA_IPC_DECODE_MEMBER (attackDuration)
-    ARA_IPC_DECODE_MEMBER (noteDuration)
-    ARA_IPC_DECODE_MEMBER (signalDuration)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_3 (ARAContentNote, _4ByteValueMemberOffsets, frequency, pitchNumber, volume)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_4 (ARAContentNote, _8ByteValueMemberOffsets, startPosition, attackDuration, noteDuration, signalDuration)
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAContentNote)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAContentNote)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAContentNote)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAContentNote)
 
-ARA_IPC_BEGIN_ENCODE (ARAContentTuning)
-    ARA_IPC_ENCODE_MEMBER (concertPitchFrequency)
-    ARA_IPC_ENCODE_MEMBER (root)
-    ARA_IPC_ENCODE_EMBEDDED_ARRAY (tunings)
-    ARA_IPC_ENCODE_MEMBER (name)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAContentTuning)
-    ARA_IPC_DECODE_MEMBER (concertPitchFrequency)
-    ARA_IPC_DECODE_MEMBER (root)
-    ARA_IPC_DECODE_EMBEDDED_ARRAY (tunings)
-    ARA_IPC_DECODE_MEMBER (name)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAContentTuning, _4ByteValueMemberOffsets, concertPitchFrequency, root)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAContentTuning, _StringMemberOffsets, name)
+// ARAContentKeySignature::tunings is an array of float, thus copying it is sufficient as long as endianness matches
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAContentTuning)
+    // \todo add endian swap here if needed
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAContentTuning)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAContentTuning)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAContentTuning)
 
-ARA_IPC_BEGIN_ENCODE (ARAContentKeySignature)
-    ARA_IPC_ENCODE_MEMBER (root)
-    ARA_IPC_ENCODE_EMBEDDED_BYTES (intervals)
-    ARA_IPC_ENCODE_MEMBER (name)
-    ARA_IPC_ENCODE_MEMBER (position)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAContentKeySignature)
-    ARA_IPC_DECODE_MEMBER (root)
-    ARA_IPC_DECODE_EMBEDDED_BYTES (intervals)
-    ARA_IPC_DECODE_MEMBER (name)
-    ARA_IPC_DECODE_MEMBER (position)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAContentKeySignature, _4ByteValueMemberOffsets, root)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAContentKeySignature, _8ByteValueMemberOffsets, position)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAContentKeySignature, _StringMemberOffsets, name)
+// ARAContentKeySignature::intervals is an array of bytes, thus simply copying it is sufficient
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAContentKeySignature)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAContentKeySignature)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAContentKeySignature)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAContentKeySignature)
 
-ARA_IPC_BEGIN_ENCODE (ARAContentChord)
-    ARA_IPC_ENCODE_MEMBER (root)
-    ARA_IPC_ENCODE_MEMBER (bass)
-    ARA_IPC_ENCODE_EMBEDDED_BYTES (intervals)
-    ARA_IPC_ENCODE_MEMBER (name)
-    ARA_IPC_ENCODE_MEMBER (position)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAContentChord)
-    ARA_IPC_DECODE_MEMBER (root)
-    ARA_IPC_DECODE_MEMBER (bass)
-    ARA_IPC_DECODE_EMBEDDED_BYTES (intervals)
-    ARA_IPC_DECODE_MEMBER (name)
-    ARA_IPC_DECODE_MEMBER (position)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAContentChord, _4ByteValueMemberOffsets, root, bass)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAContentChord, _8ByteValueMemberOffsets, position)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAContentChord, _StringMemberOffsets, name)
+// ARAContentChord::intervals is an array of bytes, thus simply copying it is sufficient
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAContentChord)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAContentChord)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAContentChord)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAContentChord)
 
-ARA_IPC_BEGIN_ENCODE (ARAContentLyricsEntry)
-    ARA_IPC_ENCODE_MEMBER (lyrics)
-    ARA_IPC_ENCODE_MEMBER (continuesPreviousWord)
-    ARA_IPC_ENCODE_MEMBER (language)
-    ARA_IPC_ENCODE_VARIABLE_ARRAY (phonemes, phonemeCount)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAContentLyricsEntry, _4ByteValueMemberOffsets, continuesPreviousWord, phonemesGrade)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAContentLyricsEntry, _8ByteValueMemberOffsets, phonemeCount, position)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAContentLyricsEntry, _StringMemberOffsets, lyrics, language)
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (ARAContentLyricsEntry)
+    ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY (phonemes, phonemeCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (phonemeOffsets, phonemeCount)
-    ARA_IPC_ENCODE_MEMBER (phonemesGrade)
-    ARA_IPC_ENCODE_MEMBER (position)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (ARAContentLyricsEntry)
-    ARA_IPC_DECODE_MEMBER (lyrics)
-    ARA_IPC_DECODE_MEMBER (continuesPreviousWord)
-    ARA_IPC_DECODE_MEMBER (language)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (phonemes, phonemeCount, true)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (phonemeOffsets, phonemeCount, false)
-    ARA_IPC_DECODE_MEMBER (phonemesGrade)
-    ARA_IPC_DECODE_MEMBER (position)
-ARA_IPC_END_DECODE
+ARA_IPC_END_ENCODE_FIXED_STRUCT (ARAContentLyricsEntry)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (ARAContentLyricsEntry)
+    ARA_IPC_DECODE_VARIABLE_STRING_ARRAY (phonemes, phonemeCount)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (phonemeOffsets, phonemeCount)
+ARA_IPC_END_DECODE_FIXED_STRUCT (ARAContentLyricsEntry)
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARARestoreObjectsFilter)
-    ARA_IPC_ENCODE_MEMBER (documentData)
-    ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceArchiveIDs, audioSourceIDsCount)
-    ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceCurrentIDs, audioSourceIDsCount)
-    ARA_IPC_ENCODE_VARIABLE_ARRAY (audioModificationArchiveIDs, audioModificationIDsCount)
-    ARA_IPC_ENCODE_VARIABLE_ARRAY (audioModificationCurrentIDs, audioModificationIDsCount)
-    ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceArchiveIDs, regionSequenceIDsCount)
-    ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceCurrentIDs, regionSequenceIDsCount)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARARestoreObjectsFilter)
-    ARA_IPC_DECODE_MEMBER (documentData)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (audioSourceArchiveIDs, audioSourceIDsCount, true)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (audioSourceCurrentIDs, audioSourceIDsCount, false)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationArchiveIDs, audioModificationIDsCount, true)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationCurrentIDs, audioModificationIDsCount, false)
-    ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceArchiveIDs, regionSequenceIDsCount, true)
-    ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceCurrentIDs, regionSequenceIDsCount, false)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARARestoreObjectsFilter, _4ByteValueMemberOffsets, documentData)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_3 (ARARestoreObjectsFilter, _8ByteValueMemberOffsets, audioSourceIDsCount, audioModificationIDsCount, regionSequenceIDsCount)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARARestoreObjectsFilter)
+    ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY (audioSourceArchiveIDs, audioSourceIDsCount)
+    if (value.audioSourceCurrentIDs != nullptr)
+    {   ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY (audioSourceCurrentIDs, audioSourceIDsCount)
+    }
+    ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY (audioModificationArchiveIDs, audioModificationIDsCount)
+    if (value.audioModificationCurrentIDs != nullptr)
+    {   ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY (audioModificationCurrentIDs, audioModificationIDsCount)
+    }
+    ARA_IPC_ENCODE_ADDENDUM_VARIABLE_STRING_ARRAY (regionSequenceArchiveIDs, regionSequenceIDsCount)
+    if (value.regionSequenceCurrentIDs != nullptr)
+    {   ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceCurrentIDs, regionSequenceIDsCount)
+    }
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARARestoreObjectsFilter)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARARestoreObjectsFilter)
+    ARA_IPC_DECODE_VARIABLE_STRING_ARRAY (audioSourceArchiveIDs, audioSourceIDsCount)
+    if (result.audioSourceCurrentIDs != nullptr)
+    {   ARA_IPC_DECODE_VARIABLE_STRING_ARRAY (audioSourceCurrentIDs, audioSourceIDsCount)
+    }
+    ARA_IPC_DECODE_VARIABLE_STRING_ARRAY (audioModificationArchiveIDs, audioModificationIDsCount)
+    if (result.audioModificationCurrentIDs != nullptr)
+    {   ARA_IPC_DECODE_VARIABLE_STRING_ARRAY (audioModificationCurrentIDs, audioModificationIDsCount)
+    }
+    ARA_IPC_DECODE_ADDENDUM_VARIABLE_STRING_ARRAY (regionSequenceArchiveIDs, regionSequenceIDsCount)
+    if (result.regionSequenceCurrentIDs != nullptr)
+    {   ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceCurrentIDs, regionSequenceIDsCount)
+    }
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARARestoreObjectsFilter)
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARAStoreObjectsFilter)
-    ARA_IPC_ENCODE_MEMBER (documentData)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (ARAStoreObjectsFilter, _4ByteValueMemberOffsets, documentData)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_3 (ARAStoreObjectsFilter, _8ByteValueMemberOffsets, audioSourceRefsCount, audioModificationRefsCount, regionSequenceRefsCount)
+ ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARAStoreObjectsFilter)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioSourceRefs, audioSourceRefsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (audioModificationRefs, audioModificationRefsCount)
     ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARAStoreObjectsFilter)
-    ARA_IPC_DECODE_MEMBER (documentData)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (audioSourceRefs, audioSourceRefsCount, true)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationRefs, audioModificationRefsCount, true)
-    ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount, true)
-ARA_IPC_END_DECODE
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARAStoreObjectsFilter)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARAStoreObjectsFilter)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (audioSourceRefs, audioSourceRefsCount)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (audioModificationRefs, audioModificationRefsCount)
+    ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARAStoreObjectsFilter)
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARAProcessingAlgorithmProperties)
-    ARA_IPC_ENCODE_MEMBER (persistentID)
-    ARA_IPC_ENCODE_MEMBER (name)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARAProcessingAlgorithmProperties)
-    ARA_IPC_DECODE_MEMBER (persistentID)
-    ARA_IPC_DECODE_MEMBER (name)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAProcessingAlgorithmProperties, _StringMemberOffsets, persistentID, name)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARAProcessingAlgorithmProperties)
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARAProcessingAlgorithmProperties)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARAProcessingAlgorithmProperties)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARAProcessingAlgorithmProperties)
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARAViewSelection)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (ARAViewSelection, _8ByteValueMemberOffsets, playbackRegionRefsCount, regionSequenceRefsCount)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARAViewSelection)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (playbackRegionRefs, playbackRegionRefsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount)
-    ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR (timeRange)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARAViewSelection)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (playbackRegionRefs, playbackRegionRefsCount, true)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount, true)
-    ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR (timeRange)
-ARA_IPC_END_DECODE
+    ARA_IPC_ENCODE_STRUCT_PTR_MEMBER (timeRange)
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARAViewSelection)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARAViewSelection)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (playbackRegionRefs, playbackRegionRefsCount)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (regionSequenceRefs, regionSequenceRefsCount)
+    ARA_IPC_DECODE_STRUCT_PTR_MEMBER (timeRange)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARAViewSelection)
 
-ARA_IPC_BEGIN_ENCODE_SIZED (ARAFactory)
-    ARA_IPC_ENCODE_MEMBER (lowestSupportedApiGeneration)
-    ARA_IPC_ENCODE_MEMBER (highestSupportedApiGeneration)
-    ARA_IPC_ENCODE_MEMBER (factoryID)
-    ARA_IPC_ENCODE_MEMBER (plugInName)
-    ARA_IPC_ENCODE_MEMBER (manufacturerName)
-    ARA_IPC_ENCODE_MEMBER (informationURL)
-    ARA_IPC_ENCODE_MEMBER (version)
-    ARA_IPC_ENCODE_MEMBER (documentArchiveID)
-    ARA_IPC_ENCODE_VARIABLE_ARRAY (compatibleDocumentArchiveIDs, compatibleDocumentArchiveIDsCount)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_7 (ARAFactory, _4ByteValueMemberOffsets, lowestSupportedApiGeneration, highestSupportedApiGeneration,
+                                     supportedPlaybackTransformationFlags, supportsStoringAudioFileChunks,
+                                     supportsSampleBasedAudioSources, supportsContentOnlyAudioSources, requiresPresetAudioSources)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_6 (ARAFactory, _StringMemberOffsets, factoryID, plugInName, manufacturerName,
+                                     informationURL, version, documentArchiveID)
+ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT (ARAFactory)
+    ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY (compatibleDocumentArchiveIDs, compatibleDocumentArchiveIDsCount)
     ARA_IPC_ENCODE_VARIABLE_ARRAY (analyzeableContentTypes, analyzeableContentTypesCount)
-    ARA_IPC_ENCODE_MEMBER (supportedPlaybackTransformationFlags)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (supportsStoringAudioFileChunks)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (supportsSampleBasedAudioSources)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (supportsContentOnlyAudioSources)
-    ARA_IPC_ENCODE_ADDENDUM_MEMBER (requiresPresetAudioSources)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE_SIZED (ARAFactory)
-    ARA_IPC_DECODE_MEMBER (lowestSupportedApiGeneration)
-    ARA_IPC_DECODE_MEMBER (highestSupportedApiGeneration)
-    ARA_IPC_DECODE_MEMBER (factoryID)
+ARA_IPC_END_ENCODE_SIZED_STRUCT (ARAFactory)
+ARA_IPC_BEGIN_DECODE_SIZED_STRUCT (ARAFactory)
     result.initializeARAWithConfiguration = nullptr;
     result.uninitializeARA = nullptr;
-    ARA_IPC_DECODE_MEMBER (plugInName)
-    ARA_IPC_DECODE_MEMBER (manufacturerName)
-    ARA_IPC_DECODE_MEMBER (informationURL)
-    ARA_IPC_DECODE_MEMBER (version)
     result.createDocumentControllerWithDocument = nullptr;
-    ARA_IPC_DECODE_MEMBER (documentArchiveID)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (compatibleDocumentArchiveIDs, compatibleDocumentArchiveIDsCount, true)
-    ARA_IPC_DECODE_VARIABLE_ARRAY (analyzeableContentTypes, analyzeableContentTypesCount, true)
-    ARA_IPC_DECODE_MEMBER (supportedPlaybackTransformationFlags)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (supportsStoringAudioFileChunks)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (supportsSampleBasedAudioSources)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (supportsContentOnlyAudioSources)
-    ARA_IPC_DECODE_ADDENDUM_MEMBER (requiresPresetAudioSources)
-ARA_IPC_END_DECODE
-
+    ARA_IPC_DECODE_VARIABLE_STRING_ARRAY (compatibleDocumentArchiveIDs, compatibleDocumentArchiveIDsCount)
+    ARA_IPC_DECODE_VARIABLE_ARRAY (analyzeableContentTypes, analyzeableContentTypesCount)
+ARA_IPC_END_DECODE_SIZED_STRUCT (ARAFactory)
 
 // ARADocumentControllerInterface::storeAudioSourceToAudioFileChunk() must return the documentArchiveID and the
 // openAutomatically flag in addition to the return value, we need a special struct to encode this through IPC.
 struct StoreAudioSourceToAudioFileChunkReply
 {
-    ARABool result;
     ARAPersistentID documentArchiveID;
     ARABool openAutomatically;
+    ARABool result;
 };
-ARA_IPC_BEGIN_ENCODE (StoreAudioSourceToAudioFileChunkReply)
-    ARA_IPC_ENCODE_MEMBER (result)
-    ARA_IPC_ENCODE_MEMBER (documentArchiveID)
-    ARA_IPC_ENCODE_MEMBER (openAutomatically)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (StoreAudioSourceToAudioFileChunkReply)
-    ARA_IPC_DECODE_MEMBER (result)
-    ARA_IPC_DECODE_MEMBER (documentArchiveID)
-    ARA_IPC_DECODE_MEMBER (openAutomatically)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (StoreAudioSourceToAudioFileChunkReply, _4ByteValueMemberOffsets, openAutomatically, result)
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1 (StoreAudioSourceToAudioFileChunkReply, _StringMemberOffsets, documentArchiveID)
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (StoreAudioSourceToAudioFileChunkReply)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (StoreAudioSourceToAudioFileChunkReply)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (StoreAudioSourceToAudioFileChunkReply)
+ARA_IPC_END_DECODE_FIXED_STRUCT (StoreAudioSourceToAudioFileChunkReply)
 
 // ARADocumentControllerInterface::getPlaybackRegionHeadAndTailTime() must return both head- and tailtime.
 struct GetPlaybackRegionHeadAndTailTimeReply
@@ -936,39 +929,42 @@ struct GetPlaybackRegionHeadAndTailTimeReply
     ARATimeDuration headTime;
     ARATimeDuration tailTime;
 };
-ARA_IPC_BEGIN_ENCODE (GetPlaybackRegionHeadAndTailTimeReply)
-    ARA_IPC_ENCODE_MEMBER (headTime)
-    ARA_IPC_ENCODE_MEMBER (tailTime)
-ARA_IPC_END_ENCODE
-ARA_IPC_BEGIN_DECODE (GetPlaybackRegionHeadAndTailTimeReply)
-    ARA_IPC_DECODE_MEMBER (headTime)
-    ARA_IPC_DECODE_MEMBER (tailTime)
-ARA_IPC_END_DECODE
+ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2 (GetPlaybackRegionHeadAndTailTimeReply, _8ByteValueMemberOffsets, headTime, tailTime)
+ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT (GetPlaybackRegionHeadAndTailTimeReply)
+ARA_IPC_END_ENCODE_FIXED_STRUCT (GetPlaybackRegionHeadAndTailTimeReply)
+ARA_IPC_BEGIN_DECODE_FIXED_STRUCT (GetPlaybackRegionHeadAndTailTimeReply)
+ARA_IPC_END_DECODE_FIXED_STRUCT (GetPlaybackRegionHeadAndTailTimeReply)
 
 
 #undef ARA_IPC_HAS_ADDENDUM_MEMBER
-
-#undef ARA_IPC_BEGIN_ENCODE
-#undef ARA_IPC_ENCODE_MEMBER
-#undef ARA_IPC_ENCODE_EMBEDDED_BYES
-#undef ARA_IPC_ENCODE_EMBEDDED_ARRAY
+#undef ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_1
+#undef ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_2
+#undef ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_3
+#undef ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_4
+#undef ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_5
+#undef ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_6
+#undef ARA_IPC_SPECIALIZE_MEMBER_OFFSETS_7
+#undef ARA_IPC_BEGIN_ENCODE_STRUCT
+#undef ARA_IPC_BEGIN_ENCODE_FIXED_STRUCT
+#undef ARA_IPC_BEGIN_ENCODE_SIZED_STRUCT
+#undef ARA_IPC_ENCODE_STRUCT_PTR_MEMBER
+#undef ARA_IPC_ENCODE_ADDENDUM_STRUCT_PTR_MEMBER
 #undef ARA_IPC_ENCODE_VARIABLE_ARRAY
-#undef ARA_IPC_ENCODE_ADDENDUM_MEMBER
-#undef ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR
-#undef ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR
-#undef ARA_IPC_END_ENCODE
-
-#undef ARA_IPC_BEGIN_DECODE
-#undef ARA_IPC_BEGIN_DECODE_SIZED
-#undef ARA_IPC_DECODE_MEMBER
-#undef ARA_IPC_DECODE_EMBEDDED_BYTES
-#undef ARA_IPC_DECODE_EMBEDDED_ARRAY
+#undef ARA_IPC_ENCODE_ADDENDUM_VARIABLE_ARRAY
+#undef ARA_IPC_ENCODE_VARIABLE_STRING_ARRAY
+#undef ARA_IPC_END_ENCODE_STRUCT
+#undef ARA_IPC_END_ENCODE_FIXED_STRUCT
+#undef ARA_IPC_END_ENCODE_SIZED_STRUCT
+#undef ARA_IPC_BEGIN_DECODE_STRUCT
+#undef ARA_IPC_BEGIN_DECODE_FIXED_STRUCT
+#undef ARA_IPC_BEGIN_DECODE_SIZED_STRUCT
+#undef ARA_IPC_DECODE_STRUCT_PTR_MEMBER
+#undef ARA_IPC_DECODE_ADDENDUM_STRUCT_PTR_MEMBER
 #undef ARA_IPC_DECODE_VARIABLE_ARRAY
-#undef ARA_IPC_DECODE_ADDENDUM_MEMBER
 #undef ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY
-#undef ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR
-#undef ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR
-#undef ARA_IPC_END_DECODE
+#undef ARA_IPC_END_DECODE_STRUCT
+#undef ARA_IPC_END_DECODE_FIXED_STRUCT
+#undef ARA_IPC_END_DECODE_SIZED_STRUCT
 
 
 // actual definitions of wrapper functions to implicitly deduce _ValueEn-/Decoder<> -

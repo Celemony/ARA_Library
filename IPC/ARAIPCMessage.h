@@ -60,7 +60,9 @@ public:
     //! As optimization, disable copying if the memory containing the bytes stays
     //! alive&unchanged until the message has been sent.
     //! Also used for appending numbers, strings etc.
-    virtual void appendBytes (const uint8_t* bytes, size_t size, bool copy) = 0;
+    //! Returns a pointer to the start of the appended data, allowing for modifying
+    //! the data (e.g. swap endianness) - careful, will modify original data if copy == false!
+    virtual uint8_t* appendBytes (const uint8_t* bytes, size_t size, bool copy) = 0;
 
     //! extract data for sending through underlying IPC API
     //! must be called exactly once for every message object
@@ -92,7 +94,7 @@ public:
 
     static std::unique_ptr<FixedSizeOutgoingMessage> create ();
 
-    void appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
+    uint8_t* appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
 
 private:
     uint8_t* const _buffer;
@@ -117,7 +119,7 @@ public:
 
     static std::unique_ptr<VectorOutgoingMessage> create ();
 
-    void appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
+    uint8_t* appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
 
 private:
     std::vector<uint8_t> _data;
@@ -136,7 +138,7 @@ public:
 
     static std::unique_ptr<CFOutgoingMessage> create ();
 
-    void appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
+    uint8_t* appendBytes (const uint8_t* bytes, size_t size, bool copy) override;
 
 private:
     CFMutableDataRef _data;

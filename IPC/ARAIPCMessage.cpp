@@ -53,16 +53,18 @@ FixedSizeOutgoingMessage::~FixedSizeOutgoingMessage ()
         delete[] _buffer;
 }
 
-void FixedSizeOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
+uint8_t* FixedSizeOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
     const auto newLocation { _writeLocation + size };
     if (newLocation > _endOfBuffer)
     {
         ARA_INTERNAL_ASSERT (false);
-        return;
+        return nullptr;
     }
     std::memcpy (_writeLocation, bytes, size);
+    const auto result { _writeLocation };
     _writeLocation = newLocation;
+    return result;
 }
 
 #if defined (__APPLE__)
@@ -97,10 +99,12 @@ VectorOutgoingMessage::VectorOutgoingMessage (size_t capacity)
         _data.reserve (capacity);
 }
 
-void VectorOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
+uint8_t* VectorOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
     std::basic_string_view<uint8_t> view { bytes, size };
+    const auto offset { _data.size () };
     _data.insert (_data.end (), view.begin (), view.end ());
+    return _data.data () + offset;
 }
 
 #if defined (__APPLE__)
@@ -140,9 +144,11 @@ CFOutgoingMessage::~CFOutgoingMessage ()
         CFRelease (_data);
 }
 
-void CFOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
+uint8_t* CFOutgoingMessage::appendBytes (const uint8_t* bytes, size_t size, bool /*copy*/)
 {
+    const auto offset { CFDataGetLength (_data) };
     CFDataAppendBytes (_data, static_cast<const UInt8*> (bytes), static_cast<CFIndex> (size));
+    return CFDataGetMutableBytePtr (_data) + offset;
 }
 
 __attribute__((cf_returns_retained)) CFDataRef CFOutgoingMessage::convertToEncodedData ()
