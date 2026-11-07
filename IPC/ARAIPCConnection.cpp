@@ -141,7 +141,7 @@ static bool _debugAsHost {};
 
 class MessageDispatcher
 {
-public:     // needs to be public for thread-local variables (which cannot be class members)
+protected:
 #if defined (_WIN32)
     using ThreadRef = int32_t;
 #elif defined (__APPLE__)
@@ -151,26 +151,23 @@ public:     // needs to be public for thread-local variables (which cannot be cl
 #endif
     static constexpr ThreadRef _invalidThread { 0 };
 
-public:
-    explicit MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel);
+    static ThreadRef getCurrentThread ();
 
-// protected: this does not work with thread_local...
     struct PendingReplyHandler
     {
         ReplyHandler* const _replyHandler;
         const PendingReplyHandler* _prevPendingReplyHandler;
     };
 
-    static bool isReply (MessageID messageID) { return messageID == 0; }
-
-    static ThreadRef getCurrentThread ();
-
 protected:
+    explicit MessageDispatcher (Connection* connection, std::unique_ptr<MessageChannel> && messageChannel);
+
     Connection* getConnection () const { return  _connection; }
     MessageChannel* getMessageChannel () const { return  _messageChannel.get (); }
 
+    static bool isReply (MessageID messageID) { return messageID == 0; }
+
     void _sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder, bool isNewTransaction);
-    bool _waitForMessage ();
     void _handleReply (std::unique_ptr<const MessageDecoder> && decoder, ReplyHandler && replyHandler);
     std::unique_ptr<MessageEncoder> _handleReceivedMessage (MessageID messageID, std::unique_ptr<const MessageDecoder> && decoder);
 
@@ -492,11 +489,13 @@ private:
     std::vector<RoutedMessage> _routedMessages { 12 };  // we shouldn't use more than a handful of threads concurrently for the IPC
     std::mutex _sendLock;
     std::mutex _routeLock;
-};
 
-// actually "static" members of OtherThreadsMessageDispatcher, but for some reason C++ doesn't allow this...
-thread_local OtherThreadsMessageDispatcher::ThreadRef _remoteTargetThread { 0 };
-thread_local const OtherThreadsMessageDispatcher::PendingReplyHandler* _pendingReplyHandler { nullptr };
+    static thread_local ThreadRef _remoteTargetThread;
+    static thread_local const PendingReplyHandler* _pendingReplyHandler;
+};
+thread_local MessageDispatcher::ThreadRef OtherThreadsMessageDispatcher::_remoteTargetThread { MessageDispatcher::_invalidThread };
+thread_local const OtherThreadsMessageDispatcher::PendingReplyHandler* OtherThreadsMessageDispatcher::_pendingReplyHandler { nullptr };
+
 
 void OtherThreadsMessageDispatcher::sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder,
                                                  ReplyHandler && replyHandler)
