@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 //! \file       ARAIPCMessage.h
-//!             Abstractions shared by both the ARA IPC proxy host and plug-in
+//!             implementation of message en-/decoding
 //! \project    ARA SDK Library
 //! \copyright  Copyright (c) 2021-2026, Celemony Software GmbH, All Rights Reserved.
 //! \license    Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,10 +25,10 @@
 
 
 #include <memory>
+#include <vector>
+
 #if defined (__APPLE__)
     #include <CoreFoundation/CoreFoundation.h>
-#else
-    #include <vector>
 #endif
 
 
@@ -47,8 +47,10 @@ constexpr MessageID kReservedMessageIDRangeStart { 1 };
 constexpr MessageID kReservedMessageIDRangeEnd { 8*16*16 };
 
 
-//! Message Encoder
+//! Message Encoding
 //! @{
+
+//! base class for message encoders
 class MessageEncoder
 {
 public:
@@ -57,18 +59,18 @@ public:
     //! number types
     //! The "size" variant will also be used for the pointer-sized ARA (host) refs.
     //@{
-    virtual void appendInt32 (int32_t argValue) = 0;
-    virtual void appendInt64 (int64_t argValue) = 0;
-    virtual void appendSize (size_t argValue) = 0;
-    virtual void appendFloat (float argValue) = 0;
-    virtual void appendDouble (double argValue) = 0;
+    void appendInt32 (int32_t argValue);
+    void appendInt64 (int64_t argValue);
+    void appendSize (size_t argValue);
+    void appendFloat (float argValue);
+    void appendDouble (double argValue);
     //@}
 
     //! raw bytes
     //! As optimization, disable copying if the memory containing the bytes stays
     //! alive&unchanged until the message has been sent.
     //! Also used for appending strings.
-    virtual void appendBytes (const uint8_t* argValue, size_t argSize, bool copy) = 0;
+    void appendBytes (const uint8_t* argValue, size_t argSize, bool copy);
 
     //! extract data for sending through underlying IPC API
     //! must be called exactly once for every encoder
@@ -79,15 +81,98 @@ public:
             std::vector<uint8_t>
 #endif
                                                            convertToEncodedData () = 0;
+
+protected:
+    virtual void _appendBytes (const void* bytes, size_t byteSize) = 0;
+
+    template <typename T>
+    inline void _appendNumber (T argValue) { _appendBytes (&argValue, sizeof (argValue)); }
 };
+
+
+//! message encoder backed by fixed-size storage
+class FixedSizeMessageEncoder : public MessageEncoder
+{
+public:
+    FixedSizeMessageEncoder (size_t bufferSize);
+    FixedSizeMessageEncoder (uint8_t* buffer, size_t bufferSize);
+
+    ~FixedSizeMessageEncoder () override;
+
+#if defined (__APPLE__)
+    __attribute__((cf_returns_retained)) CFDataRef
+#else
+    std::vector<uint8_t>
+#endif
+                                                   convertToEncodedData () override;
+
+    static std::unique_ptr<FixedSizeMessageEncoder> create ();
+
+protected:
+    void _appendBytes (const void* bytes, size_t byteSize) override;
+
+private:
+    uint8_t* const _buffer;
+    uint8_t* const _endOfBuffer;
+    uint8_t* _writeLocation;
+    const bool _ownsBuffer;
+};
+
+
+//! message encoder backed by std::vector
+class VectorMessageEncoder : public MessageEncoder
+{
+public:
+    VectorMessageEncoder (size_t capacity = 0);
+
+#if defined (__APPLE__)
+    __attribute__((cf_returns_retained)) CFDataRef
+#else
+    std::vector<uint8_t>
+#endif
+                                                   convertToEncodedData () override;
+
+    static std::unique_ptr<VectorMessageEncoder> create ();
+
+protected:
+    void _appendBytes (const void* bytes, size_t byteSize) override;
+
+private:
+    std::vector<uint8_t> _data;
+};
+
+
+#if defined (__APPLE__)
+//! message encoder backed by CFData
+class CFMessageEncoder : public MessageEncoder
+{
+public:
+    CFMessageEncoder ();
+    ~CFMessageEncoder () override;
+
+    __attribute__((cf_returns_retained)) CFDataRef convertToEncodedData () override;
+
+    static std::unique_ptr<CFMessageEncoder> create ();
+
+protected:
+    void _appendBytes (const void* bytes, size_t byteSize) override;
+
+private:
+    CFMutableDataRef _data;
+};
+#endif
+
 //! @}
 
 
-//! Message Decoder
+//! Message Decoding
 //! @{
+
+//! message decoder backed by raw pointer and size
 class MessageDecoder
 {
 public:
+    MessageDecoder (const uint8_t* buffer, size_t bufferSize);
     virtual ~MessageDecoder () = default;
 
     //! number types
@@ -95,11 +180,11 @@ public:
     //! Will return false and set argValue to 0 if decoding fails
     //! (e.g. because archive data is exhausted).
     //@{
-    virtual bool readInt32 (int32_t& argValue) const = 0;
-    virtual bool readInt64 (int64_t& argValue) const = 0;
-    virtual bool readSize (size_t& argValue) const = 0;
-    virtual bool readFloat (float& argValue) const = 0;
-    virtual bool readDouble (double& argValue) const = 0;
+    bool readInt32 (int32_t& argValue) const;
+    bool readInt64 (int64_t& argValue) const;
+    bool readSize (size_t& argValue) const;
+    bool readFloat (float& argValue) const;
+    bool readDouble (double& argValue) const;
     //@}
 
     //! raw bytes
@@ -108,10 +193,37 @@ public:
     //! Note that received bytes pointer is only valid as long as the message that
     //! provided them is alive.
     //! Also used for reading strings.
-    virtual bool readBytes (const uint8_t*& argValue, size_t& argSize) const = 0;
-};
-//! @}
+    bool readBytes (const uint8_t*& argValue, size_t& argSize) const;
 
+    static std::unique_ptr<MessageDecoder> createWithMessageData (const uint8_t* data, const size_t dataSize);
+
+private:
+    template <typename T>
+    bool _readNumber (T& value) const;
+
+private:
+    const uint8_t* const _buffer;
+    const uint8_t* const _endOfBuffer;
+    mutable const uint8_t* _readLocation;
+};
+
+
+#if defined (__APPLE__)
+//! message decoder backed by CFData
+class CFMessageDecoder : public MessageDecoder
+{
+public:
+    explicit CFMessageDecoder (CFDataRef data, bool retain = true);
+    ~CFMessageDecoder () override;
+
+    static std::unique_ptr<CFMessageDecoder> createWithMessageData (CFDataRef messageData, bool isTemporary);
+
+private:
+    CFDataRef const _data;
+};
+#endif
+
+//! @}
 
 }   // namespace IPC
 }   // namespace ARA

@@ -24,7 +24,7 @@
 
 #import "ARA_Library/Debug/ARADebug.h"
 #import "ARA_Library/IPC/ARAIPCEncoding.h"
-#import "ARA_Library/IPC/ARAIPCCFEncoding.h"
+#import "ARA_Library/IPC/ARAIPCMessage.h"
 #import "ARA_Library/IPC/ARAIPCConnection.h"
 #import "ARA_Library/IPC/ARAIPCProxyHost.h"
 #import "ARA_Library/IPC/ARAIPCProxyPlugIn.h"
@@ -101,26 +101,26 @@ public:
         ARA_INTERNAL_ASSERT (message.allKeys.count == 1);
         ARA_INTERNAL_ASSERT (message.allValues.count == 1);
         const MessageID messageID { [((NSNumber *) message.allKeys.firstObject) intValue] };
-        const auto array { (__bridge CFArrayRef) message.allValues.firstObject };
-        ARA_INTERNAL_ASSERT (array != nullptr);
-        auto decoder { std::make_unique<CFMessageDecoder> (array) };
+        const auto data { (__bridge CFDataRef) message.allValues.firstObject };
+        ARA_INTERNAL_ASSERT (data != nullptr);
+        auto decoder { CFMessageDecoder::createWithMessageData (data, true) };
         routeReceivedMessage (messageID, std::move (decoder));
         _currentRoutingThread = nil;
     }
 
     void sendMessage (MessageID messageID, std::unique_ptr<MessageEncoder> && encoder) override
     {
-        const auto array { static_cast<CFMessageEncoder *> (encoder.get ())->convertToEncodedArray () };
+        const auto data { encoder->convertToEncodedData () };
 #if !__has_feature(objc_arc)
-        auto nsArray { (__bridge NSArray *) array };
+        auto nsData { (__bridge NSData *) data };
 #else
-        auto nsArray { (__bridge_transfer NSArray *) array };
+        auto nsData { (__bridge_transfer NSData *) data };
 #endif
-        auto message { [NSDictionary dictionaryWithObject:nsArray forKey:[NSNumber numberWithInt: messageID]] };
+        auto message { [NSDictionary dictionaryWithObject:nsData forKey:[NSNumber numberWithInt: messageID]] };
         const auto reply { _sendMessage (message) };
         ARA_INTERNAL_ASSERT ([reply count] == 0);
 #if !__has_feature(objc_arc)
-        CFRelease (array);
+        CFRelease (data);
 #endif
     }
 

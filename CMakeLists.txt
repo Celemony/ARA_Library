@@ -180,6 +180,7 @@ add_library(ARA_IPC_Library ${ARA_LIBRARY_TARGET_TYPE}
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPC.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCEncoding.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCMessage.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCMessage.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCConnection.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCConnection.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCProxyHost.h"
@@ -192,8 +193,6 @@ if(APPLE)
     target_sources(ARA_IPC_Library PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCAudioUnit_v3.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCAudioUnit_v3.mm"
-        "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCCFEncoding.h"
-        "${CMAKE_CURRENT_SOURCE_DIR}/IPC/ARAIPCCFEncoding.cpp"
     )
     target_link_libraries(ARA_IPC_Library PRIVATE
         "-framework Cocoa"
