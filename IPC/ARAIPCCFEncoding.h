@@ -46,7 +46,6 @@ public:
     void appendSize (size_t argValue) override;
     void appendFloat (float argValue) override;
     void appendDouble (double argValue) override;
-    void appendString (const char* argValue) override;
     void appendBytes (const uint8_t* argValue, size_t argSize, bool copy) override;
 
     __attribute__((cf_returns_retained)) CFArrayRef copyArray () const;
@@ -73,7 +72,6 @@ public:
     bool readSize (size_t& argValue) const override;
     bool readFloat (float& argValue) const override;
     bool readDouble (double& argValue) const override;
-    bool readString (const char*& argValue) const override;
     bool readBytes (const uint8_t*& argValue, size_t& argSize) const override;
 
     static std::unique_ptr<CFMessageDecoder> createWithMessageData (CFDataRef messageData);

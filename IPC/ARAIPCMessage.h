@@ -59,12 +59,10 @@ public:
     virtual void appendDouble (double argValue) = 0;
     //@}
 
-    //! UTF8-encoded C strings
-    virtual void appendString (const char* argValue) = 0;
-
     //! raw bytes
     //! As optimization, disable copying if the memory containing the bytes stays
     //! alive&unchanged until the message has been sent.
+    //! Also used for appending strings.
     virtual void appendBytes (const uint8_t* argValue, size_t argSize, bool copy) = 0;
 };
 //! @}
@@ -89,18 +87,12 @@ public:
     virtual bool readDouble (double& argValue) const = 0;
     //@}
 
-    //! UTF8-encoded C strings
-    //! Will return false and set argValue to nullptr if decoding fails
-    //! (e.g. because archive data is exhausted).
-    //! Note that received string pointer is only valid as long as the message that
-    //! provided them is alive.
-    virtual bool readString (const char*& argValue) const = 0;
-
     //! raw bytes
     //! Will return false and set argValue to nullptr and argSize to 0 if decoding fails
     //! (e.g. because archive data is exhausted).
     //! Note that received bytes pointer is only valid as long as the message that
     //! provided them is alive.
+    //! Also used for reading strings.
     virtual bool readBytes (const uint8_t*& argValue, size_t& argSize) const = 0;
 };
 //! @}

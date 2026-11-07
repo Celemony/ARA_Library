@@ -204,7 +204,10 @@ inline void _appendToMessage (MessageEncoder* encoder, const double argValue)
 }
 inline void _appendToMessage (MessageEncoder* encoder, const char* const argValue)
 {
-    encoder->appendString (argValue);
+    if (argValue)
+        encoder->appendBytes (reinterpret_cast<const uint8_t *> (argValue), std::strlen (argValue) + 1, false); // includes terminator
+    else
+        encoder->appendBytes (nullptr, 0, false);
 }
 inline void _appendToMessage (MessageEncoder* encoder, const BytesEncoder& argValue)
 {
@@ -234,7 +237,20 @@ inline bool _readFromMessage (const MessageDecoder* decoder, double& argValue)
 }
 inline bool _readFromMessage (const MessageDecoder* decoder, const char*& argValue)
 {
-    return decoder->readString (argValue);
+    size_t receivedSize;
+    // \todo is there a safe/proper way across all compilers for this cast to avoid the copy?
+//  return decoder->readBytes (reinterpret_cast<const uint8_t*&> (argValue), receivedSize);
+    const uint8_t* receivedBytes;
+    if (decoder->readBytes (receivedBytes, receivedSize))
+    {
+        argValue = reinterpret_cast<const char*> (receivedBytes);
+        return true;
+    }
+    else
+    {
+        argValue = nullptr;
+        return false;
+    }
 }
 inline bool _readFromMessage (const MessageDecoder* decoder, BytesDecoder& argValue)
 {
@@ -443,14 +459,9 @@ template<> struct _ValueEncoder<StructT> : public _CompoundValueEncoderBase<Stru
 #define ARA_IPC_ENCODE_VARIABLE_ARRAY(member, count)                                            \
         const ArrayArgument<const std::remove_pointer_t<decltype (value.member)>> tmp_##member { value.member, (value.member) ? value.count : 0 }; \
         _encodeAndAppend (encoder, tmp_##member);
-#define ARA_IPC_ENCODE_OPTIONAL_MEMBER(member)                                                  \
-        _encodeAndAppend (encoder, (value.member) ? std::make_optional (value.member) : std::nullopt);
 #define ARA_IPC_ENCODE_ADDENDUM_MEMBER(member)                                                  \
         if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                        \
             ARA_IPC_ENCODE_MEMBER (member)
-#define ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER(member)                                         \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (value, member))                                        \
-            ARA_IPC_ENCODE_OPTIONAL_MEMBER (member)
 #define ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR(member)                                              \
         _encodeAndAppend (encoder, (value.member) ? std::make_optional (*value.member) : std::nullopt);
 #define ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR(member)                                     \
@@ -506,19 +517,9 @@ template<> struct _ValueDecoder<StructT> : public _CompoundValueDecoderBase<Stru
             result.member = nullptr;                                                            \
             if (updateCount) { result.count = 0; }                                              \
         }
-#define ARA_IPC_DECODE_OPTIONAL_MEMBER(member)                                                  \
-        std::optional<std::remove_reference_t<decltype (result.member)>> tmp_##member;          \
-        result.member = nullptr;                                                                \
-        success &= _readAndDecode (tmp_##member, decoder);                                      \
-        ARA_INTERNAL_ASSERT (success);                                                          \
-        if (success && tmp_##member)                                                            \
-            result.member = std::move (*tmp_##member);
 #define ARA_IPC_DECODE_ADDENDUM_MEMBER(member)                                                  \
         if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
             { ARA_IPC_DECODE_MEMBER (member) }
-#define ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER(member)                                         \
-        if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
-           { ARA_IPC_DECODE_OPTIONAL_MEMBER (member) }
 #define ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY(member, count, updateCount)                      \
         if (ARA_IPC_HAS_ADDENDUM_MEMBER (result, member))                                       \
            { ARA_IPC_DECODE_VARIABLE_ARRAY (member, count, updateCount) }
@@ -551,40 +552,40 @@ ARA_IPC_BEGIN_DECODE (ARAColor)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE_SIZED (ARADocumentProperties)
-    ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_ENCODE_MEMBER (name)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARADocumentProperties)
-    ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_DECODE_MEMBER (name)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE_SIZED (ARAMusicalContextProperties)
-    ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER (name)
+    ARA_IPC_ENCODE_ADDENDUM_MEMBER (name)
     ARA_IPC_ENCODE_ADDENDUM_MEMBER (orderIndex)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAMusicalContextProperties)
-    ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER (name)
+    ARA_IPC_DECODE_ADDENDUM_MEMBER (name)
     ARA_IPC_DECODE_ADDENDUM_MEMBER (orderIndex)
     ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE_SIZED (ARARegionSequenceProperties)
-    ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_ENCODE_MEMBER (name)
     ARA_IPC_ENCODE_MEMBER (orderIndex)
     ARA_IPC_ENCODE_MEMBER (musicalContextRef)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
-    ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER (persistentID)
+    ARA_IPC_ENCODE_ADDENDUM_MEMBER (persistentID)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARARegionSequenceProperties)
-    ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_DECODE_MEMBER (name)
     ARA_IPC_DECODE_MEMBER (orderIndex)
     ARA_IPC_DECODE_MEMBER (musicalContextRef)
     ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
-    ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER (persistentID)
+    ARA_IPC_DECODE_ADDENDUM_MEMBER (persistentID)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE_SIZED (ARAAudioSourceProperties)
-    ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_ENCODE_MEMBER (name)
     ARA_IPC_ENCODE_MEMBER (persistentID)
     ARA_IPC_ENCODE_MEMBER (sampleCount)
     ARA_IPC_ENCODE_MEMBER (sampleRate)
@@ -607,7 +608,7 @@ ARA_IPC_BEGIN_ENCODE_SIZED (ARAAudioSourceProperties)
     }
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
-    ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_DECODE_MEMBER (name)
     ARA_IPC_DECODE_MEMBER (persistentID)
     ARA_IPC_DECODE_MEMBER (sampleCount)
     ARA_IPC_DECODE_MEMBER (sampleRate)
@@ -643,11 +644,11 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioSourceProperties)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE_SIZED (ARAAudioModificationProperties)
-    ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_ENCODE_MEMBER (name)
     ARA_IPC_ENCODE_MEMBER (persistentID)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAAudioModificationProperties)
-    ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_DECODE_MEMBER (name)
     ARA_IPC_DECODE_MEMBER (persistentID)
 ARA_IPC_END_DECODE
 
@@ -659,7 +660,7 @@ ARA_IPC_BEGIN_ENCODE_SIZED (ARAPlaybackRegionProperties)
     ARA_IPC_ENCODE_MEMBER (durationInPlaybackTime)
     ARA_IPC_ENCODE_MEMBER (musicalContextRef)
     ARA_IPC_ENCODE_ADDENDUM_MEMBER (regionSequenceRef)
-    ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER (name)
+    ARA_IPC_ENCODE_ADDENDUM_MEMBER (name)
     ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE_SIZED (ARAPlaybackRegionProperties)
@@ -670,7 +671,7 @@ ARA_IPC_BEGIN_DECODE_SIZED (ARAPlaybackRegionProperties)
     ARA_IPC_DECODE_MEMBER (durationInPlaybackTime)
     ARA_IPC_DECODE_MEMBER (musicalContextRef)
     ARA_IPC_DECODE_ADDENDUM_MEMBER (regionSequenceRef)
-    ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER (name)
+    ARA_IPC_DECODE_ADDENDUM_MEMBER (name)
     ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR (color)
 ARA_IPC_END_DECODE
 
@@ -726,25 +727,25 @@ ARA_IPC_BEGIN_ENCODE (ARAContentTuning)
     ARA_IPC_ENCODE_MEMBER (concertPitchFrequency)
     ARA_IPC_ENCODE_MEMBER (root)
     ARA_IPC_ENCODE_EMBEDDED_ARRAY (tunings)
-    ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_ENCODE_MEMBER (name)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE (ARAContentTuning)
     ARA_IPC_DECODE_MEMBER (concertPitchFrequency)
     ARA_IPC_DECODE_MEMBER (root)
     ARA_IPC_DECODE_EMBEDDED_ARRAY (tunings)
-    ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_DECODE_MEMBER (name)
 ARA_IPC_END_DECODE
 
 ARA_IPC_BEGIN_ENCODE (ARAContentKeySignature)
     ARA_IPC_ENCODE_MEMBER (root)
     ARA_IPC_ENCODE_EMBEDDED_BYTES (intervals)
-    ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_ENCODE_MEMBER (name)
     ARA_IPC_ENCODE_MEMBER (position)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE (ARAContentKeySignature)
     ARA_IPC_DECODE_MEMBER (root)
     ARA_IPC_DECODE_EMBEDDED_BYTES (intervals)
-    ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_DECODE_MEMBER (name)
     ARA_IPC_DECODE_MEMBER (position)
 ARA_IPC_END_DECODE
 
@@ -752,14 +753,14 @@ ARA_IPC_BEGIN_ENCODE (ARAContentChord)
     ARA_IPC_ENCODE_MEMBER (root)
     ARA_IPC_ENCODE_MEMBER (bass)
     ARA_IPC_ENCODE_EMBEDDED_BYTES (intervals)
-    ARA_IPC_ENCODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_ENCODE_MEMBER (name)
     ARA_IPC_ENCODE_MEMBER (position)
 ARA_IPC_END_ENCODE
 ARA_IPC_BEGIN_DECODE (ARAContentChord)
     ARA_IPC_DECODE_MEMBER (root)
     ARA_IPC_DECODE_MEMBER (bass)
     ARA_IPC_DECODE_EMBEDDED_BYTES (intervals)
-    ARA_IPC_DECODE_OPTIONAL_MEMBER (name)
+    ARA_IPC_DECODE_MEMBER (name)
     ARA_IPC_DECODE_MEMBER (position)
 ARA_IPC_END_DECODE
 
@@ -915,9 +916,7 @@ ARA_IPC_END_DECODE
 #undef ARA_IPC_ENCODE_EMBEDDED_BYES
 #undef ARA_IPC_ENCODE_EMBEDDED_ARRAY
 #undef ARA_IPC_ENCODE_VARIABLE_ARRAY
-#undef ARA_IPC_ENCODE_OPTIONAL_MEMBER
 #undef ARA_IPC_ENCODE_ADDENDUM_MEMBER
-#undef ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_MEMBER
 #undef ARA_IPC_ENCODE_OPTIONAL_STRUCT_PTR
 #undef ARA_IPC_ENCODE_OPTIONAL_ADDENDUM_STRUCT_PTR
 #undef ARA_IPC_END_ENCODE
@@ -928,10 +927,8 @@ ARA_IPC_END_DECODE
 #undef ARA_IPC_DECODE_EMBEDDED_BYTES
 #undef ARA_IPC_DECODE_EMBEDDED_ARRAY
 #undef ARA_IPC_DECODE_VARIABLE_ARRAY
-#undef ARA_IPC_DECODE_OPTIONAL_MEMBER
 #undef ARA_IPC_DECODE_ADDENDUM_MEMBER
 #undef ARA_IPC_DECODE_ADDENDUM_VARIABLE_ARRAY
-#undef ARA_IPC_DECODE_OPTIONAL_ADDENDUM_MEMBER
 #undef ARA_IPC_DECODE_OPTIONAL_STRUCT_PTR
 #undef ARA_IPC_DECODE_OPTIONAL_ADDENDUM_STRUCT_PTR
 #undef ARA_IPC_END_DECODE

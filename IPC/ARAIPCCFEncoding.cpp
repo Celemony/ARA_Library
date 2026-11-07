@@ -26,7 +26,6 @@
 
 #include <map>
 #include <set>
-#include <string>
 
 
 namespace ARA {
@@ -81,14 +80,6 @@ void CFMessageEncoder::appendFloat (float argValue)
 void CFMessageEncoder::appendDouble (double argValue)
 {
     auto argObject { CFNumberCreate (kCFAllocatorDefault, kCFNumberDoubleType, &argValue) };
-    CFArrayAppendValue (_array, argObject);
-    CFRelease (argObject);
-}
-
-void CFMessageEncoder::appendString (const char* argValue)
-{
-    ARA_INTERNAL_ASSERT (argValue);
-    auto argObject { CFStringCreateWithCString (kCFAllocatorDefault, argValue, kCFStringEncodingUTF8) };
     CFArrayAppendValue (_array, argObject);
     CFRelease (argObject);
 }
@@ -206,32 +197,6 @@ bool CFMessageDecoder::readDouble (double& argValue) const
     }
     ARA_INTERNAL_ASSERT (CFGetTypeID (number) == CFNumberGetTypeID ());
     CFNumberGetValue (number, kCFNumberDoubleType, &argValue);
-    return true;
-}
-
-bool CFMessageDecoder::readString (const char*& argValue) const
-{
-    const void* value {};
-    if (_array)
-        value = CFArrayGetValueAtIndex (_array, _index++);
-    if (!value)
-    {
-        argValue = nullptr;
-        return false;
-    }
-    ARA_INTERNAL_ASSERT (CFGetTypeID (value) == CFStringGetTypeID ());
-    argValue = CFStringGetCStringPtr ((CFStringRef) value, kCFStringEncodingUTF8);
-    if (!argValue)          // CFStringGetCStringPtr() may fail e.g. with chord names like "G/D"
-    {
-        const auto length { CFStringGetLength ((CFStringRef) value) };
-        std::string temp;   // \todo does not work: { static_cast<size_t> (length), char { 0 } };
-        temp.assign (static_cast<size_t> (length) , char { 0 });
-        [[maybe_unused]] const auto count { CFStringGetBytes ((CFStringRef) value, CFRangeMake (0, length), kCFStringEncodingUTF8, 0, false, (UInt8*)(&temp[0]), length, nullptr) };
-        ARA_INTERNAL_ASSERT (count == length);
-        static std::set<std::string> strings;   // \todo static cache of "undecodeable" strings requires single-threaded use - maybe make iVar instead?
-        strings.insert (temp);
-        argValue = strings.find (temp)->c_str ();
-    }
     return true;
 }
 
