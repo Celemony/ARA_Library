@@ -103,12 +103,11 @@ class Connection
 {
 public:
     using OutgoingMessageFactory = std::function<std::unique_ptr<OutgoingMessage> ()>;
-    using WaitForMessageDelegate = std::function<void ()>;
     using CreationThreadDispatcher = std::function<void (std::function<void ()>)>;
 
     Connection (OutgoingMessageFactory&& outgoingMessageFactory, MessageHandler&& messageHandler,
                 CreationThreadDispatcher&& creationThreadDispatcher,
-                bool receiverEndiannessMatches, WaitForMessageDelegate&& waitForMessageDelegate = {});
+                bool receiverEndiannessMatches);
     ~Connection ();
 
     //! set the message channel for all main thread communication
@@ -150,9 +149,6 @@ public:
     // internal API: called internally when sending messages and by message dispatchers when creating replies
     std::unique_ptr<OutgoingMessage> _createOutgoingMessage ();
 
-    // internal API: called by message dispatchers when blocking the current thread in a receive loop
-    void _callWaitForMessageDelegate ();
-
     // internal API: debug output helper
     static void _setDebugMessageHint (bool isHost);
 
@@ -161,7 +157,6 @@ private:
     const MessageHandler _messageHandler;
     const CreationThreadDispatcher _creationThreadDispatcher;
     const bool _receiverEndiannessMatches;
-    const WaitForMessageDelegate _waitForMessageDelegate;
     std::unique_ptr<MainThreadMessageDispatcher> _mainThreadDispatcher {};
     std::unique_ptr<OtherThreadsMessageDispatcher> _otherThreadsDispatcher {};
     std::thread::id const _creationThreadID;

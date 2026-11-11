@@ -265,8 +265,7 @@ void MainThreadMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage>&
 
     do
     {
-        if (!getMessageChannel ()->waitForMessageOnCurrentThread (0.001))
-            getConnection ()->_callWaitForMessageDelegate ();
+        getMessageChannel ()->waitForMessageOnCurrentThread (0.001);
     }
     while (previousPendingReplyHandler != _pendingReplyHandler);
 }
@@ -392,8 +391,7 @@ void OtherThreadsMessageDispatcher::sendMessage (std::unique_ptr<OutgoingMessage
         _pendingReplyHandler = &pendingReplyHandler;
         do
         {
-            if (!getMessageChannel ()->waitForMessageOnCurrentThread (0.001))
-                getConnection ()->_callWaitForMessageDelegate ();
+            getMessageChannel ()->waitForMessageOnCurrentThread (0.001);
         } while (_pendingReplyHandler != previousPendingReplyHandler);
     }
     else
@@ -504,12 +502,11 @@ void OtherThreadsMessageDispatcher::_processReceivedMessage (MessageID messageID
 
 Connection::Connection (OutgoingMessageFactory&& outgoingMessageFactory, MessageHandler&& messageHandler,
                         CreationThreadDispatcher&& creationThreadDispatcher,
-                        bool receiverEndiannessMatches, WaitForMessageDelegate&& waitForMessageDelegate)
+                        bool receiverEndiannessMatches)
 : _outgoingMessageFactory { std::move (outgoingMessageFactory) },
   _messageHandler { std::move (messageHandler) },
   _creationThreadDispatcher { std::move (creationThreadDispatcher) },
   _receiverEndiannessMatches { receiverEndiannessMatches },
-  _waitForMessageDelegate { std::move (waitForMessageDelegate) },
   _creationThreadID { std::this_thread::get_id () }
 {}
 
@@ -556,12 +553,6 @@ void Connection::sendMessage (MessageID messageID, ArgumentsProvider&& arguments
 void Connection::processPendingMessageOnCreationThreadIfNeeded (ARATimeDuration timeout)
 {
     _mainThreadDispatcher->processPendingMessageIfNeeded (timeout);
-}
-
-void Connection::_callWaitForMessageDelegate ()
-{
-    if (_waitForMessageDelegate)
-        _waitForMessageDelegate ();
 }
 
 void Connection::_setDebugMessageHint (bool isHost)

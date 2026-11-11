@@ -675,9 +675,7 @@ protected:
 class AUProxyPlugIn : public ProxyPlugIn, public RunLoopSyncImpl
 {
 public:
-    static AUProxyPlugIn * createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit,
-                                                ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
-                                                void * _Nullable delegateUserData)
+    static AUProxyPlugIn * createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit)
     {
         // AUAudioUnits created before macOS 13 will not know about this API yet
         if (![audioUnit respondsToSelector:@selector(messageChannelFor:)])
@@ -693,7 +691,7 @@ public:
 
         return new AUProxyPlugIn { static_cast<NSObject<AUMessageChannel>*> (mainChannel),
                                    static_cast<NSObject<AUMessageChannel>*> (otherChannel),
-                                   audioUnit, waitForMessageDelegate, delegateUserData };
+                                   audioUnit };
     }
 
     ~AUProxyPlugIn ()
@@ -706,16 +704,11 @@ public:
 private:
     AUProxyPlugIn (NSObject<AUMessageChannel> * _Nonnull mainChannel,
                    NSObject<AUMessageChannel> * _Nonnull otherChannel,
-                   AUAudioUnit * _Nonnull initAU,
-                   ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
-                   void * _Nullable delegateUserData)
+                   AUAudioUnit * _Nonnull initAU)
     : ProxyPlugIn { std::make_unique<Connection> (&CFOutgoingMessage::create,
                                                   ProxyPlugIn::handleReceivedMessage,
                                                   [this] (auto&& func) { dispatchToCreationThread (func); },
-                                                  true, // \todo shouldn't the AUMessageChannel provide this information?
-                                                  (waitForMessageDelegate) ?
-                                                        [waitForMessageDelegate, delegateUserData] { waitForMessageDelegate (delegateUserData); } :
-                                                        Connection::WaitForMessageDelegate {}) },
+                                                  true) },  // \todo shouldn't the AUMessageChannel provide this information?
       RunLoopSyncImpl {},
       _initAU { initAU }
     {
@@ -754,11 +747,9 @@ ARA_MAP_IPC_REF (AUProxyPlugIn, ARAIPCProxyPlugInRef)
 
 extern "C" {
 
-ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit,
-                                                             ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
-                                                             void * _Nullable delegateUserData)
+ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonnull audioUnit)
 {
-    return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit, waitForMessageDelegate, delegateUserData));
+    return toIPCRef (AUProxyPlugIn::createWithAudioUnit (audioUnit));
 }
 
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef)

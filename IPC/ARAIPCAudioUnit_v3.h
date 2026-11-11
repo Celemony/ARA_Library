@@ -45,9 +45,6 @@ extern "C" {
 
 API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 
-//! optional delegate that can be provided in ARAIPCAUProxyPlugInInitialize()
-typedef void (*ARAMainThreadWaitForMessageDelegate) (void * _Nullable delegateUserData);
-
 //! Optionally, the host can request that the proxy synchronizes the two main threads by blocking
 //! either the host or the plug-in run loop at any given point. This requires the host to run its
 //! own loop regularly, in order not to block the plug-in loop for an extended period of time.
@@ -64,9 +61,7 @@ void ARAIPCAUProxyPlugInPrepareRunLoopSync (CFRunLoopMode _Nonnull runLoopSyncPr
 //! must be balanced with ARAIPCAUProxyPlugInUninitialize()
 //! the optional delegate will be called periodically when the IPC needs to block the main thread,
 //! with the opaque user data pointer being passed back into the call
-ARAIPCProxyPlugInRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitialize(AUAudioUnit * _Nonnull audioUnit,
-                                                                      ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
-                                                                      void * _Nullable delegateUserData);
+ARAIPCProxyPlugInRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitialize(AUAudioUnit * _Nonnull audioUnit);
 
 //! allows the host to let the plug-in perform ARA IPC on the main thread when otherwise
 //! blocking it for an extended period of time
