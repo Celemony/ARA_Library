@@ -576,9 +576,10 @@ public:
         auto nsData { (__bridge_transfer NSData *) data };
 #endif
         auto dictionary { [NSDictionary dictionaryWithObject:nsData forKey:@"msg"] };
-        const auto reply { _sendMessage (dictionary) };
+        [[maybe_unused]] const auto reply { _sendMessage (dictionary) };
         ARA_INTERNAL_ASSERT ([reply count] == 0);
 #if !__has_feature(objc_arc)
+        [reply release];
         CFRelease (data);
 #endif
     }
