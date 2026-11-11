@@ -72,6 +72,14 @@ ARAIPCProxyPlugInRef _Nullable ARA_CALL ARAIPCAUProxyPlugInInitialize(AUAudioUni
 //! blocking it for an extended period of time
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks(ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef);
 
+//! Some Audio Unit calls can trigger ARA callbacks, most prominently allocateRenderResourcesAndReturnError:
+//! and deallocateRenderResources. However, the macOS performs these calls in a blocking fashion,
+//! preventing any callbacks from coming through on the calling thread. This wrapper works around
+//! this problem by moving the Audio Unit call to a different thread, keeping the calling thread
+//! alive for callbacks. It synchronously waits for completion of the Audio Unit call before continuing.
+void ARA_CALL ARAIPCAUProxyPlugInCallAudioUnitAllowingCallbacks(ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef,
+                                                                void (^ _Nonnull audioUnitCall)(void));
+
 //! host side: Audio Unit specialization of ARAIPCProxyPlugInBindToDocumentController()
 //! must be balanced with ARAIPCProxyPlugInCleanupBinding() when the given audioUnit is destroyed
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController(AUAudioUnit * _Nonnull audioUnit,

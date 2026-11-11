@@ -763,7 +763,39 @@ ARAIPCProxyPlugInRef ARA_CALL ARAIPCAUProxyPlugInInitialize (AUAudioUnit * _Nonn
 
 void ARA_CALL ARAIPCAUProxyPlugInPerformPendingMainThreadTasks (ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef)
 {
+    ARA_INTERNAL_ASSERT ([NSThread isMainThread]);
     fromIPCRef (proxyPlugInRef)->getConnection ()->processPendingMessageOnCreationThreadIfNeeded (0.0);
+}
+
+void ARA_CALL ARAIPCAUProxyPlugInCallAudioUnitAllowingCallbacks(ARAIPCProxyPlugInRef _Nonnull proxyPlugInRef,
+                                                                void (^ _Nonnull audioUnitCall)(void))
+{
+    if ([NSThread isMainThread])
+    {
+        std::atomic<bool> ready { false };
+        __block const auto readyPtr { &ready };
+        dispatch_async (dispatch_get_global_queue (QOS_CLASS_USER_INTERACTIVE, 0),
+            ^{
+                audioUnitCall ();
+                readyPtr->store (true, std::memory_order_release);
+            });
+
+        while (!ready.load (std::memory_order_acquire))
+            fromIPCRef (proxyPlugInRef)->getConnection ()->processPendingMessageOnCreationThreadIfNeeded (0.001);
+    }
+    else
+    {
+        auto semaphore { dispatch_semaphore_create (0) };
+        dispatch_async (dispatch_get_global_queue (QOS_CLASS_USER_INTERACTIVE, 0),
+            ^{
+                audioUnitCall ();
+                dispatch_semaphore_signal (semaphore);
+            });
+        dispatch_semaphore_wait (semaphore, DISPATCH_TIME_FOREVER);
+#if !__has_feature(objc_arc)
+        dispatch_release (semaphore);
+#endif
+    }
 }
 
 const ARAPlugInExtensionInstance * _Nonnull ARA_CALL ARAIPCAUProxyPlugInBindToDocumentController (AUAudioUnit * _Nonnull audioUnit,
