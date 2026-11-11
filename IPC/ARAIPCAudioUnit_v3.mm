@@ -34,6 +34,8 @@
 
 #import "CoreFoundation/CoreFoundation.h"
 #import <objc/runtime.h>
+#import <Foundation/NSRunLoop.h>
+#import <AppKit/NSApplication.h>
 
 #include <atomic>
 
@@ -74,12 +76,460 @@ _Pragma ("GCC diagnostic ignored \"-Wnullability-completeness\"")   // \todo add
 API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 
 
+#if ARA_ENABLE_DEBUG_OUTPUT && 1
+    #define ARA_RL_SYNC_LOG(...) ARA_LOG ("RL Sync " __VA_ARGS__)
+    #define ARA_RL_MODE_AS_STRING(mode) ((CFStringGetLength (mode) == 0) ? "(none)" : CFStringGetCStringPtr (mode, kCFStringEncodingUTF8))
+#else
+    #define ARA_RL_SYNC_LOG(...) ((void) 0)
+#endif
+
+
+// RunLoop-based main thread sync design overview:
+//
+// Running a plug-in out-of-process results in the host and the plug-in each running their own main
+// thread, which may execute concurrently with respect to each other. Any host<->plug-in communication
+// that relies on the implicit synchronicity of the main thread when running in-process will break
+// when running out-of-process unless the main threads are synchronized.
+//
+// The following code hooks into the run loop of both the host and the plug-in and uses a private
+// run loop mode to block either side in alternating fashion.
+// The host is the leader of the sync. After initialization, the plug-in will run in private mode
+// in order to process any main thread calls that come in from the host via the IPC, but blocking
+// any other events, timers etc.
+// Whenever the host run loop begins waiting for an event or is exited, the host switches itself
+// into private mode and sends an IPC message to the plug-in to run its loop in the mode that the
+// host currently uses. Once the plug-in has processed all pending run loop sources and events,
+// it'll switch back to private mode and sends a message back to the host so it can continue.
+// Note that each time the run loop is executed, the code that it calls may run the loop recursively
+// in another mode. This also will be communicated to the other side.
+//
+// There are various special cases to consider in addition to this general pattern:
+// - Since it is activated via an IPC message, the run loop sync on the plug-in side does start
+//   from within the run loop running in default mode. Therefore, instead of running the loop
+//   recursively all times, it falls back to the underlying default mode if requested to run in
+//   default mode at the lowest level.
+// - Under certain circumstances, the ViewBridge seems to send events outside any run loop cycle.
+//   In that case, NSRunLoop's currentMode will return nil, and we cannot sync.
+//   It's possible that this causes problems in some scenarios in some plug-in/host combinations.
+// - ViewBridge is special-casing modal operation, and syncing the run loops seems to break its
+//   implementation at least in macOS 15
+// - Audio Unit IPC calls are blocking the thread that they are made on. In order to allow for
+//   stacked calls, such as the plug-in calling back into the host via ARA IPC calls from
+//   allocateRenderResourcesAndReturnError:, the call must be dispatched off the main thread, and
+//   the main thread must keep spinning the run loop in private mode until the call returns.
+
+
+// host side: runloop sync init helper to deal with hosts that potentially creating the
+// proxy plug-in from some higher level of the run loop
+#if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
+int _globalRunLoopLevel { 0 };
+// \todo see also _runLoopCommonModesObserver - it might be a good idea to only have
+//       one global observer, where any number of callback-lambdas can be registered?
+CFRunLoopObserverRef _globalRunLoopCommonModesObserver { nullptr };
+CFRunLoopMode _runLoopSyncPrivateMode { nullptr };
+void ARAIPCAUProxyPlugInPrepareRunLoopSync (CFRunLoopMode _Nonnull runLoopSyncPrivateMode)
+{
+    ARA_INTERNAL_ASSERT (!_globalRunLoopCommonModesObserver);
+    _globalRunLoopCommonModesObserver = CFRunLoopObserverCreateWithHandler (kCFAllocatorDefault, kCFRunLoopEntry | kCFRunLoopExit, YES, 0,
+        ^void (CFRunLoopObserverRef /*observer*/, CFRunLoopActivity activity)
+        {
+            switch (activity)
+            {
+                case kCFRunLoopEntry:
+                {
+                    ++_globalRunLoopLevel;
+                    break;
+                }
+                case kCFRunLoopExit:
+                {
+                    --_globalRunLoopLevel;
+                    break;
+                }
+                default:
+                {
+                    ARA_INTERNAL_ASSERT (false && "unexpected run loop activity");
+                    break;
+                }
+            }
+        });
+    CFRunLoopAddObserver (CFRunLoopGetMain (), _globalRunLoopCommonModesObserver, kCFRunLoopCommonModes);
+
+    _runLoopSyncPrivateMode = static_cast<CFRunLoopMode> (CFRetain (runLoopSyncPrivateMode));
+}
+#endif
+
+
+// run loop sync implementation helper for both proxy plug-in and host
+class RunLoopSyncImpl : public FunctionDispatcher
+{
+public:
+
+    RunLoopSyncImpl ()
+    {
+        ARA_INTERNAL_ASSERT (CFRunLoopGetCurrent () == CFRunLoopGetMain ());    
+    }
+
+    ~RunLoopSyncImpl ()
+    {
+        if (_privateRunLoopMode)
+        {
+            if (_runLoopPrivateModeObserver)
+            {
+                CFRunLoopRemoveObserver (CFRunLoopGetMain (), _runLoopPrivateModeObserver, _privateRunLoopMode);
+                CFRelease (_runLoopPrivateModeObserver);
+            }
+
+            CFRelease (_privateRunLoopMode);
+        }
+
+        if (_runLoopCommonModesObserver)
+        {
+            CFRunLoopRemoveObserver (CFRunLoopGetMain (), _runLoopCommonModesObserver, kCFRunLoopCommonModes);
+            CFRelease (_runLoopCommonModesObserver);
+        }
+    }
+
+    void setRunLoopMessageChannel (NSObject<AUMessageChannel> * messageChannel)
+    {
+        _messageChannel = messageChannel;
+    }
+
+    // called from the host side:
+    // This side is leading the sync and will run normally, while the other side will be switched
+    // into follower mode and will wait in private mode whenever exiting its lowest level of
+    // common mode run loop until the leader wakes it up (which it must do regularly).
+    void initRunLoopSyncAsLeader (CFRunLoopMode privateRunLoopMode, int globalRunLoopLevel)
+    {
+        ARA_RL_SYNC_LOG ("initializing run loop leader with private run loop mode %s", ARA_RL_MODE_AS_STRING (privateRunLoopMode));
+
+        ARA_INTERNAL_ASSERT (privateRunLoopMode && (CFStringGetLength (privateRunLoopMode) != 0));
+        ARA_INTERNAL_ASSERT (_messageChannel);
+
+        _setPrivateRunLoopMode (privateRunLoopMode);
+        _runLoopRecursionLevel = globalRunLoopLevel;
+        _lastRemoteLoopRecursionLevel = -1;
+
+        _createRunLoopObservers ();
+
+        // run an initial sync cycle which will switch the other side into follower mode
+        _spinRemoteRunLoopInMode (privateRunLoopMode);
+    }
+
+    bool isInitialized ()
+    {
+        return _privateRunLoopMode != nullptr;
+    }
+
+    bool filterRunLoopSyncMessages (NSDictionary * message)
+    {
+        // check if this is a runloop sync message
+        const auto mode { (__bridge CFRunLoopMode) [message objectForKey:@"rlsync"]};
+        if (!mode)
+            return false;
+
+        //ARA_RL_SYNC_LOG ("dispatches received remote run loop mode %s to creation thread", ARA_RL_MODE_AS_STRING (mode));
+        CFRetain (mode);
+        dispatchToCreationThread ([this, /*CF_CONSUMED*/ mode]
+            {
+                ARA_INTERNAL_ASSERT (CFRunLoopGetCurrent () == CFRunLoopGetMain ());
+
+                // if we receive the first message without run loop observation enabled,
+                // we'll instead init in follower mode after the current run loop cycle, see initRunLoopSyncAsLeader ()
+                if (!_runLoopCommonModesObserver)
+                {
+                    _initRunLoopSyncAsFollower (mode);
+                    CFRelease (mode);
+                    return;
+                }
+
+                // after initialization, we shall only receive rl sync messages while waiting in private mode,
+                // after having sent the return mode message to the other side
+                ARA_INTERNAL_ASSERT (_waitInPrivateMode);
+                ARA_INTERNAL_ASSERT (_pendingReturnMode == nullptr);
+
+                // we should never receive the private mode as target mode
+                ARA_INTERNAL_ASSERT (!CFEqual (mode, _privateRunLoopMode));
+
+                // if the received mode is empty, the other side simply did run in the mode we requested,
+                // otherwise it did run the loop recursively, which we need to pick up when exiting private wait
+                ARA_INTERNAL_ASSERT (_pendingStackedMode == nullptr);
+                if (CFStringGetLength (mode) != 0)
+                {
+                    ARA_RL_SYNC_LOG ("will exit private mode to run stacked mode %s", ARA_RL_MODE_AS_STRING (mode));
+                    _pendingStackedMode = mode;         // consumes the retain
+                }
+                else
+                {
+                    ARA_RL_SYNC_LOG ("will exit private mode to continue previous mode");
+                    CFRelease (mode);
+                }
+                _waitInPrivateMode = false;
+                CFRunLoopStop (CFRunLoopGetMain ());
+            });
+
+        return true;
+    }
+
+    bool waitForMessageOnCurrentThread (CFTimeInterval timeout)
+    {
+        ARA_INTERNAL_ASSERT (CFRunLoopGetCurrent () == CFRunLoopGetMain ());
+        ARA_INTERNAL_ASSERT (isInitialized ());
+        ARA_RL_SYNC_LOG ("will spin run loop while waiting for ARA message in private mode %s", ARA_RL_MODE_AS_STRING (_privateRunLoopMode));
+        const auto result { CFRunLoopRunInMode (_privateRunLoopMode, timeout, YES) };
+        ARA_RL_SYNC_LOG ("did spin run loop while waiting for ARA message in private mode %s", ARA_RL_MODE_AS_STRING (_privateRunLoopMode));
+        return result != kCFRunLoopRunTimedOut;
+    }
+
+private:
+
+    // setup on the plug-in side, triggered when receiving the initial run loop sync message from the host
+    void _initRunLoopSyncAsFollower (CFRunLoopMode privateRunLoopMode)
+    {
+        ARA_INTERNAL_ASSERT (_messageChannel);
+#if ARA_ENABLE_INTERNAL_ASSERTS
+        const auto currentMode { CFRunLoopCopyCurrentMode (CFRunLoopGetCurrent ()) };
+        ARA_INTERNAL_ASSERT (CFEqual (currentMode, kCFRunLoopDefaultMode));
+        CFRelease (currentMode);
+#endif
+
+        ARA_RL_SYNC_LOG ("initializing run loop follower with private run loop mode %s", ARA_RL_MODE_AS_STRING (privateRunLoopMode));
+
+        _setPrivateRunLoopMode (privateRunLoopMode);
+
+        _createRunLoopObservers ();
+        _isFollower = true;
+        _runLoopRecursionLevel = 1;
+        _lastRemoteLoopRecursionLevel = 0;
+
+        // we will enter wait state from run loop observer when exiting here
+        CFRunLoopStop (CFRunLoopGetMain ());
+    }
+
+    // internal setup helper for both sides
+    void _setPrivateRunLoopMode (CFRunLoopMode privateRunLoopMode)
+    {
+        ARA_INTERNAL_ASSERT (CFRunLoopGetCurrent () == CFRunLoopGetMain ());
+        ARA_INTERNAL_ASSERT (privateRunLoopMode != nullptr);
+        ARA_INTERNAL_ASSERT (_privateRunLoopMode == nullptr);
+        _privateRunLoopMode = static_cast<CFRunLoopMode> (CFRetain (privateRunLoopMode));
+        addRunLoopMode (_privateRunLoopMode);
+    }
+
+    // run loop observation
+    void _createRunLoopObservers ()
+    {
+        ARA_INTERNAL_ASSERT (CFRunLoopGetCurrent () == CFRunLoopGetMain ());
+        ARA_INTERNAL_ASSERT (!_runLoopCommonModesObserver);
+        ARA_INTERNAL_ASSERT (!_runLoopPrivateModeObserver);
+        ARA_INTERNAL_ASSERT (_privateRunLoopMode);
+
+        const auto commonActivities { kCFRunLoopEntry | kCFRunLoopBeforeWaiting | kCFRunLoopExit };
+        _runLoopCommonModesObserver = CFRunLoopObserverCreateWithHandler (kCFAllocatorDefault, commonActivities, YES, 0,
+                        ^void ([[maybe_unused]] CFRunLoopObserverRef o, CFRunLoopActivity activity)
+                        {
+#if ARA_ENABLE_DEBUG_OUTPUT
+                            [[maybe_unused]] auto _this { this };   // just to be able to see this in the Xcode debugger's local variables
+
+                            const auto dbgCurrentMode { CFRunLoopCopyCurrentMode (CFRunLoopGetCurrent ()) };
+                            ARA_INTERNAL_ASSERT (dbgCurrentMode);
+                            ARA_RL_SYNC_LOG ("observer %p triggered %s at recursion level %i(%i), mode %s", o,
+                                                (activity == kCFRunLoopEntry) ? "kCFRunLoopEntry" :
+                                                (activity == kCFRunLoopExit) ? "kCFRunLoopExit" : "kCFRunLoopBeforeWaiting",
+                                                _runLoopRecursionLevel, _lastRemoteLoopRecursionLevel,
+                                                ARA_RL_MODE_AS_STRING (dbgCurrentMode));
+                            CFRelease (dbgCurrentMode);
+#endif
+
+                            if (activity == kCFRunLoopEntry)
+                            {
+                                ++_runLoopRecursionLevel;
+                                return;
+                            }
+
+                            const bool isExit { activity == kCFRunLoopExit };
+                            ARA_INTERNAL_ASSERT (isExit || (activity == kCFRunLoopBeforeWaiting));
+
+                            const auto level { _runLoopRecursionLevel };
+                            if (isExit)
+                                --_runLoopRecursionLevel;
+
+                            const auto currentMode { CFRunLoopCopyCurrentMode (CFRunLoopGetCurrent ()) };
+
+                            // don't sync if running modally
+                            // \todo ViewBridge does some special handling of modal mode that does not work with our run loop sync,
+                            //       so for now we just keep either side running while in modal mode.
+                            // \todo for some reason, when the plug-in calls NSApplication -runModal from NSEventTrackingRunLoopMode,
+                            //       macOS 15.7 will send a few events in NSEventTrackingRunLoopMode before switching to NSModalPanelRunLoopMode
+                            //       we currently work around by checking whether the NSApplication has a modalWindow...
+                            if (CFEqual (currentMode, (__bridge CFRunLoopMode) NSModalPanelRunLoopMode) || [NSApp modalWindow])
+                            {
+                                CFRelease (currentMode);
+                                return;
+                            }
+
+                            // if we're running in a stacked mode, let the other side run stacked as well
+                            if (_lastRemoteLoopRecursionLevel + 1 != level)
+                            {
+                                _spinRemoteRunLoopInMode (currentMode);         // consumes the mode
+                                return;
+                            }
+
+                            // special case on the follower side, see design overview above:
+                            // we can never actually leave the lowest run loop level, instead we
+                            // must return to private mode upon exit, and stop instead of waiting
+                            if (_isFollower && (level == 1))
+                            {
+                                if (CFEqual (currentMode, kCFRunLoopDefaultMode))
+                                {
+                                    if (isExit)
+                                        _spinRemoteRunLoopInMode (CFSTR(""));   // yield control to leader
+                                    else
+                                        // \todo how to handle this event properly?
+                                        //       can "forwarding" it to kCFRunLoopExit via CFRunLoopStop() break something?
+                                        //       do we need to additionally check the mode?
+                                        //       or is it even generally better to always stop the loop and return control to the leader?
+                                        CFRunLoopStop (CFRunLoopGetMain ());
+                                }
+                                else
+                                {
+                                    _spinRemoteRunLoopInMode (currentMode);     // consumes the mode
+                                    return;
+                                }
+                            }
+
+                            CFRelease (currentMode);
+                        });
+        CFRunLoopAddObserver (CFRunLoopGetMain (), _runLoopCommonModesObserver, kCFRunLoopCommonModes);
+
+        const auto privateActivities { kCFRunLoopEntry };
+        _runLoopPrivateModeObserver = CFRunLoopObserverCreateWithHandler (kCFAllocatorDefault, privateActivities, YES, 0,
+                        ^void ([[maybe_unused]] CFRunLoopObserverRef o, CFRunLoopActivity activity)
+                        {
+                            switch (activity)
+                            {
+                                case kCFRunLoopEntry:
+                                {
+                                    if (_pendingReturnMode)
+                                    {
+                                        _sendRLSyncMessage (_pendingReturnMode);
+                                        CFRelease (_pendingReturnMode);
+                                        _pendingReturnMode = nullptr;
+                                    }
+                                    break;
+                                }
+                                default:
+                                {
+                                    ARA_INTERNAL_ASSERT (false && "unexpected run loop activity");
+                                    break;
+                                }
+                            }
+                        });
+        CFRunLoopAddObserver (CFRunLoopGetMain (), _runLoopPrivateModeObserver, _privateRunLoopMode);
+    }
+
+    void _spinRemoteRunLoopInMode (CF_CONSUMED CFRunLoopMode mode)
+    {
+#if ARA_ENABLE_INTERNAL_ASSERTS
+        ARA_INTERNAL_ASSERT (CFRunLoopGetCurrent () == CFRunLoopGetMain ());
+        ARA_INTERNAL_ASSERT (isInitialized ());
+        const auto currentMode { CFRunLoopCopyCurrentMode (CFRunLoopGetCurrent ()) };
+        ARA_INTERNAL_ASSERT (!currentMode /*happens at startup*/ || !CFEqual (currentMode, _privateRunLoopMode));
+        if (currentMode)
+            CFRelease (currentMode);
+        ARA_INTERNAL_ASSERT (!_waitInPrivateMode);
+#endif
+
+        while (true)                        // retry loop for stacked operation
+        {
+            ARA_RL_SYNC_LOG ("will yield control to remote run loop in mode %s, level %i", ARA_RL_MODE_AS_STRING (mode), _runLoopRecursionLevel);
+            ARA_INTERNAL_ASSERT (_pendingStackedMode == nullptr);
+            ARA_INTERNAL_ASSERT (_pendingReturnMode == nullptr);
+            _pendingReturnMode = mode;      // _runLoopPrivateModeObserver will send this when we enter the private mode for the first time
+            _waitInPrivateMode = true;
+            do
+            {
+                [[maybe_unused]] const auto result { CFRunLoopRunInMode (_privateRunLoopMode, 0.1, YES) };
+                ARA_RL_SYNC_LOG ("did spin private run loop mode, %s", (result == kCFRunLoopRunTimedOut) ? "timing out" : "handling event");
+            }
+            while (_waitInPrivateMode);
+
+            if (_pendingStackedMode)
+            {
+                const auto pendingMode { _pendingStackedMode }; // local variable consumes the retain
+                _pendingStackedMode = nullptr;
+                ARA_RL_SYNC_LOG ("did regain control from remote run loop, will run stacked mode %s, level %i->%i",
+                                                    ARA_RL_MODE_AS_STRING (pendingMode), _runLoopRecursionLevel, _runLoopRecursionLevel + 1);
+
+                // when reaching the lowest level on the follower side and asked to run in default mode,
+                // instead of spinning a new loop iteration we exit the private run loop mode so that
+                // the underlying cycle will spin once, after which we return to private mode from our observer
+                if (_isFollower && (_runLoopRecursionLevel == 0) && CFEqual (pendingMode, kCFRunLoopDefaultMode))
+                {
+                    CFRelease (pendingMode);
+                    CFRunLoopWakeUp (CFRunLoopGetCurrent ());   // ensure the default run loop wakes up immediately after exiting the private mode
+                    // will send handshake and return to waiting from rl observer
+                    break;
+                }
+                else
+                {
+                    ARA_RL_SYNC_LOG ("will run stacked in mode %s, level %i->%i", ARA_RL_MODE_AS_STRING (pendingMode),  _runLoopRecursionLevel, _runLoopRecursionLevel + 1);
+
+                    const auto prevLastRemoteLoopRecursionLevel { _lastRemoteLoopRecursionLevel };
+                    _lastRemoteLoopRecursionLevel = _runLoopRecursionLevel;
+
+                    while (CFRunLoopRunInMode (pendingMode, 0.0, YES) == kCFRunLoopRunHandledSource)
+                    {};
+                    CFRelease (pendingMode);
+
+                    _lastRemoteLoopRecursionLevel = prevLastRemoteLoopRecursionLevel;
+                    ARA_RL_SYNC_LOG ("did run stacked in mode %s, level %i->%i", ARA_RL_MODE_AS_STRING (mode),  _runLoopRecursionLevel +1, _runLoopRecursionLevel);
+
+                    // wait again after returning control to the other side
+                    mode = CFSTR("");
+                    CFRetain (mode);
+                }
+            }
+            else
+            {
+                ARA_RL_SYNC_LOG ("did regain control from remote run loop to continue previous mode at level %i", _runLoopRecursionLevel);
+                break;
+            }
+        }
+    }
+
+    void _sendRLSyncMessage (CFRunLoopMode mode)
+    {
+        ARA_RL_SYNC_LOG ("sending sync message for mode %s", ARA_RL_MODE_AS_STRING (mode));
+        const auto message { [NSDictionary dictionaryWithObject:(__bridge NSString *) mode forKey:@"rlsync"] };
+        [[maybe_unused]] NSDictionary * reply;
+        if (_isFollower)
+            reply = _messageChannel.callHostBlock (message);
+        else
+            reply = [_messageChannel callAudioUnit:message];
+        ARA_INTERNAL_ASSERT (reply.count == 0);
+    }
+
+private:
+    NSObject<AUMessageChannel> * _messageChannel;
+    CFRunLoopMode _privateRunLoopMode { nullptr };
+    CFRunLoopObserverRef _runLoopCommonModesObserver { nullptr };   // \todo when using multiple plugins in the host,
+    CFRunLoopObserverRef _runLoopPrivateModeObserver { nullptr };   //       we should consider sharing these observer
+    int _runLoopRecursionLevel { 1 };
+    int _lastRemoteLoopRecursionLevel { -1 };
+    bool _isFollower { false };
+    bool _waitInPrivateMode { false };
+    CFRunLoopMode _pendingStackedMode { nullptr };      // evaluated when exiting private mode \todo we should be able to reuse _pendingReturnMode
+    CFRunLoopMode _pendingReturnMode { nullptr };       // evaluated when entering private mode
+};
+
+
 // message channel base class for both proxy implementations
 class AudioUnitMessageChannel : public MessageChannel
 {
 public:
-    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
-    : _audioUnitChannel { audioUnitChannel }
+    AudioUnitMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, RunLoopSyncImpl * runLoopSyncImpl)
+    : _audioUnitChannel { audioUnitChannel },
+      _runLoopSyncImpl { runLoopSyncImpl }
     {
 #if !__has_feature(objc_arc)
         [_audioUnitChannel retain];
@@ -94,8 +544,17 @@ public:
 #endif
 
 public:
+
+    NSObject<AUMessageChannel> * getAudioUnitChannel ()
+    {
+        return _audioUnitChannel;
+    }
+
     void routeReceivedDictionary (NSDictionary * _Nonnull dictionary)
     {
+        if (_runLoopSyncImpl && _runLoopSyncImpl->filterRunLoopSyncMessages (dictionary))
+            return;
+
         _currentRoutingThread = [NSThread currentThread];
         ARA_INTERNAL_ASSERT (![NSThread isMainThread]);
         ARA_INTERNAL_ASSERT (dictionary.allKeys.count == 1);
@@ -131,7 +590,10 @@ public:
 
     bool waitForMessageOnCurrentThread (ARATimeDuration timeout) override
     {
-        return CFRunLoopRunInMode (kCFRunLoopDefaultMode, timeout, true) != kCFRunLoopRunTimedOut;
+        if (_runLoopSyncImpl && _runLoopSyncImpl->isInitialized ())
+            return _runLoopSyncImpl->waitForMessageOnCurrentThread (timeout);
+        else
+            return CFRunLoopRunInMode (kCFRunLoopDefaultMode, timeout, YES) != kCFRunLoopRunTimedOut;
     }
 
 protected:
@@ -139,7 +601,9 @@ protected:
 
 protected:
     NSObject<AUMessageChannel> * __strong _Nonnull _audioUnitChannel;
-    NSThread * __strong _Nullable _currentRoutingThread { nil };
+    NSThread * __unsafe_unretained _Nullable _currentRoutingThread { nil }; // unretained is fine, only points to [NSThread currentThread]
+                                                                            // while on that thread and never dereferenced
+    RunLoopSyncImpl * _runLoopSyncImpl;
 };
 
 
@@ -155,7 +619,7 @@ protected:
     {
         if (const auto callHostBlock { _audioUnitChannel.callHostBlock })
         {
-            NSDictionary * reply { callHostBlock (message) };
+            const auto reply { callHostBlock (message) };
             return reply;
         }
         else
@@ -173,8 +637,8 @@ protected:
 class ProxyPlugInMessageChannel : public AudioUnitMessageChannel
 {
 public:
-    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel)
-    : AudioUnitMessageChannel { audioUnitChannel }
+    ProxyPlugInMessageChannel (NSObject<AUMessageChannel> * _Nonnull audioUnitChannel, RunLoopSyncImpl * runLoopSyncImpl)
+    : AudioUnitMessageChannel { audioUnitChannel, runLoopSyncImpl }
     {
         _audioUnitChannel.callHostBlock =
             ^NSDictionary * _Nullable (NSDictionary * _Nonnull dictionary)
@@ -207,12 +671,12 @@ protected:
 
 // host side: proxy plug-in implementation
 #if !ARA_AUDIOUNITV3_IPC_PROXY_HOST_ONLY
-class AUProxyPlugIn : public ProxyPlugIn, public FunctionDispatcher
+class AUProxyPlugIn : public ProxyPlugIn, public RunLoopSyncImpl
 {
 public:
-    static AUProxyPlugIn* createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit,
-                                               ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
-                                               void * _Nullable delegateUserData)
+    static AUProxyPlugIn * createWithAudioUnit (AUAudioUnit * _Nonnull audioUnit,
+                                                ARAMainThreadWaitForMessageDelegate _Nullable waitForMessageDelegate,
+                                                void * _Nullable delegateUserData)
     {
         // AUAudioUnits created before macOS 13 will not know about this API yet
         if (![audioUnit respondsToSelector:@selector(messageChannelFor:)])
@@ -249,15 +713,30 @@ private:
                                                   [this] (auto&& func) { dispatchToCreationThread (func); },
                                                   true, // \todo shouldn't the AUMessageChannel provide this information?
                                                   (waitForMessageDelegate) ?
-                                                        [waitForMessageDelegate, delegateUserData] { waitForMessageDelegate(delegateUserData); } :
+                                                        [waitForMessageDelegate, delegateUserData] { waitForMessageDelegate (delegateUserData); } :
                                                         Connection::WaitForMessageDelegate {}) },
+      RunLoopSyncImpl {},
       _initAU { initAU }
     {
-        getConnection ()->setMainThreadChannel (std::make_unique<ProxyPlugInMessageChannel> (mainChannel));
-        getConnection ()->setOtherThreadsChannel (std::make_unique<ProxyPlugInMessageChannel> (otherChannel));
+        setRunLoopMessageChannel (mainChannel);
+        getConnection ()->setMainThreadChannel (std::make_unique<ProxyPlugInMessageChannel> (mainChannel, this));
+        getConnection ()->setOtherThreadsChannel (std::make_unique<ProxyPlugInMessageChannel> (otherChannel, this));
 #if !__has_feature(objc_arc)
         [_initAU retain];
 #endif
+
+        if (_runLoopSyncPrivateMode)
+        {
+            initRunLoopSyncAsLeader (_runLoopSyncPrivateMode, _globalRunLoopLevel);
+
+            // cleanup init helpers
+            ARA_INTERNAL_ASSERT (_globalRunLoopCommonModesObserver);
+            CFRunLoopRemoveObserver (CFRunLoopGetMain (), _globalRunLoopCommonModesObserver, kCFRunLoopCommonModes);
+            _globalRunLoopCommonModesObserver = nullptr;
+
+            CFRelease (_runLoopSyncPrivateMode);
+            _runLoopSyncPrivateMode = nullptr;
+        }
     }
 
 private:
@@ -311,7 +790,7 @@ void ARA_CALL ARAIPCAUProxyPlugInUninitialize (ARAIPCProxyPlugInRef _Nonnull pro
 // plug-in side: proxy host C adapter
 #if !ARA_AUDIOUNITV3_IPC_PROXY_PLUGIN_ONLY
 
-class AUProxyHost : public ProxyHost, public FunctionDispatcher
+class AUProxyHost : public ProxyHost, public RunLoopSyncImpl
 {
 public:
     AUProxyHost ()
@@ -319,6 +798,7 @@ public:
                                                 [this] (auto&& ...args) { handleReceivedMessage (args...); },
                                                 [this] (auto&& func) { dispatchToCreationThread (func); },
                                                 true) },    // \todo shouldn't the AUMessageChannel provide this information?
+      RunLoopSyncImpl {},
       _dispatchSyncSemaphore { dispatch_semaphore_create (0) }
     {
         ARAIPCProxyHostSetBindingHandler (handleBinding);
@@ -330,6 +810,19 @@ public:
         dispatch_release (_dispatchSyncSemaphore);
     }
 #endif
+
+    void setMessageChannel (std::unique_ptr<ProxyHostMessageChannel>&& messageChannel, bool isMainThreadChannel)
+    {
+        if (isMainThreadChannel)
+        {
+            setRunLoopMessageChannel (messageChannel->getAudioUnitChannel ());
+            getConnection ()->setMainThreadChannel (std::move (messageChannel));
+        }
+        else
+        {
+            getConnection ()->setOtherThreadsChannel (std::move (messageChannel));
+        }
+    }
 
     void dispatchSyncToMainThread (void (^_Nonnull block) ())
     {
@@ -388,13 +881,10 @@ static ARAIPCMessageChannelRef _Nullable initializeMessageChannel (NSObject<AUMe
                     _proxyHost.store (new AUProxyHost {}, std::memory_order_release);
             });
 
-    auto channel { std::make_unique<ProxyHostMessageChannel> (audioUnitChannel) };
-    const auto result { toIPCRef (channel.get ()) };
-
-    if (isMainThreadChannel)
-        _proxyHost.load (std::memory_order_relaxed)->getConnection ()->setMainThreadChannel (std::move (channel));
-    else
-        _proxyHost.load (std::memory_order_relaxed)->getConnection ()->setOtherThreadsChannel (std::move (channel));
+    auto proxyHost { _proxyHost.load (std::memory_order_relaxed) };
+    auto messageChannel { std::make_unique<ProxyHostMessageChannel> (audioUnitChannel, proxyHost) };
+    const auto result { toIPCRef (messageChannel.get ()) };
+    proxyHost->setMessageChannel (std::move (messageChannel), isMainThreadChannel);
 
     return result;
 }
@@ -485,9 +975,9 @@ static void callHostBlock_setter (id self, SEL /*_cmd*/, CallHostBlock newBlock)
     if (oldBlock != newBlock)
     {
         if (oldBlock)
-            Block_release ((__bridge void *)oldBlock);
+            Block_release ((__bridge void *) oldBlock);
         if (newBlock)
-            newBlock = (__bridge CallHostBlock) Block_copy ((__bridge void *)newBlock);
+            newBlock = (__bridge CallHostBlock) Block_copy ((__bridge void *) newBlock);
         object_setIvar (self, callHostBlockIvar, newBlock);
     }
 }
@@ -575,7 +1065,7 @@ NSObject<AUMessageChannel> * __strong _otherMessageChannel { nil };
 
 static void createSharedMessageChannels ()
 {
-    ARA_INTERNAL_ASSERT(!_mainMessageChannel && !_otherMessageChannel);
+    ARA_INTERNAL_ASSERT (!_mainMessageChannel && !_otherMessageChannel);
 
     const auto cls { createMessageChannelObjCClass () };
     _mainMessageChannel = createAndInitMessageChannel (cls, true);

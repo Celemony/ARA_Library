@@ -9,6 +9,7 @@ Changes since previous releases:
 - added isPlaybackRegionPreservingAudioSourceSignal(), superseding isAudioModificationPreservingAudioSourceSignal()
 - initial draft of generic ARA IPC library providing a proxy host and a proxy plug-in,
   based on heavily refactored IPC Example from earlier SDK releases
+- initial draft of run loop sync when using Audio Unit v3 out-of-process
 - dropped support for ARA 1 and 2.0 Draft APIs
   If previously optionally supporting obsolete ARA 1 persistency, now exclusively use ARA 2 persistency.
 - C++17 is now consistently required on all platforms

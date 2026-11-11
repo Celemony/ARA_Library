@@ -48,6 +48,14 @@ API_AVAILABLE_BEGIN(macos(13.0), ios(16.0))
 //! optional delegate that can be provided in ARAIPCAUProxyPlugInInitialize()
 typedef void (*ARAMainThreadWaitForMessageDelegate) (void * _Nullable delegateUserData);
 
+//! Optionally, the host can request that the proxy synchronizes the two main threads by blocking
+//! either the host or the plug-in run loop at any given point. This requires the host to run its
+//! own loop regularly, in order not to block the plug-in loop for an extended period of time.
+//! To enable the sync, the host should call this method from its main() implementation,
+//! before calling into NSApplicationMain(). It needs to provide the run loop mode that the should
+//! be used when blocking either side while the other side is running.
+void ARAIPCAUProxyPlugInPrepareRunLoopSync (CFRunLoopMode _Nonnull runLoopSyncPrivateMode);
+
 //! host side: initialize proxy plug-in component and its internal the message channels
 //! will return nullptr if the Audio Unit does not implement [AUAudioUnit messageChannelFor:]
 //! for the required ARA message channels
